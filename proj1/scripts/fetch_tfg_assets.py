@@ -1,6 +1,8 @@
 """Download the TFG checkpoints the transfer experiment needs, and verify them.
 
-The generators are missing from this repository; the property networks are not.
+The generators are missing from this repository; the property networks are not
+-- they are committed under `audit/fa_fb_search/TFG/` (see that directory's
+PROVENANCE.md), so a fresh clone already has everything but the base model.
 `--models` selects which generators to pull (see FOLDERS): `EDMsecond`, the
 half-data EDM the transfer experiment runs on, is the default, and `EDMfull`
 is worth adding for the base-model comparison. The six property networks
@@ -96,10 +98,13 @@ def check_vendored():
     for rel in VENDORED:
         p = os.path.join(TFG_ROOT, rel)
         (ok if os.path.exists(p) else missing).append(rel)
-    print("vendored property networks: %d/%d present"
-          % (len(ok), len(VENDORED)))
+    print("vendored property networks: %d/%d present  (tracked in git; see "
+          "audit/fa_fb_search/PROVENANCE.md)" % (len(ok), len(VENDORED)))
     for rel in missing:
         print("   MISSING  %s" % rel)
+    if missing:
+        print("   These are committed to the repository. If they are absent "
+              "your clone is incomplete -- try `git checkout -- audit/`.")
     return not missing
 
 

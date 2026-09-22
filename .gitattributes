@@ -1,0 +1,38 @@
+# Binary artifacts: never line-ending-convert, never diff as text.
+#
+# WHY THIS FILE EXISTS. The vendored TFG checkpoints under
+# audit/fa_fb_search/TFG/ are 28 MB of weights that our transfer experiment
+# loads directly. Without an explicit rule git classifies them as
+# "unspecified" and falls back to a content heuristic, and the team works
+# across Windows, Linux and the Betty cluster -- exactly the setup where
+# core.autocrlf differs between clones. A checkpoint that got CRLF-converted
+# would still load and would still produce molecules; it would just produce
+# wrong ones, with nothing raising. That is the failure mode this project
+# keeps finding the hard way, so the classification is stated rather than
+# inferred.
+
+*.npy      binary
+*.pt       binary
+*.pth      binary
+*.pickle   binary
+*.pkl      binary
+*.tar.gz   binary
+*.tgz      binary
+*.zip      binary
+*.sdf      binary
+*.pdf      binary
+
+# Source and text: normalise to LF in the repository, check out native.
+*.py       text diff=python
+*.md       text
+*.json     text
+*.yaml     text
+*.yml      text
+*.txt      text
+*.csv      text
+
+# Shell and SLURM scripts must keep LF even on a Windows checkout -- a CRLF
+# shebang line makes the cluster's interpreter fail with a confusing
+# "bad interpreter: No such file or directory".
+*.sh       text eol=lf
+*.slurm    text eol=lf

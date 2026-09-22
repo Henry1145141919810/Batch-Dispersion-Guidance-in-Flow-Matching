@@ -36,9 +36,16 @@ docs/protocol/      split, predictor decisions, experiment plan
 ```
 
 Not in the repo, by design: `data/` (430 MB, rebuild with
-`prepare_qm9.py`), `betty_pull/` (cluster sync), `audit/` (vendored reference
-repos), `archive/` (brainstorms and dropped ideas — every one is cited from the
-methods index, with the reason it was dropped).
+`prepare_qm9.py`), `betty_pull/` (cluster sync), most of `audit/` (vendored
+reference repos), `archive/` (brainstorms and dropped ideas — every one is
+cited from the methods index, with the reason it was dropped).
+
+**Two exceptions under `audit/` are tracked**: `fa_fb_search/TFG/` and
+`fa_fb_search/OC-Flow/` (28 MB). `proj1/src/external/tfg_assets.py` loads model
+definitions and checkpoints from them, so the transfer experiment does not run
+from a fresh clone without them. Origin, commits and licences are in
+[audit/fa_fb_search/PROVENANCE.md](audit/fa_fb_search/PROVENANCE.md). None of
+that code or those weights are ours.
 
 ## Reproducing
 
@@ -59,6 +66,25 @@ python proj1/scripts/guidance_sweep.py --props mu,alpha,gap --n 512 --steps 100
 # read the result
 python proj1/scripts/select_arms.py --stage main
 ```
+
+The **transfer experiment** — every guidance arm re-run on a borrowed base
+model, guide and oracle, so that nothing in it but the guidance field is ours —
+needs one download and then runs from the clone:
+
+```bash
+python proj1/scripts/fetch_tfg_assets.py            # TFG's EDMsecond, ~100 MB
+python proj1/tests/test_transfer_backend.py         # expect ALL PASS (61 gates)
+
+# the hard gate: the borrowed model through OUR evaluator. If this fails,
+# nothing downstream is trustworthy -- see the script's docstring.
+python proj1/scripts/benchmark_transfer_base.py --edm-dir weights/EDMsecond     --n 2000 --steps 100 --grid gamma --out results/bench/edmsecond_gate.json
+
+python proj1/scripts/transfer_sweep.py --preflight  # one cell per arm, ~2 min
+```
+
+Read [docs/protocol/TRANSFER_EXPERIMENT_PLAN.md](docs/protocol/TRANSFER_EXPERIMENT_PLAN.md)
+first — it is a pre-registration, and §5 lists the caveats that must travel
+with every number it produces.
 
 Training the generator from scratch is `proj1/scripts/train_fm.py --split train_a`
 (1500 epochs); the predictors are `proj1/scripts/train_predictor.py`. Both are

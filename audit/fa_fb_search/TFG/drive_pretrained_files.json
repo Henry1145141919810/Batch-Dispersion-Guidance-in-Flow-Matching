@@ -1,0 +1,126 @@
+[
+  {
+    "id": "1otxlaVI2yGUobhFjiV_OaHxwo-_qA1kh",
+    "name": "cEDM_alpha Shared folder"
+  },
+  {
+    "id": "1wdWNDYDKwuKVl_d1aW7eEeJRCUuKAF_Y",
+    "name": "cEDM_alpha_mu Shared folder"
+  },
+  {
+    "id": "16JQwwblrFh2K6HrpgTSCuYSCatGFulrS",
+    "name": "cEDM_Cv Shared folder"
+  },
+  {
+    "id": "1qxZtYEyM-alN2FBr5ZDgdn3-N5GeqMFy",
+    "name": "cEDM_fingerprint Shared folder"
+  },
+  {
+    "id": "1Y-cG1jpZybHD6bJoolgIdlca3Ydf2go0",
+    "name": "cEDM_gap Shared folder"
+  },
+  {
+    "id": "117GWU3wrIiGuti8vDjyCwr3CVDxX5Ny1",
+    "name": "cEDM_gap_mu Shared folder"
+  },
+  {
+    "id": "1xg4nxIoFytoyBiGOcWjOeS2qPA9u0C_k",
+    "name": "cEDM_homo Shared folder"
+  },
+  {
+    "id": "1mRKdTPkRJ657YMixTSXeZav96tdvHJYU",
+    "name": "cEDM_lumo Shared folder"
+  },
+  {
+    "id": "1h8Timq5HLJg04X9trw8rk4n6mtZTV1ny",
+    "name": "cEDM_mu Shared folder"
+  },
+  {
+    "id": "1cWg_EO7Ub5HZlK63YLdUusgG0mrwCLXm",
+    "name": "cEDM_mu_Cv Shared folder"
+  },
+  {
+    "id": "1zxvQlc0aRBlhHNdKfud8KT16mjzLagcp",
+    "name": "EDM Shared folder"
+  },
+  {
+    "id": "1kXy0DaAcei3-9qOkSnhEtbpXBH9EzfgS",
+    "name": "EDMfull Shared folder"
+  },
+  {
+    "id": "1wnGEaxVPKZOwlBuI0yytOFfgMybxnX2o",
+    "name": "EDMsecond Shared folder"
+  },
+  {
+    "id": "1qGkJuicjoqac2zVnY0jMp1l6jyh5LlY5",
+    "name": "evaluate_alpha Shared folder"
+  },
+  {
+    "id": "1FC_MV24TslPJM14X2-KcBAgtzInVkHDe",
+    "name": "evaluate_Cv Shared folder"
+  },
+  {
+    "id": "1QajomT5sqymPC-hdVPGGYn5xOnprLt24",
+    "name": "evaluate_gap Shared folder"
+  },
+  {
+    "id": "17D1qUOfwUbz3O-XEem1c7WMV2dCVYSaE",
+    "name": "evaluate_homo Shared folder"
+  },
+  {
+    "id": "1PcVhcqX2TtZiMlz0ZxeLIg89kcQj1YGw",
+    "name": "evaluate_lumo Shared folder"
+  },
+  {
+    "id": "1zvykGFJtgnA2WH5BMEih0q6KmPQvY7S8",
+    "name": "evaluate_mu Shared folder"
+  },
+  {
+    "id": "10hBSvrgjz_MSYo8exGSyHsZpn2ecfFD8",
+    "name": "predict_alpha Shared folder"
+  },
+  {
+    "id": "1pfmtnwfZqnyz9FiQiTPUprlzt5z5MojC",
+    "name": "predict_Cv Shared folder"
+  },
+  {
+    "id": "1joLXDUvTk-WnfH3ZmOQW6luuUSCglN-Q",
+    "name": "predict_fingerprint Shared folder"
+  },
+  {
+    "id": "17tWExKKBZpFuPFQlaUxXnkDTvkh5EKnm",
+    "name": "predict_gap Shared folder"
+  },
+  {
+    "id": "1IAtuwFh81kNcOhFhDq2opufvPfA1lSeg",
+    "name": "predict_lumo Shared folder"
+  },
+  {
+    "id": "1ig205jmy-O3qwNSGEm-3dhdXtoAh4h4e",
+    "name": "predict_mu Shared folder"
+  },
+  {
+    "id": "1KgC2LhR7omFXzopaCLOpnwEsE_TXxlbM",
+    "name": "tf_predict_alpha Shared folder"
+  },
+  {
+    "id": "15jD75iORsYwLn_3YSFMbtbdIIJ0kB-gL",
+    "name": "tf_predict_Cv Shared folder"
+  },
+  {
+    "id": "1em7YdcsrhHRC-qcvZ3szU9XSKj9SUoLv",
+    "name": "tf_predict_gap Shared folder"
+  },
+  {
+    "id": "1Uiv5hBgIlbNu8wFEy3iW12BVqwN2kdNw",
+    "name": "tf_predict_homo Shared folder"
+  },
+  {
+    "id": "11kPU0UCTT9Ft6TrXM8gZJ70QNcA2SvHR",
+    "name": "tf_predict_lumo Shared folder"
+  },
+  {
+    "id": "1ztVromBlJ0Rm8E0guH8nAmvRCUtp39F_",
+    "name": "tf_predict_mu Shared folder"
+  }
+]

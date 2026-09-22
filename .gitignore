@@ -14,9 +14,32 @@ data/
 betty_pull/
 
 # ---------------------------------------------------------------- vendored repos
-# Cloned reference implementations (TFG, TFG-Flow) used for the prior-art audit,
-# ~146 MB including a 75 MB log. Read-only references, not our code.
-audit/
+# Cloned reference implementations used for the prior-art audit, ~146 MB
+# including a 75 MB log. Read-only references, not our code.
+#
+# TWO SUBTREES ARE EXEMPT AND MUST STAY TRACKED. `proj1/src/external/
+# tfg_assets.py` loads model definitions and checkpoints from them at import
+# time, so the transfer experiment -- the gate script, the sweep and all 61
+# backend gates -- does not run at all from a fresh clone without them. They
+# were ignored until 22 Sep 2026, which made the whole harness reproducible
+# only on the machine that wrote it. ~105 MB, deliberately committed; see
+# audit/fa_fb_search/PROVENANCE.md for origin, commit and licence.
+#
+# Un-ignoring a subtree needs its parents re-included first: git does not
+# descend into an excluded directory, so `!audit/fa_fb_search/TFG/` alone
+# would do nothing.
+audit/*
+!audit/fa_fb_search/
+audit/fa_fb_search/*
+!audit/fa_fb_search/PROVENANCE.md
+!audit/fa_fb_search/TFG/
+!audit/fa_fb_search/OC-Flow/
+
+# ...but not TFG's own training logs or the scraped Drive listings. The log
+# alone is 79 MB -- three quarters of the subtree, and of no use to anyone
+# reading this repository. Nothing in proj1/ opens either.
+audit/fa_fb_search/TFG/**/logs.txt
+audit/fa_fb_search/TFG/*.html
 
 # ---------------------------------------------------------------- scratch
 tmp/
