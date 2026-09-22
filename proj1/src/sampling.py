@@ -114,6 +114,7 @@ class _Base:
         self.n_field = self.n_clipped = self.n_guided = 0
         self.schedule_log = {}
         self.diag_acc = {}
+        self.kappa3_log = []      # was omitted; would double-count on reuse
 
     # Diagnostics worth carrying out of the run. Deliberately a short list:
     # these are the quantities that decide whether BTVG's variance model held

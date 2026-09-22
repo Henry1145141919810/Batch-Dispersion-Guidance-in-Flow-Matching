@@ -147,7 +147,7 @@ MUTATIONS = [
      '            raise ValueError("mode %r needs tau (target property sd)" % mode)',
      "            tau = 1.0"),
     ("SPBC removed from DISPLACEMENT_MODES (double (1-t)/t scaling)",
-     'DISPLACEMENT_MODES = {"spbc"}',
+     'DISPLACEMENT_MODES = {"spbc", "band"}',
      "DISPLACEMENT_MODES = set()"),
     # ---- sampling.py: the SHG schedule ------------------------------------
     # This bug was found by the screening data (five identical cells at
@@ -174,7 +174,7 @@ def run_test():
 
     Runs the SANDBOX copy's test files, which resolve their imports from their
     own location, so the working tree is never involved."""
-    env = dict(os.environ, CUDA_VISIBLE_DEVICES="", PYTHONIOENCODING="utf-8")
+    env = dict(os.environ, CUDA_VISIBLE_DEVICES="-1", PYTHONIOENCODING="utf-8")
     for t in TEST_REL:
         r = subprocess.run([PY, _p(t)], capture_output=True, text=True,
                            env=env, timeout=900)

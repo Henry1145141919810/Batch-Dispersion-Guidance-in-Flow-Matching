@@ -870,13 +870,26 @@ KNOWN_MODES = {"plug", "smg_mean", "smg_var", "smg", "smg2", "smg2_curv",
 
 # Arms that return a STATE DISPLACEMENT rather than a score. The sampler
 # must not apply the (1-t)/t score-to-velocity conversion to these.
-# Arms whose field is already a STATE DISPLACEMENT in x_t, not a score. The
-# sampler must NOT apply the (1-t)/t score-to-velocity conversion to these.
-# `band` belongs here for the same reason `spbc` does: tolerance_band_step
-# solves ||d|| <= R subject to a property-change constraint on b'd, so d is a
-# displacement. Omitting it multiplied band by 19 at t=0.05 and 0.053 at
-# t=0.95 -- the likely mechanical cause of its recorded divergence above
-# w=0.05.
+# Arms the sampler must NOT push through the (1-t)/t score-to-velocity factor.
+#
+# `spbc` because its edit IS a length: d_i = (nu/r_i) a_i with nu a physical
+# property increment and r_i the measured response.
+#
+# `band` for a different reason, and NOT because its output is a length -- it
+# is measured to be eta*u orthogonally projected onto the feasible set
+# (||d||/||u|| = cos(d,u) = 0.3833 to four digits), so it is a length only if
+# eta carries units of [x]^2. It belongs here because its input `u` is
+# grad(diversity), not grad log p(y|x_t): the (1-t)/t factor is derived for the
+# Gaussian path's SCORE and has no justification for a non-score direction
+# either way, so not applying it is the choice consistent with this module's
+# convention.
+#
+# NOTE: this does NOT explain band's recorded divergence. Measured: with
+# clip=None band goes non-finite at w >= 0.05 both with and without the factor,
+# and with the sweep's clip=1.0 neither version diverges at any strength.
+# Divergence is a magnitude problem. The factor does change the magnitude a
+# lot (x19 at t=0.05, x0.053 at t=0.95) and it makes band MORE clip-bound at
+# t_min=0.5, which is why the low-strength grid extension exists.
 DISPLACEMENT_MODES = {"spbc", "band"}
 
 

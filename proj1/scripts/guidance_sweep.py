@@ -123,7 +123,11 @@ ARMS = ["unguided", "plug", "tmpd", "tfg_mc", "lgd_mc", "osc",
 #   spbc      shape-preserving bias correction   (v2)
 #   btvg*     band-targeted variance guidance    (v2)
 V1_MISSING = ["smg_mean", "rch", "band"]
-V2_ARMS = ["spbc", "btvg", "btvg_mean", "btvg_var"]
+# btvg_mean is NOT here: after the (tau/s)^2 normalisation its coefficient is
+# w(y-f)/s^2, which is `plug` -- bit-identical at 9.0e-8 relative. That is a
+# fact worth stating in the paper (BTVG's novelty is entirely in the variance
+# term) and 30 cells not worth spending. It remains implemented and gated.
+V2_ARMS = ["spbc", "btvg", "btvg_var"]
 
 # REFERENCES. Every v2 comparison re-runs these in the same cells so the
 # contrast is measured under identical seeds, targets and windows rather than
@@ -134,7 +138,23 @@ V2_REFERENCES = ["unguided", "plug", "tmpd", "smg"]
 # only 68.3% band coverage, and 95% needs sd ~ delta/1.96. The multiplier
 # brackets that choice so the pre-registered value can be checked rather than
 # assumed.
-TAU_MULT = [0.5, 1.0, 2.0]          # x (delta / 1.96)
+# COLLAPSED TO THE PRE-REGISTERED VALUE. The tau sweep cannot answer its own
+# question as parameterised: after the (tau/s)^2 strength normalisation the
+# btvg coefficient is w*b = -0.5w/s^2 * (1 - tau^2/V), and the measured
+# tau^2/V ~ 1e-5, so a 16x range in tau^2 moves the field by 1.5e-5 relative.
+# Twelve cells were reproducing their own siblings. Restore the list only if
+# the normalisation changes.
+TAU_MULT = [1.0]                    # x (delta / 1.96)
+
+# Arms whose strength curve reads the CLIP rather than the arm on the standard
+# grid. Measured clip fraction of guided sample-steps at t_min=0.5, w=0.01..4:
+#   band 0.00 0.22 0.71 0.89 0.97 1.00 1.00
+#   btvg 0.08 0.27 0.46 0.52 0.62 0.74 0.78
+#   spbc 0.00 ...................... 0.00 (through w=2)
+# Only the two lowest points are informative for band/btvg, so they get two
+# extra points below the shared grid.
+CLIP_BOUND = ("band", "btvg", "btvg_var")
+STRENGTHS_LOW = [0.002, 0.005]
 
 # SPBC's trust radius. eta is deliberately NOT swept: it multiplies the edit
 # linearly and so does w, which would make the grid redundant -- the same
@@ -352,7 +372,8 @@ def plan_v2_cells(props, arms):
                 add(prop, arm, "q50", DEFAULT_W, V2_WIN, v)
     for prop in props:                       # pass 3: strength
         for arm in sel:
-            for w in STRENGTHS:
+            grid = STRENGTHS + (STRENGTHS_LOW if arm in CLIP_BOUND else [])
+            for w in sorted(grid):
                 for v in variants(arm, single=True):
                     add(prop, arm, "q50", w, V2_WIN, v)
         for arm in refs:
@@ -430,7 +451,11 @@ def main():
         # one cell per arm, first property only, smallest run that still
         # exercises every code path: load the guide, build the sampler, take
         # real steps, score the samples.
-        args.n, args.batch, args.steps = 8, 8, 4
+        # steps=10, not 4. At steps=4 the time grid is {0, .25, .5, .75}, so
+        # with t_min_guide=0.5 the SHG handoffs at 0.80/0.85/0.90 were NEVER
+        # entered and shg_plug_btvg's preflight MAE came out exactly equal to
+        # plug's. steps=10 puts a node in every scheduled interval.
+        args.n, args.batch, args.steps = 8, 8, 10
 
     cells = []
     if args.stage in ("main", "all"):
@@ -575,6 +600,7 @@ def main():
                   "variant": variant, "stage": args.stage, "prov": prov,
                   "schedule_used": sched_log,
                   "w_applied": w_applied, "w_scale": w_scale,
+                  "kappa3": args.kappa3,
                   "kappa3_mean": (sum(a for a, _ in k3_acc) / len(k3_acc)
                                   if k3_acc else None),
                   "kappa3_abs_mean": (sum(b for _, b in k3_acc) / len(k3_acc)
