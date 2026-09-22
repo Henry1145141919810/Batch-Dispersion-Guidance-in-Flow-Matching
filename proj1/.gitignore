@@ -1,0 +1,29 @@
+# data and checkpoints
+data/
+*.ckpt
+*.pt
+*.pth
+*.npz
+*.h5
+
+# results (large); keep tables/ and figures/ tracked once they exist
+results/raw/
+
+# python
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+.venv/
+venv/
+*.egg-info/
+
+# logs
+wandb/
+lightning_logs/
+*.log
+
+# os / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

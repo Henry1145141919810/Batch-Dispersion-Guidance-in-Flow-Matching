@@ -1,0 +1,9 @@
+fm_last.pt | flow | n=10000 steps=100 solver=euler seed=1 weights=EMA
+  first batch 13.0s -> projected 260s total
+  atom 0.9381  mol 0.4082  valid(EDM) 0.7648  uniq 0.9933  VxU 0.7597  novel(a) 0.8731  novel(ab) 0.7444  connected 0.9359  nonfinite 0  [sample 257s eval 13s]
+fm_last.pt | flow | n=10000 steps=100 solver=euler seed=2 weights=EMA
+  first batch 12.9s -> projected 259s total
+  atom 0.9361  mol 0.3985  valid(EDM) 0.7637  uniq 0.9937  VxU 0.7589  novel(a) 0.8732  novel(ab) 0.7542  connected 0.9259  nonfinite 0  [sample 257s eval 13s]
+  fmlast_ep1500_nfe100_euler_s1.json       atom 0.9381  mol 0.4082  valid 0.7648  VxU 0.7597  novel(a) 0.8731  conn 0.9359
+  fmlast_ep1500_nfe100_euler_s2.json       atom 0.9361  mol 0.3985  valid 0.7637  VxU 0.7589  novel(a) 0.8732  conn 0.9259
+### EP1500 SEEDS DONE

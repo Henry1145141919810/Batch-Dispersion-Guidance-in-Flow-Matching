@@ -1,0 +1,19 @@
+  ridge fitted in 0.3s | val MAE = 0.80080 (mu)
+f_A_mu_ridge done: best val MAE = 0.80080 (mu)  in 0s
+  ridge fitted in 0.4s | val MAE = 0.80004 (mu)
+f_B_mu_ridge done: best val MAE = 0.80004 (mu)  in 0s
+  ridge fitted in 0.4s | val MAE = 1.17511 (alpha)
+f_A_alpha_ridge done: best val MAE = 1.17511 (alpha)  in 0s
+  ridge fitted in 0.4s | val MAE = 1.17852 (alpha)
+f_B_alpha_ridge done: best val MAE = 1.17852 (alpha)  in 0s
+  ridge fitted in 0.4s | val MAE = 0.02055 (gap)
+f_A_gap_ridge done: best val MAE = 0.02055 (gap)  in 0s
+  ridge fitted in 0.4s | val MAE = 0.02055 (gap)
+f_B_gap_ridge done: best val MAE = 0.02055 (gap)  in 0s
+f_A_mu_transformer done: best val MAE = 0.12014 (mu)  in 359s
+f_B_mu_transformer done: best val MAE = 0.12139 (mu)  in 360s
+f_A_alpha_transformer done: best val MAE = 0.28824 (alpha)  in 373s
+f_B_alpha_transformer done: best val MAE = 0.28643 (alpha)  in 396s
+f_A_gap_transformer done: best val MAE = 0.00411 (gap)  in 361s
+f_B_gap_transformer done: best val MAE = 0.00411 (gap)  in 383s
+### PREDICTORS DONE

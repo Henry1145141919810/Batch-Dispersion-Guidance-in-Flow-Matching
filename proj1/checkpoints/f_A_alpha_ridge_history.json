@@ -1,0 +1,19 @@
+{
+  "best_val_mae": 1.17510696077551,
+  "history": [],
+  "args": {
+    "split": "train_a",
+    "arch": "ridge",
+    "heads": 8,
+    "prop": "alpha",
+    "epochs": 60,
+    "batch": 128,
+    "lr": 0.0003,
+    "hidden": 128,
+    "layers": 4,
+    "seed": 20260918,
+    "fresh": true
+  },
+  "params": 0,
+  "seconds": 0.36476564407348633
+}

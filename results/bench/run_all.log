@@ -1,0 +1,80 @@
+### main: NFE 100 euler, 3 seeds x 10k (our operating point)
+fm.pt | flow | n=10000 steps=100 solver=euler seed=0 weights=EMA
+  first batch 12.9s -> projected 259s total
+  atom 0.9352  mol 0.3827  valid(EDM) 0.7577  uniq 0.9947  VxU 0.7537  novel(a) 0.8708  novel(ab) 0.7496  connected 0.9208  nonfinite 0  [sample 258s eval 14s]
+fm.pt | flow | n=10000 steps=100 solver=euler seed=1 weights=EMA
+  first batch 13.0s -> projected 260s total
+  atom 0.9385  mol 0.4055  valid(EDM) 0.7654  uniq 0.9937  VxU 0.7606  novel(a) 0.8734  novel(ab) 0.7519  connected 0.9255  nonfinite 0  [sample 258s eval 14s]
+fm.pt | flow | n=10000 steps=100 solver=euler seed=2 weights=EMA
+  first batch 13.0s -> projected 259s total
+  atom 0.9361  mol 0.3908  valid(EDM) 0.7624  uniq 0.9929  VxU 0.7570  novel(a) 0.8744  novel(ab) 0.7581  connected 0.9222  nonfinite 0  [sample 258s eval 13s]
+### heun NFE 100 (200 evaluations), 1 seed x 10k
+fm.pt | flow | n=10000 steps=100 solver=heun seed=0 weights=EMA
+  first batch 25.8s -> projected 517s total
+  atom 0.9377  mol 0.4005  valid(EDM) 0.7593  uniq 0.9939  VxU 0.7547  novel(a) 0.8671  novel(ab) 0.7394  connected 0.9277  nonfinite 0  [sample 515s eval 13s]
+### NFE 250 / 500, 1 seed x 10k
+fm.pt | flow | n=10000 steps=250 solver=euler seed=0 weights=EMA
+  first batch 32.2s -> projected 645s total
+  atom 0.9404  mol 0.4073  valid(EDM) 0.7747  uniq 0.9934  VxU 0.7696  novel(a) 0.8703  novel(ab) 0.7445  connected 0.9309  nonfinite 0  [sample 644s eval 14s]
+fm.pt | flow | n=10000 steps=500 solver=euler seed=0 weights=EMA
+  first batch 64.6s -> projected 1293s total
+  atom 0.9399  mol 0.4078  valid(EDM) 0.7675  uniq 0.9936  VxU 0.7626  novel(a) 0.8680  novel(ab) 0.7408  connected 0.9347  nonfinite 0  [sample 1287s eval 13s]
+### NFE 1000 (EDM protocol), 1 seed x 5k
+fm.pt | flow | n=5000 steps=1000 solver=euler seed=0 weights=EMA
+  first batch 128.5s -> projected 1285s total
+  atom 0.9394  mol 0.4088  valid(EDM) 0.7666  uniq 0.9958  VxU 0.7634  novel(a) 0.8635  novel(ab) 0.7330  connected 0.9285  nonfinite 0  [sample 1285s eval 7s]
+### epoch curve: every snapshot, 2k samples, NFE 100, fresh seed 7
+fm_ep0100.pt | flow | n=2000 steps=100 solver=euler seed=7 weights=EMA
+  first batch 13.0s -> projected 52s total
+  atom 0.8559  mol 0.1040  valid(EDM) 0.3995  uniq 0.9987  VxU 0.3990  novel(a) 0.9674  novel(ab) 0.9248  connected 0.7785  nonfinite 0  [sample 52s eval 3s]
+fm_ep0200.pt | flow | n=2000 steps=100 solver=euler seed=7 weights=EMA
+  first batch 13.0s -> projected 52s total
+  atom 0.8868  mol 0.1735  valid(EDM) 0.5190  uniq 1.0000  VxU 0.5190  novel(a) 0.9461  novel(ab) 0.8960  connected 0.8449  nonfinite 0  [sample 51s eval 3s]
+fm_ep0300.pt | flow | n=2000 steps=100 solver=euler seed=7 weights=EMA
+  first batch 13.0s -> projected 52s total
+  atom 0.9031  mol 0.2240  valid(EDM) 0.5885  uniq 1.0000  VxU 0.5885  novel(a) 0.9303  novel(ab) 0.8632  connected 0.8819  nonfinite 0  [sample 51s eval 3s]
+fm_ep0400.pt | flow | n=2000 steps=100 solver=euler seed=7 weights=EMA
+  first batch 13.0s -> projected 52s total
+  atom 0.9092  mol 0.2585  valid(EDM) 0.6310  uniq 0.9992  VxU 0.6305  novel(a) 0.9326  novel(ab) 0.8533  connected 0.8906  nonfinite 0  [sample 51s eval 3s]
+fm_ep0500.pt | flow | n=2000 steps=100 solver=euler seed=7 weights=EMA
+  first batch 13.0s -> projected 52s total
+  atom 0.9149  mol 0.2875  valid(EDM) 0.6460  uniq 0.9992  VxU 0.6455  novel(a) 0.9249  novel(ab) 0.8335  connected 0.9156  nonfinite 0  [sample 51s eval 3s]
+fm_ep0600.pt | flow | n=2000 steps=100 solver=euler seed=7 weights=EMA
+  first batch 13.0s -> projected 52s total
+  atom 0.9207  mol 0.3150  valid(EDM) 0.6790  uniq 0.9993  VxU 0.6785  novel(a) 0.9086  novel(ab) 0.8158  connected 0.9109  nonfinite 0  [sample 51s eval 3s]
+fm_ep0700.pt | flow | n=2000 steps=100 solver=euler seed=7 weights=EMA
+  first batch 13.0s -> projected 52s total
+  atom 0.9253  mol 0.3375  valid(EDM) 0.7030  uniq 1.0000  VxU 0.7030  novel(a) 0.9026  novel(ab) 0.8080  connected 0.9118  nonfinite 0  [sample 51s eval 3s]
+fm_ep0800.pt | flow | n=2000 steps=100 solver=euler seed=7 weights=EMA
+  first batch 13.0s -> projected 52s total
+  atom 0.9261  mol 0.3295  valid(EDM) 0.7045  uniq 0.9993  VxU 0.7040  novel(a) 0.9041  novel(ab) 0.8033  connected 0.9226  nonfinite 0  [sample 51s eval 3s]
+fm_ep0900.pt | flow | n=2000 steps=100 solver=euler seed=7 weights=EMA
+  first batch 13.0s -> projected 52s total
+  atom 0.9297  mol 0.3555  valid(EDM) 0.7225  uniq 0.9993  VxU 0.7220  novel(a) 0.8837  novel(ab) 0.7922  connected 0.9183  nonfinite 0  [sample 51s eval 3s]
+fm_ep1000.pt | flow | n=2000 steps=100 solver=euler seed=7 weights=EMA
+  first batch 13.0s -> projected 52s total
+  atom 0.9312  mol 0.3680  valid(EDM) 0.7170  uniq 0.9986  VxU 0.7160  novel(a) 0.8820  novel(ab) 0.7751  connected 0.9184  nonfinite 0  [sample 51s eval 3s]
+fm_ep1100.pt | flow | n=2000 steps=100 solver=euler seed=7 weights=EMA
+  first batch 13.0s -> projected 52s total
+  atom 0.9324  mol 0.3740  valid(EDM) 0.7355  uniq 0.9980  VxU 0.7340  novel(a) 0.8760  novel(ab) 0.7691  connected 0.9184  nonfinite 0  [sample 51s eval 3s]
+fm_ep1200.pt | flow | n=2000 steps=100 solver=euler seed=7 weights=EMA
+  first batch 13.0s -> projected 52s total
+  atom 0.9344  mol 0.3890  valid(EDM) 0.7425  uniq 0.9987  VxU 0.7415  novel(a) 0.8732  novel(ab) 0.7593  connected 0.9239  nonfinite 0  [sample 51s eval 3s]
+fm_ep1300.pt | flow | n=2000 steps=100 solver=euler seed=7 weights=EMA
+  first batch 13.0s -> projected 52s total
+  atom 0.9336  mol 0.3860  valid(EDM) 0.7530  uniq 0.9987  VxU 0.7520  novel(a) 0.8790  novel(ab) 0.7600  connected 0.9216  nonfinite 0  [sample 52s eval 3s]
+fm_ep1400.pt | flow | n=2000 steps=100 solver=euler seed=7 weights=EMA
+  first batch 13.0s -> projected 52s total
+  atom 0.9363  mol 0.3945  valid(EDM) 0.7630  uniq 0.9980  VxU 0.7615  novel(a) 0.8766  novel(ab) 0.7590  connected 0.9279  nonfinite 0  [sample 51s eval 3s]
+fm_ep1500.pt | flow | n=2000 steps=100 solver=euler seed=7 weights=EMA
+  first batch 12.9s -> projected 52s total
+  atom 0.9363  mol 0.3975  valid(EDM) 0.7635  uniq 0.9993  VxU 0.7630  novel(a) 0.8722  novel(ab) 0.7602  connected 0.9273  nonfinite 0  [sample 51s eval 3s]
+### epoch 1500 (fm_last EMA) vs selected 1300, 10k, NFE 100, seed 0 -- the selection question
+fm_last.pt | flow | n=10000 steps=100 solver=euler seed=0 weights=EMA
+  first batch 13.0s -> projected 260s total
+  atom 0.9358  mol 0.3913  valid(EDM) 0.7589  uniq 0.9943  VxU 0.7546  novel(a) 0.8664  novel(ab) 0.7408  connected 0.9266  nonfinite 0  [sample 257s eval 13s]
+### raw (non-EMA) weights, 5k, NFE 100 -- is EMA helping?
+fm.pt | flow | n=5000 steps=100 solver=euler seed=0 weights=raw
+  first batch 13.0s -> projected 130s total
+  atom 0.9319  mol 0.3746  valid(EDM) 0.7496  uniq 0.9963  VxU 0.7468  novel(a) 0.8685  novel(ab) 0.7499  connected 0.9120  nonfinite 0  [sample 129s eval 7s]
+### ALL DONE 2026-09-20T18:13:31-04:00

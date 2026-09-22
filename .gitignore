@@ -1,29 +1,72 @@
-# data and checkpoints
-data/
-*.ckpt
-*.pt
-*.pth
-*.npz
-*.h5
-
-# results (large); keep tables/ and figures/ tracked once they exist
-results/raw/
-
-# python
-__pycache__/
-*.py[cod]
-.ipynb_checkpoints/
+# ---------------------------------------------------------------- environments
 .venv/
-venv/
-*.egg-info/
+__pycache__/
+*.pyc
 
-# logs
-wandb/
-lightning_logs/
-*.log
+# ---------------------------------------------------------------- raw data
+# 430 MB, and fully regenerable: proj1/scripts/prepare_qm9.py rebuilds
+# data/qm9.pt from the GDB-9 download. Never commit it.
+data/
 
-# os / editor
-.DS_Store
-Thumbs.db
-.vscode/
-.idea/
+# ---------------------------------------------------------------- cluster pulls
+# 582 MB of checkpoints-with-optimiser-state and job logs synced off Betty.
+# The inference-ready weights live in weights/ instead (see weights/README.md).
+betty_pull/
+
+# ---------------------------------------------------------------- vendored repos
+# Cloned reference implementations (TFG, TFG-Flow) used for the prior-art audit,
+# ~146 MB including a 75 MB log. Read-only references, not our code.
+audit/
+
+# ---------------------------------------------------------------- scratch
+tmp/
+scratch_schnet/
+output/
+_ship/
+transfer/
+code_*.tgz
+
+# ---------------------------------------------------------------- local-only docs
+# Brainstorms, dropped ideas, superseded reviews and the cluster guide (which
+# contains absolute /vast paths). Kept on disk for reference -- every one of
+# them is cited from docs/methods/GUIDANCE_METHODS_INDEX.md so nothing is lost
+# to a reader, and section 3 of that index records why each was dropped.
+archive/
+
+# ---------------------------------------------------------------- large binaries
+# Sample dumps from the benchmark runs: results/bench is ~287 MB, almost all of
+# it .pt tensors that are regenerable from the JSON + a seed. The JSONs ARE
+# committed -- they are the experimental record.
+results/bench/**/*.pt
+results/bench/audit*/
+results/sweep_smoke/
+results/sweep_unguided/
+proj1/checkpoints/*.pt
+proj1/logs/
+
+# ...but keep the inference-ready weights we publish deliberately
+!weights/*.pt
+
+# ---------------------------------------------------------------- build artefacts
+*.tar.gz
+*.tgz
+
+# ---------------------------------------------------------------- reference papers
+# Downloaded PDFs of the prior-art we compare against (~31 MB). Cited properly
+# in docs/methods/GUIDANCE_METHODS_INDEX.md; no need to redistribute them.
+results/bench/papers/
+
+# ---------------------------------------------------------------- bulk benchmark dumps
+# results/bench holds ~287 MB, mostly per-sample dumps from the base-model
+# benchmark: each *_euler_s*.json / *_heun_s*.json is ~2 MB of per-molecule
+# records. The HEADLINE numbers they produced are in
+# docs/results/BASE_MODEL_BENCHMARK.md, and the analysis scripts that rebuild
+# them are kept. The dumps themselves are regenerable from a seed.
+results/bench/*_euler_*.json
+results/bench/*_heun_*.json
+results/bench/rescored/
+results/bench/dataset_smiles.json
+results/bench/conv_*.json
+results/bench/calib_*.json
+results/bench/ep0*.json
+results/bench/ep1*.json

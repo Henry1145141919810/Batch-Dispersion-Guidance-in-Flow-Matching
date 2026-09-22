@@ -1,0 +1,520 @@
+\documentclass{article}
+
+% Match the paper-style format used in the ESAP project templates.
+\PassOptionsToPackage{numbers,compress}{natbib}
+\usepackage[final,main]{neurips_2026}
+\usepackage{comment}
+
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{longtable}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{hyperref}
+\hypersetup{hidelinks}
+\usepackage{url}
+\usepackage{booktabs}
+\usepackage{amsfonts}
+\usepackage{nicefrac}
+\usepackage{microtype}
+\usepackage{xcolor}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{subcaption}
+\usepackage{colortbl}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{enumitem}
+
+\newenvironment{projectone}{\begingroup\color{red}}{\endgroup}
+
+\title{Acronym: Spelled Out Acronym that Represents What Your Method Does}
+
+\author{
+  Student Name 1,$^{1}$ Student Name 2,$^{1}$ Student Name 3,$^{1}$ Student Name 4$^{1}$\\
+  \\
+  $^{1}$Department of Computer and Information Science, University of Pennsylvania
+}
+
+\begin{document}
+
+\maketitle
+
+\begin{projectone}
+Project 1 is an empirical study of continuous generative modeling across two continuous modalities. On Modality 1, each team will compare continuous flow matching and diffusion, demonstrate controllable generation, introduce and ablate a methodological innovation, and benchmark the final method against recent work. The same innovation will then be transferred to Modality 2 to test whether the idea generalizes beyond the setting in which it was developed.
+\end{projectone}
+
+\begin{abstract}
+
+Write one compact paragraph of approximately 200 to 250 words after completing all experiments. The abstract should summarize the complete two-modality study.
+
+Begin with the broader problem: continuous generative models learn to transform simple reference distributions into complex data distributions, but the quality, controllability, efficiency, and transferability of these models depend strongly on the path, stochastic process, objective, guidance rule, and modality-specific inductive biases.
+
+Next, describe the solution. Name the two continuous modalities and datasets. State that you train both a continuous flow-matching model and a diffusion model on Modality 1, compare them under a matched evaluation protocol, and demonstrate a guidance mechanism. Identify the selected model family and state the methodological innovation that you introduce. Briefly state how the same innovation is transferred to Modality 2.
+
+Then summarize the strongest quantitative results. Report the principal Modality 1 flow-matching-versus-diffusion comparison, the guided-versus-unguided result, the key innovation ablation, and the final comparison with three recent methods. Report the principal Modality 2 comparison with three recent methods. Include sampling efficiency or compute when it is important to the claim.
+
+Conclude with the scientific meaning. State whether the innovation improved generation on Modality 1, whether the improvement transferred to Modality 2, what trade-offs were observed, and what limitations remain. The abstract should contain no figures, tables, equations, or citations.
+
+\end{abstract}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Introduction}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+The Introduction should contain exactly three paragraphs followed by four or five contribution bullets. The Introduction should motivate a \emph{single methodological question} that can be tested on two continuous modalities. Do not write two disconnected mini-projects.
+
+The first paragraph should introduce continuous generative modeling and explain why learning a transport from a simple source distribution to a complex data distribution is useful across modalities. Introduce diffusion models and continuous flow matching at a high level. Diffusion models construct a stochastic corruption process and learn to reverse it, while flow matching trains a vector field that transports samples along a prescribed family of probability paths. Cite foundational recent references such as \emph{Flow Matching for Generative Modeling} \citep{lipman2022flow}, \emph{Elucidating the Design Space of Diffusion-Based Generative Models} \citep{karras2022elucidating}, and \emph{Stochastic Interpolants: A Unifying Framework for Flows and Diffusions} \citep{albergo2025stochastic}. Explain why comparing these two families under a shared task is scientifically useful rather than treating one as automatically superior.
+
+The second paragraph should identify the limitation or opportunity that motivates your innovation. Examples include curved or inefficient trajectories, poor source-target couplings, unstable training, excessive sampling steps, weak conditional control, loss of diversity under guidance, conflicting multiple objectives, geometry-ignorant dynamics, or poor transfer across modalities. Cite the most directly relevant prior work. For example, Rectified Flow changes path geometry \citep{liu2022flow}; OT-CFM and Multisample Flow Matching change couplings \citep{tong2023improving,pooladian2023multisample}; classifier-free guidance and Guided Flows address controllability \citep{ho2022classifier,zheng2023guided}; and our lab's MOG-DFM, AReUReDi, PepTune, Gumbel-Softmax flow matching, and TR2-D2 illustrate multi-objective guidance, trajectory refinement, simplex path design, and reward-guided fine-tuning in biological generation \citep{chen2025multi,chen2025areuredi,tang2025peptune,tang2025gumbel,tang2025tr2}. Clearly identify the gap that your method attempts to address.
+
+The third paragraph should describe your study. Name Modality 1 and Modality 2, the datasets, the base flow-matching and diffusion formulations, the guidance mechanism, and the proposed innovation. Explain the evidence used to test the method: a matched flow-matching-versus-diffusion comparison, guided-versus-unguided generation, controlled innovation ablations, three recent external baselines on Modality 1, and transfer with three recent external baselines on Modality 2. End with the main hypothesis: state what you expect the innovation to improve and why that improvement should plausibly transfer across modalities.
+
+Begin the contribution summary with:
+
+\begin{quote}
+Our contributions are summarized as follows.
+\end{quote}
+
+Use four or five bullets. A recommended structure is:
+
+\begin{itemize}
+    \item We implement and directly compare continuous flow matching and diffusion for [Modality 1] under a shared training and evaluation protocol.
+    \item We demonstrate controllable generation using [guidance method] and quantify the quality--control or diversity--control trade-off.
+    \item We introduce [method name], a [one-sentence description of the innovation], and isolate its contribution through controlled ablations.
+    \item We compare the proposed method with at least three recent methods on Modality 1 and evaluate quality, diversity, and sampling efficiency using task-appropriate metrics.
+    \item We transfer the same methodological innovation to [Modality 2] and test whether its improvement generalizes through comparison with at least three recent methods.
+\end{itemize}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Related Work}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+The Related Work section should be organized by methodological idea. It should explain what prior work already establishes and therefore what is actually new in your paper.
+
+The first paragraph should summarize continuous diffusion and flow-matching frameworks. Discuss the diffusion formulation most relevant to your implementation and the simulation-free regression view of Flow Matching \citep{lipman2022flow}. Discuss recent attempts to connect or unify the two families, such as stochastic interpolants \citep{albergo2025stochastic} and SiT \citep{ma2024sit}. If sampling efficiency is central to your paper, discuss EDM \citep{karras2022elucidating} and Rectified Flow \citep{liu2022flow}.
+
+The second paragraph should focus on the literature most directly related to your innovation. If you change the probability path, compare with path/interpolant work. If you change source-target coupling, discuss OT-CFM \citep{tong2023improving} and Multisample Flow Matching \citep{pooladian2023multisample}. If you change guidance, discuss classifier-free guidance \citep{ho2022classifier}, Guided Flows \citep{zheng2023guided}, and any task-specific guidance literature. If you develop multi-objective guidance, trajectory refinement, or reward-guided generation, relevant inspiration from our lab includes MOG-DFM \citep{chen2025multi}, AReUReDi \citep{chen2025areuredi}, PepTune \citep{tang2025peptune}, Gumbel-Softmax flow matching \citep{tang2025gumbel}, TR2-D2 \citep{tang2025tr2}, or moPPIt \citep{chen2024moppit}.
+
+The third paragraph should summarize prior generative models for \textbf{Modality 1}. Cite at least the three recent methods that you will later benchmark against and explain why they are fair comparisons. State whether they use diffusion, flow matching, another continuous process, or a different competitive generative strategy. Identify differences in conditioning, data representation, architecture, training data, or sampling budget that may affect interpretation. Do not choose a baseline solely because it is famous; choose it because it addresses a comparable generation problem.
+
+The fourth paragraph should summarize prior generative models for \textbf{Modality 2}. Again cite at least the three recent methods used in your experiments. The purpose of this paragraph is to prepare the transfer experiment: explain what constitutes strong performance in this second modality and why applying the same innovation there is a meaningful test of generality.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Methods}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+The Methods section should define the complete algorithm before reporting results. A reader should be able to understand what is trained, what is frozen, what is changed by the innovation, how samples are generated, and what is transferred between modalities. Keep evaluation metrics and numerical comparisons in the Results section, including the Evaluation Protocol subsection below.
+
+\subsection{Modalities, Data, and Preprocessing}
+
+Each team should choose \textbf{two continuous modalities} and may freely choose the datasets used for each. Here, a modality is defined by the state space on which the generative dynamics are modeled. Examples include images, audio waveforms or spectrograms, protein backbone coordinates, 3D molecular coordinates, point clouds, continuous latent representations, and probability-simplex representations of biological or other categorical sequences. \textbf{Probability-simplex representations count as a continuous modality.} Two datasets that use the same underlying state space do not automatically count as two different modalities.
+
+Describe both selected modalities and datasets. For each dataset report the publication/source, task definition, train/validation/test split, number of examples, dimensionality or representation, preprocessing, normalization, filtering, resizing/cropping, length restrictions, coordinate alignment, simplex mapping, or other transformations. If labels, text prompts, structural conditions, property targets, or other conditioning variables are used, define them precisely.
+
+Explain why the two choices represent genuinely different continuous modalities. If using probability-simplex representations, describe how categorical observations are embedded or relaxed onto the simplex and how final samples are decoded. If using geometric data, explain invariances or equivariances such as translation, rotation, or permutation and how the model handles them.
+
+State whether the task is unconditional or conditional generation. If conditional, define the condition $c$. Use the same Modality 1 data split and task definition for the base diffusion and flow-matching comparison unless there is a compelling reason not to; any unavoidable mismatch must be disclosed.
+
+\paragraph{Recommended modalities and starting references.}
+The following are starting points, not an exhaustive list. Choose baselines that actually address the same task, conditioning information, and output representation as your study. Released code and checkpoints may be used when appropriate. Students are encouraged to identify other recent methods that better match their interests.
+
+\begin{center}
+\small
+\begin{tabularx}{\linewidth}{p{0.14\linewidth} p{0.23\linewidth} X}
+\toprule
+\textbf{Modality} & \textbf{Example datasets/tasks} & \textbf{Recent benchmark models} \\
+\midrule
+Images & CIFAR-10, CelebA, AFHQ, downsampled ImageNet; unconditional or class-conditional generation & Elucidating the Design Space of Diffusion-Based Generative Models \citep{karras2022elucidating}; Flow Straight and Fast: Learning to Generate and Transfer Data with Rectified Flow \citep{liu2022flow}; SiT: Exploring Flow and Diffusion-based Generative Models with Scalable Interpolant Transformers \citep{ma2024sit}. \\
+\addlinespace
+Audio & Speech Commands or ESC-50 for unconditional/class-conditional generation; LJSpeech for TTS; AudioCaps for text-to-audio & For text-to-audio: AudioLDM \citep{liu2023audioldm}, AudioLDM 2 \citep{liu2024audioldm}, and Stable Audio Open \citep{evans2025stable}. For TTS, Matcha-TTS \citep{mehta2024matcha} is a useful flow-matching reference. \\
+\addlinespace
+Protein structure & PDB/CATH backbone subsets; unconditional backbone generation or a declared conditional structure task & De novo design of protein structure and function with RFdiffusion \citep{watson2023novo}; SE(3)-Stochastic Flow Matching for Protein Backbone Generation \citep{bose2024se}; Fast protein backbone generation with SE(3) flow matching \citep{yim2023fast}; Illuminating protein space with a programmable generative model \citep{ingraham2023illuminating}. \\
+\addlinespace
+3D molecules & QM9, GEOM-Drugs; conformer generation or joint atom/coordinate generation & GeoDiff: a Geometric Diffusion Model for Molecular Conformation Generation \citep{xu2022geodiff}; Equivariant Diffusion for Molecule Generation in 3D \citep{hoogeboom2022equivariant}; SemlaFlow -- Efficient 3D Molecular Generation with Latent Attention and Equivariant Flow Matching \citep{irwin2024semlaflow}. \\
+\addlinespace
+Probability simplex / biological sequences & DNA promoters/enhancers, peptide or protein sequences represented on a probability simplex & Dirichlet Flow Matching  \citep{stark2024dirichlet}; Gumbel-Softmax Flow Matching  \citep{tang2025gumbel}; Fisher Flow Matching \citep{davis2024fisher}.\\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\subsection{Continuous Flow Matching Baseline}
+
+Describe the complete flow-matching model trained on Modality 1, including architecture, state representation, source distribution, conditional probability path, time sampling, objective, optimizer, learning-rate schedule, batch size, training steps or epochs, model-selection criterion, random seeds, and numerical ODE solver used at inference.
+
+Let $x_1 \sim p_{\mathrm{data}}$ denote a data sample and $x_0 \sim p_0$ denote a source sample. Define the probability path used by your implementation. A generic interpolant may be written as
+
+\begin{equation}
+    x_t = \alpha_t x_1 + \beta_t x_0,
+    \qquad t \in [0,1],
+\end{equation}
+
+where the schedules $\alpha_t$ and $\beta_t$ should be replaced by the actual path used in your model. Define the corresponding conditional target velocity $u_t(x_t \mid x_0,x_1)$ and the learned vector field $v_{\theta}(x_t,t,c)$ when conditioning is used.
+
+A standard conditional flow-matching objective can be written as
+
+\begin{equation}
+\mathcal{L}_{\mathrm{FM}}(\theta)
+=
+\mathbb{E}_{t,x_0,x_1}
+\left[
+\left\|
+ v_{\theta}(x_t,t,c)-u_t(x_t\mid x_0,x_1)
+\right\|_2^2
+\right].
+\end{equation}
+
+Replace this equation if your implementation uses a different target, weighting, manifold geometry, stochastic flow, or parameterization. At inference, define the ODE or other continuous dynamics used to transform source samples into generated data. Report the number of function evaluations or solver tolerance when sampling efficiency is measured.
+
+\subsection{Diffusion Baseline}
+
+Describe the complete diffusion model trained on the same Modality 1 generation task. Report the architecture, forward process, noise schedule, parameterization, training loss, optimizer, learning-rate schedule, batch size, training steps or epochs, model-selection criterion, random seeds, and reverse-time sampler.
+
+For a standard Gaussian forward process, you may write
+
+\begin{equation}
+    x_t = \alpha_t x_1 + \sigma_t \epsilon,
+    \qquad
+    \epsilon \sim \mathcal{N}(0,I),
+\end{equation}
+
+with the schedules replaced by those actually used. If the network predicts noise, a common objective is
+
+\begin{equation}
+\mathcal{L}_{\mathrm{diff}}(\phi)
+=
+\mathbb{E}_{t,x_1,\epsilon}
+\left[
+\left\|
+\epsilon-\epsilon_{\phi}(x_t,t,c)
+\right\|_2^2
+\right].
+\end{equation}
+
+If you use score prediction, $x_0$ prediction, $v$-prediction, EDM-style preconditioning, a probability-flow ODE, or another formulation, write the actual objective and sampling equations instead. The goal is not to force every group into the same diffusion parameterization, but to make the implementation reproducible and the comparison with flow matching interpretable.
+
+\subsection{Guided Generation}
+
+Demonstrate at least one guidance mechanism on Modality 1. The guidance itself does not need to be novel; this experiment establishes that you understand how a trained continuous generative model can be steered toward a desired condition or property. Guidance may be classifier-based, classifier-free, energy/reward-based, multi-objective, or another justified method.
+
+For classifier-free diffusion guidance, a common form is
+
+\begin{equation}
+\epsilon_{\mathrm{guided}}
+=
+\epsilon_{\mathrm{uncond}}
++
+ w\left(
+ \epsilon_{\mathrm{cond}}-\epsilon_{\mathrm{uncond}}
+\right),
+\end{equation}
+
+where $w$ controls guidance strength \citep{ho2022classifier}. For classifier-free flow guidance, an analogous interpolation between conditional and unconditional vector fields may be used when appropriate \citep{zheng2023guided}. If a classifier or reward $r(x,c)$ is used, define exactly where its gradient or score enters the reverse dynamics or vector field.
+
+Report how the guidance model is trained, what is frozen, where guidance is applied during sampling, the guidance-strength schedule, and any normalization or clipping. The Results section must compare guided and unguided generation using otherwise matched settings. A successful guidance experiment should show improvement in the intended conditional/property metric while also reporting whether sample quality or diversity degrades.
+
+\subsection{Proposed Innovation}
+
+This subsection is the center of the paper. State the hypothesis first: identify a concrete weakness of the selected base model and explain why the proposed change should improve it. Then define the innovation mathematically and algorithmically.
+
+The innovation may modify the probability path, source-target coupling, training target, loss weighting, model parameterization, guidance rule, objective composition, geometry, solver, sampling policy, architecture, or another part of the generative process. It may combine ideas from prior work, but the paper must explain what is new in your formulation. If an idea is adapted from another domain or from a discrete generative method, explain the adaptation required for your continuous setting.
+
+\paragraph{Examples of acceptable innovation directions.}
+You have substantial freedom in the innovation. The purpose is to formulate a concrete hypothesis, change the generative method in a meaningful way, and test whether the change causes an improvement. Possible directions include:
+\begin{itemize}[leftmargin=*]
+    \item \textbf{A new probability path or trajectory.} Examples of papers that change the interpolation or transport geometry include Rectified Flow \citep{liu2022flow}, stochastic interpolants \citep{albergo2025stochastic}, SiT \citep{ma2024sit}, Dirichlet flow matching \citep{stark2024dirichlet}, and our lab's Gumbel-Softmax flow-matching work \citep{tang2025gumbel}.
+    \item \textbf{A new coupling between source and target samples.} Optimal-transport conditional flow matching \citep{tong2023improving} and Multisample Flow Matching \citep{pooladian2023multisample} illustrate how changing the coupling can alter path geometry, training variance, and sampling efficiency.
+    \item \textbf{A new loss, weighting, parameterization, or training objective.} Examples include the training and preconditioning choices studied in EDM \citep{karras2022elucidating} and the interpolant/objective choices studied in SiT \citep{ma2024sit}. A valid innovation should change the learning problem in a principled way, not merely retune a scalar hyperparameter.
+    \item \textbf{A new guidance mechanism.} Standard classifier-free diffusion guidance \citep{ho2022classifier} and Guided Flows \citep{zheng2023guided} are useful starting points. Our lab's work provides examples of more specialized guidance and optimization ideas, including multi-objective guidance in MOG-DFM \citep{chen2025multi}, Pareto-oriented refinement in AReUReDi \citep{chen2025areuredi}, multi-objective discrete diffusion in PepTune \citep{tang2025peptune}, trajectory-aware fine-tuning in TR2-D2 \citep{tang2025tr2}, and motif-specific peptide generation in moPPIt \citep{chen2024moppit}. These methods are examples of ideas that could inspire an adaptation to a continuous model; copying an existing method unchanged does not constitute your innovation.
+    \item \textbf{A geometry-aware, architecture-level, or sampler-level methodological change.} Examples include SE(3)-aware transport in FoldFlow \citep{bose2024se} and FrameFlow \citep{yim2023fast}. Architecture changes count only when they introduce a meaningful mechanism or inductive bias tied to your hypothesis.
+\end{itemize}
+
+Changes that \textbf{do not count by themselves} as the required innovation include only increasing model size, training for more epochs, changing a random seed, performing a larger hyperparameter sweep, changing batch size or learning rate, replacing one standard backbone with a larger standard backbone, or simply adding a standard guidance method exactly as published. These changes may still be useful controls or engineering choices, but the required innovation should introduce a substantive methodological idea.
+
+Write the complete modified objective or dynamics. For example, if the innovation modifies the path, define
+
+\begin{equation}
+    x_t^{\mathrm{new}}
+    =
+    \mathcal{I}_{\psi}(x_0,x_1,t),
+\end{equation}
+
+and derive or state the corresponding training target. If it modifies the coupling, define the coupling $\pi_{\psi}(x_0,x_1)$ and explain how pairs are sampled. If it introduces multiple objectives, define the individual scores $s_k(x,c)$ and the aggregation or Pareto rule. If it changes the loss, write the final training objective and identify every new hyperparameter.
+
+The subsection should end with a short explanation of the exact controls needed to isolate the innovation. At minimum, the Results must include the selected base model without the innovation and the full proposed model. If the innovation contains multiple nontrivial components, remove or replace the major components one at a time while holding the rest of the pipeline fixed. At least two meaningful ablation comparisons should be reported when the method has enough components to support them.
+
+\subsection{Transfer to Modality 2}
+
+Describe how the \textbf{same methodological innovation} is transferred to the second modality. Separate the invariant idea from modality-specific implementation details. For example, a new coupling rule may require a different distance function; a new trajectory may require a manifold- or simplex-aware interpolant; a guidance rule may use a different property model; and a geometry-aware architecture may require a different equivariant representation.
+
+State what remains conceptually unchanged from Modality 1 and what must be adapted. Report the Modality 2 architecture, training setup, sampling procedure, and any modality-specific hyperparameters needed to reproduce the experiment.
+
+You do \textbf{not} need to repeat the Modality 1 flow-matching-versus-diffusion comparison, standard guidance comparison, or innovation ablations for Modality 2. The scientific purpose of Modality 2 is to test transfer: whether the proposed idea remains competitive when instantiated in a genuinely different continuous state space.
+
+\subsection{Model Overview}
+
+Include one figure that makes the whole paper understandable before the reader reaches the Results. A recommended design contains two panels.
+
+\begin{figure}[t]
+\centering
+\begin{subfigure}[t]{0.48\linewidth}
+\centering
+\fbox{
+\parbox[c][1.70in][c]{0.92\linewidth}{
+\centering
+Placeholder for Modality 1: flow matching vs. diffusion, guidance, selected base model, and proposed innovation.
+}}
+\caption{Method development on Modality 1.}
+\label{fig:modality1_method}
+\end{subfigure}
+\hfill
+\begin{subfigure}[t]{0.48\linewidth}
+\centering
+\fbox{
+\parbox[c][1.70in][c]{0.92\linewidth}{
+\centering
+Placeholder for transfer of the same innovation to Modality 2.
+}}
+\caption{Transfer to Modality 2.}
+\label{fig:modality2_transfer}
+\end{subfigure}
+\caption{Overview of the Project 1 study. The first modality establishes the base model, controllability, and causal contribution of the innovation. The second modality tests whether the same methodological idea transfers.}
+\label{fig:project_overview}
+\end{figure}
+
+The Modality 1 panel should show the source distribution, continuous flow-matching and diffusion pathways, guidance signal, selected base model, and the exact component changed by the innovation. The Modality 2 panel should emphasize which piece is reused conceptually and which elements are modality-specific. Clearly identify trainable, pretrained, and frozen components.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Results}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+The complete manuscript must fit within \textbf{five pages before the references}. References do not count toward the five-page limit. An Appendix is allowed and does not count toward the five pages. Keep the central method, principal baseline comparisons, main ablation evidence, and conclusions supporting the paper's claims in the main text; do not move the only evidence for a central claim to the Appendix.
+
+The Results section should be organized around the evidence needed to support the paper's claims, not chronologically as a diary of experiments. A useful evidence chain is: (1) the matched flow-matching-versus-diffusion comparison motivates the model family carried forward; (2) guided-versus-unguided sampling establishes that controllability works; (3) controlled ablations isolate whether the proposed innovation causes the observed improvement; (4) comparisons with at least three recent external methods establish competitiveness; and (5) transfer to a second modality tests whether the same methodological idea generalizes beyond one state space. If the proposed method does not outperform every baseline, report that result honestly and explain where it helps, where it does not, and why.
+
+Every experimental subsection should begin with the question being tested, state the comparison protocol and relevant controls, present the result, and end with a one- or two-sentence interpretation.
+
+\subsection{Evaluation Protocol}
+
+Define the evaluation protocol before interpreting results. Its purpose is to make clear what constitutes an improvement and to prevent a favorable metric from being chosen after seeing the outcomes.
+
+\subsubsection{Metrics}
+
+Choose quantitative metrics that are standard and meaningful for each modality. Use at least one metric for sample quality/fidelity and at least one metric for diversity, coverage, controllability, or task success when applicable. Explain what each metric measures and its limitations. Include qualitative samples when they are scientifically informative, but qualitative examples should not replace quantitative evaluation.
+
+Examples include:
+\begin{itemize}
+    \item \textbf{Images:} FID, KID, precision/recall or density/coverage, class or condition accuracy, and number of function evaluations (NFE). Report the exact feature network and sample count used for FID/KID.
+    \item \textbf{Audio:} Fr\'{e}chet Audio Distance (FAD), CLAP-based alignment for text-conditioned audio, task-specific speech metrics such as intelligibility or perceptual measures when appropriate, diversity, and qualitative waveforms/spectrograms or audio examples. Use metrics that match the audio task rather than mixing TTS and general text-to-audio metrics.
+    \item \textbf{Protein structure:} designability or refoldability, backbone RMSD or TM-score after sequence design/refolding, novelty relative to training/PDB structures, structural diversity, secondary-structure composition, steric validity, and sampling cost.
+    \item \textbf{3D molecules:} atom/molecule stability, validity, uniqueness, novelty, conformer coverage/precision where appropriate, geometry or energy-related quality, distributional molecular-property metrics, and sampling efficiency.
+    \item \textbf{Probability simplex / sequences:} decoded validity, novelty, sequence diversity, k-mer or distributional statistics, task/property score, classifier accuracy, motif recovery, or other domain-specific functional metrics. Explain how continuous simplex outputs are converted into final categorical sequences.
+\end{itemize}
+
+For guidance, report both the metric being optimized and at least one non-guided quality/diversity metric. A guidance method should not be declared successful solely because the guidance classifier or reward increases if quality collapses.
+
+\subsubsection{Fair Comparison and Computational Budget}
+
+For the Modality 1 flow-matching-versus-diffusion comparison, use matched data splits, preprocessing, conditioning, and evaluation metrics. Use comparable architectures and compute when possible. If the two model families require different architectures or parameterizations, report model size, training compute, and sampling cost so the reader can interpret the comparison fairly.
+
+For the three recent external baselines on each modality, use the same test protocol and sample count whenever possible. The two base models trained earlier in the paper do \textbf{not} replace the requirement for three recent external benchmark methods. A baseline may use released pretrained parameters or official code when retraining is impractical, but report the exact version/checkpoint and any mismatch in training data or compute. Do not silently compare your retrained small model with a published number obtained under a different dataset or resolution.
+
+Report training time or total training steps, parameter count, sampling steps/NFE, number of generated evaluation samples, hardware, and random seeds. When an exact compute match is impossible, state the mismatch explicitly rather than claiming a perfectly controlled comparison.
+
+\subsubsection{Statistical Reporting}
+
+Use multiple random seeds whenever feasible and report mean $\pm$ standard deviation or confidence intervals for the principal quantitative results. If a baseline is too expensive to rerun, clearly distinguish numbers reproduced by your group from numbers quoted from a paper. Do not present quoted literature values and independently reproduced values as if they were obtained under identical conditions.
+
+
+\subsection{Modality 1: Flow Matching versus Diffusion}
+
+Present the direct comparison between the continuous flow-matching and diffusion baselines on Modality 1. Use the same primary quality and diversity metrics, and report sampling efficiency. Include a compact table such as:
+
+\begin{center}
+\small
+\begin{tabular}{lccccc}
+\toprule
+Method & Quality $\uparrow/\downarrow$ & Diversity $\uparrow$ & NFE $\downarrow$ & Params & Train cost \\
+\midrule
+Diffusion baseline & & & & & \\
+Flow-matching baseline & & & & & \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Replace the generic columns with modality-appropriate metrics. State which family is selected for innovation and why. Selection should be based on the experimental goal, not only a single metric: for example, one model may have slightly worse fidelity but substantially better sampling efficiency or controllability.
+
+\subsection{Modality 1: Guidance Works}
+
+Compare unguided and guided generation under otherwise identical settings. At minimum, report the target/condition metric and one quality or diversity metric. If guidance strength is tunable, show more than one value when useful so the reader can see the trade-off.
+
+A useful table is:
+
+\begin{center}
+\small
+\begin{tabular}{lcccc}
+\toprule
+Method & Guidance strength & Target metric $\uparrow$ & Quality $\uparrow/\downarrow$ & Diversity $\uparrow$ \\
+\midrule
+Unguided & 0 & & & \\
+Guided & low & & & \\
+Guided & default & & & \\
+Guided & high & & & \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The purpose of this subsection is to establish controllability, not novelty. State whether guidance improves the intended property and what cost, if any, it imposes on fidelity, diversity, or runtime.
+
+\subsection{Modality 1: Innovation Ablations}
+
+This subsection must provide the causal evidence for the proposed innovation. Compare the selected base model with the full method while changing only the component under study. If the method has multiple components, include one-at-a-time removals or replacements.
+
+A recommended table is:
+
+\begin{center}
+\small
+\begin{tabular}{lcccc}
+\toprule
+Variant & Component A & Component B & Primary metric & Secondary metric \\
+\midrule
+Selected base model & -- & -- & & \\
+Base + A & \checkmark & -- & & \\
+Base + B & -- & \checkmark & & \\
+Full proposed method & \checkmark & \checkmark & & \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Adapt the table to the actual method. If the innovation is a single atomic change, compare it against at least two informative controls, such as alternative path/coupling choices, a standard version of the mechanism, or matched hyperparameter controls. Explain what each ablation rules out. A strong ablation does more than show that the final system is best; it demonstrates which proposed mechanism is responsible for the improvement.
+
+\subsection{Modality 1: Comparison with Recent Methods}
+
+Compare the final proposed method against at least three relevant methods published within the last five years. Include the strongest base model as an internal reference in addition to the three external methods. Use consistent evaluation metrics and disclose any unavoidable differences in data, checkpoints, or compute.
+
+\begin{center}
+\small
+\begin{tabular}{lccc}
+\toprule
+Method & Quality & Diversity / coverage & NFE / steps \\
+\midrule
+Recent baseline 1 & & & \\
+Recent baseline 2 & & & \\
+Recent baseline 3 & & & \\
+Selected base model & & & \\
+Our method & & & \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+State exactly where your method is better, competitive, or worse. Do not write ``state of the art'' unless the experiments genuinely support that claim under a comparable protocol. If the innovation improves one axis while sacrificing another, report the trade-off explicitly.
+
+\subsection{Modality 2: Transfer of the Innovation}
+
+Evaluate the transferred method on Modality 2 and compare it with at least three recent methods appropriate to this second task. Do not repeat the full Modality 1 development sequence. The result should answer one question: \emph{does the same methodological idea remain useful in a different continuous state space?}
+
+\begin{center}
+\small
+\begin{tabular}{lccc}
+\toprule
+Method & Quality & Diversity / coverage & Efficiency \\
+\midrule
+Recent baseline 1 & & & \\
+Recent baseline 2 & & & \\
+Recent baseline 3 & & & \\
+Our transferred method & & & \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Explain which parts of the innovation transfer unchanged and which parts require modality-specific adaptation. If performance improves less than on Modality 1, analyze why rather than hiding the discrepancy.
+
+\subsection{Cross-Modality Analysis and Failure Modes}
+
+Conclude the Results by synthesizing the two modalities. Compare the direction and magnitude of improvement relative to the corresponding baselines. Ask whether the same mechanism appears to help for the same reason in both state spaces.
+
+Report at least two meaningful limitations or failure modes. Examples include mode collapse, reduced diversity under stronger guidance, unstable trajectories, solver sensitivity, poor high-dimensional scaling, invalid simplex decoding, geometry violations, oversmoothing, high NFE, excessive compute, dependence on a particular dataset, or failure of the innovation to transfer cleanly. Include representative failure samples or trajectories when useful.
+
+End the Results section with a concise answer to the paper's central question: whether the proposed innovation provides a measurable improvement over the selected base model, remains competitive with recent methods, and transfers beyond the modality on which it was developed.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Discussion}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+The Discussion should interpret the evidence already presented. Do not introduce new experiments or numerical results.
+
+In the first paragraph, summarize the main empirical findings. State which of flow matching or diffusion was stronger for Modality 1 under your protocol, whether guidance worked, what the ablations established about the innovation, how the final method compared with recent baselines, and whether the same idea transferred to Modality 2. Distinguish clearly between results that establish causality within your controlled ablation and results that only show correlation or competitiveness.
+
+In the second paragraph, explain \emph{why} the innovation may have helped. Connect the observed results to the geometry or stochastic process of the model. For example, a coupling innovation may shorten transport paths; a trajectory innovation may reduce curvature; a loss may stabilize difficult time regions; a guidance method may improve control while trading off diversity; a geometry-aware model may better respect invariances. Use diagnostic evidence from the Results rather than making unsupported mechanistic claims.
+
+In the third paragraph, discuss limitations and future directions. Address at least two limitations from the failure analysis and explain what experiments would be required to resolve them. Discuss compute limitations, dataset scale, baseline mismatch, metric limitations, sensitivity to hyperparameters, or uncertainty about transfer when relevant. End by stating the narrowest claim actually supported by the two-modality evidence rather than a broader claim that the project did not test.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% The user will provide the BibTeX file. Citation placeholders above intentionally
+% use paper titles inside \citep{...}, following the requested course workflow.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\bibliographystyle{ieeetr}
+\bibliography{citation}
+
+\newpage
+\appendix
+\section{Appendix}
+
+\renewcommand{\thetable}{S\arabic{table}}
+\setcounter{table}{0}
+\renewcommand{\thefigure}{S\arabic{figure}}
+\setcounter{figure}{0}
+
+The Appendix may contain supplementary evidence that supports, but is not required to understand, the five-page main paper. Every supplementary table and figure should be referenced at least once in the main text. Do not move the only evidence for a central claim to the Appendix.
+
+\subsection{Dataset and Preprocessing Details}
+
+Include full dataset statistics, additional preprocessing details, train/validation/test construction, normalization parameters, filtering rules, augmentation, dimensionality, class/property distributions, and examples. If the dataset is constructed from multiple sources, provide the exact inclusion/exclusion rules.
+
+\subsection{Training and Sampling Details}
+
+Report complete hyperparameters for the base flow-matching model, base diffusion model, guidance experiment, proposed innovation, and Modality 2 transfer. Include architectures, parameter counts, optimizers, learning rates, schedules, batch sizes, training steps, checkpoints/model-selection criteria, source/noise distributions, time sampling, ODE/SDE solvers, solver tolerances, diffusion schedules, guidance schedules, sampling steps, NFE, random seeds, hardware, training time, and sampling time.
+
+\subsection{Additional Ablations}
+
+Place the complete innovation ablation grid here. Include secondary hyperparameter sweeps and sensitivity analyses that do not fit in the main text. Distinguish methodological ablations from ordinary hyperparameter tuning.
+
+\subsection{Additional Baseline Results}
+
+Include expanded comparisons with recent methods, alternative checkpoints, additional metrics, per-seed values, and any literature numbers that could not be reproduced directly. Clearly label results as \emph{reproduced by our group} or \emph{reported by the original paper}.
+
+\subsection{Additional Samples and Failure Cases}
+
+Include representative generated samples from all major methods, not only cherry-picked successes. Show failure cases and difficult examples. For guided generation, include examples across guidance strengths. For geometric modalities, include structural validity failures when present. For simplex/sequences, include examples of decoding or property-control failures when present.
+
+\subsection{Algorithms}
+
+Include pseudocode for the selected base model plus the proposed innovation if the method cannot be reconstructed easily from the equations in the main text. Use the notation defined in Methods and identify trainable parameters, frozen components, and modality-specific inputs.
+
+\begin{algorithm}[H]
+\caption{Generic training procedure for the proposed continuous generative model}
+\label{alg:generic-train}
+\begin{algorithmic}[1]
+\State \textbf{Input:} training data $\mathcal{D}$, source distribution $p_0$, model parameters $\theta$, innovation parameters/configuration $\psi$
+\State \textbf{Output:} selected model parameters $\theta^{\star}$
+\For{training step $k=1,\ldots,K$}
+    \State Sample data $x_1$ and conditioning variable $c$ from $\mathcal{D}$
+    \State Sample source/noise state $x_0$ and time $t$
+    \State Construct the baseline or proposed intermediate state $x_t$
+    \State Construct the training target specified by the selected diffusion/flow formulation
+    \State Compute the proposed loss $\mathcal{L}(\theta; x_t,t,c,\psi)$
+    \State Update $\theta$ using the declared optimizer
+\EndFor
+\State Select $\theta^{\star}$ using validation data
+\State \textbf{return} $\theta^{\star}$
+\end{algorithmic}
+\end{algorithm}
+
+Replace the generic steps above with your actual algorithm. If the innovation affects coupling, trajectory construction, guidance, or sampling rather than training, include a separate method-specific algorithm for that component.
+
+\subsection{Implementation and Reproducibility Details}
+
+Provide enough information for another researcher to understand how every principal table and figure was produced. Report software versions, hardware, random seeds, checkpoint identifiers, evaluation sample counts, metric implementations, and any external pretrained models. If you use released baseline code, record the repository/version and configuration. If a paper result is quoted rather than reproduced, say so explicitly.
+
+\end{document}
