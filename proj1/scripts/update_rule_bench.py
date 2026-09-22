@@ -76,7 +76,12 @@ def cell_name(prop, arm, rule, w):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--fm", default=os.path.join(ROOT, "betty_pull", "fm.pt"))
+    # fm_last.pt, NOT fm.pt. The shipped generator is epoch 1500 (the disclosed
+    # amendment in BASE_MODEL_BENCHMARK.md section 3.4), and every cell in
+    # results/sweep/ was produced with it. Benchmarking a different checkpoint
+    # gives numbers that are internally consistent and cannot be placed beside
+    # the sweep -- which is the whole point of matching its protocol.
+    ap.add_argument("--fm", default=os.path.join(ROOT, "betty_pull", "fm_last.pt"))
     ap.add_argument("--props", default="mu,alpha,gap")
     ap.add_argument("--arms", default="plug",
                     help="guidance arms to run the rules on. The rule is "

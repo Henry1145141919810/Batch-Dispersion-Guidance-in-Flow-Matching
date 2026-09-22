@@ -263,6 +263,20 @@ class EDMGenerator(nn.Module):
         self.dynamics.device = device
         self.schedule = EDMSchedule.from_args(a, device=device)
 
+    def _apply(self, fn, *args, **kwargs):
+        """Carry the noise schedule along with `.to()` / `.double()` / `.cuda()`.
+
+        `self.schedule` holds plain tensors, not buffers, so `nn.Module._apply`
+        does not reach them. Without this, `EDMGenerator(...).double()` leaves
+        gamma in float32 while the weights are float64, and the sampler's alpha
+        and beta silently carry float32 precision into a float64 trajectory.
+        Promotion hides it; it is still the wrong schedule resolution.
+        """
+        out = super()._apply(fn, *args, **kwargs)
+        probe = fn(self.schedule.gamma)
+        self.schedule.to(device=probe.device, dtype=probe.dtype)
+        return out
+
     def forward(self, coords, feats, mask, tau):
         """eps-hat in EDM's normalised space. `tau` is [B], in [0, 1]."""
         b, n, _ = coords.shape

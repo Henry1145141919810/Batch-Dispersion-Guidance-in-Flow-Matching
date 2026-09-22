@@ -75,6 +75,7 @@ ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
 sys.path.insert(0, os.path.join(ROOT, "proj1", "src"))
 
 from external.edm_schedule import EDMSchedule                  # noqa: E402
+from evaluation import embedding_diversity                     # noqa: E402
 from external.tfg_assets import (Calibrated, EDMGenerator, PROP_INDEX,  # noqa: E402
                                  QM9_MAD, QM9_MEAN, TFGGuide, TFGOracle,
                                  fit_calibration)
@@ -128,6 +129,41 @@ def check_schedule():
 
     gate("schedule_monotone",
          float((s[1:] <= s[:-1]).any() or (a[1:] >= a[:-1]).any()), 0.5)
+
+    # --- the gamma-uniform time grid (benchmark_transfer_base --grid gamma)
+    #
+    # `tau_of_gamma` must invert `gamma_at` exactly, or the grid silently lands
+    # on different times than the ones asked for -- and since the resulting
+    # trajectory is still finite and still produces molecules, the only symptom
+    # would be worse samples.
+    probe = torch.tensor([1e-3, 0.0137, 0.25, 0.5, 0.7771, 0.95, 1.0],
+                         dtype=torch.float64)
+    gate("schedule_gamma_roundtrip",
+         (sch.tau_of_gamma(sch.gamma_at(probe)) - probe).abs().max(), 1e-12)
+
+    # Endpoints must be preserved exactly: a grid that does not start at tau=1
+    # starts the trajectory at the wrong noise level.
+    ga = float(sch.gamma_at(torch.tensor(1.0, dtype=torch.float64)))
+    gb = float(sch.gamma_at(torch.tensor(1e-3, dtype=torch.float64)))
+    grid = sch.tau_of_gamma(torch.linspace(ga, gb, 101, dtype=torch.float64))
+    gate("schedule_gamma_grid_endpoints",
+         max(abs(float(grid[0]) - 1.0), abs(float(grid[-1]) - 1e-3)), 1e-12)
+    gate("schedule_gamma_grid_decreasing",
+         float((grid[1:] >= grid[:-1]).any()), 0.5)
+
+    # The point of the grid: equal steps in gamma. If this stops holding the
+    # stiffness mitigation is not happening, whatever the flag says.
+    dg = (sch.gamma_at(grid[:-1]) - sch.gamma_at(grid[1:])).abs()
+    gate("schedule_gamma_grid_is_uniform",
+         float((dg.max() - dg.min()) / dg.mean()), 1e-9)
+
+    # ...and it must actually be an improvement over the naive grid on THIS
+    # schedule, or the option is decoration. Uniform-in-tau measures 3.70 nats
+    # on its worst step; gamma-uniform measures 0.23.
+    uni = torch.linspace(1.0, 1e-3, 101, dtype=torch.float64)
+    dgu = (sch.gamma_at(uni[:-1]) - sch.gamma_at(uni[1:])).abs()
+    gate("schedule_gamma_grid_reduces_stiffness",
+         0.0 if float(dgu.max()) > 5.0 * float(dg.max()) else 1.0, 0.5)
 
 
 def _rand_batch(d, n_mol=6, seed=11):
@@ -183,8 +219,8 @@ def check_property_nets(d):
             _check_symmetry("guide", guide, cc, ff_n, mm)
             _check_symmetry("oracle", oracle, cc, ff, mm)
             _check_hvp(guide, cc, ff_n, mm)
-            _check_embed("guide", f_A, cc, ff_n, mm)
-            _check_embed("oracle", f_B, cc, ff_n, mm)
+            _check_embed("guide", f_A, guide, cc, ff_n, ff, mm)
+            _check_embed("oracle", f_B, oracle, cc, ff_n, ff, mm)
 
 
 def _check_symmetry(tag, net, c, f, m):
@@ -254,17 +290,145 @@ def _check_hvp(net, c, f, m):
     gate("hvp_nonzero", 0.0 if norm > 1e-8 else 1.0, 0.5)
 
 
-def _check_embed(tag, cal, c, f, m):
-    """`evaluation.embedding_diversity` calls f_B.net.embed. It must exist,
-    be finite, be invariant, and -- the part worth gating -- must actually
-    vary between molecules. An embed that returned a constant would report
-    perfect diversity collapse for every arm equally, which looks like a
-    finding."""
+def _check_embed(tag, cal, raw, c, f_sampler, f_physical, m):
+    """Gate `embedding_diversity` THROUGH ITS REAL CALL PATH.
+
+    The first version of this gate called `cal.net.embed(c, cal._feats(f), m)`
+    -- it converted the features itself and then reached past the wrapper. That
+    is not what production does, and the mismatch was the whole defect: the
+    real path went through `.net` WITHOUT the conversion, so the oracle was
+    embedding one-hot values of 0.125 and every diversity number in every cell
+    was computed on out-of-distribution input, finite and plausible and wrong.
+    The gate passed the entire time, because it was testing a call nobody made.
+
+    So this now calls `embedding_diversity` exactly as `evaluate_samples` does,
+    with SAMPLER-SPACE features, and checks the result against the reference
+    computed by driving the raw network in the space it actually wants.
+    """
+    mp, ld = embedding_diversity(cal, c, f_sampler, m)
+    gate("embed_finite__%s" % tag,
+         0.0 if (mp == mp and ld == ld) else 1.0, 0.5)
+    gate("embed_varies__%s" % tag, 0.0 if abs(mp) > 1e-6 else 1.0, 0.5)
+
+    # The reference: the raw network on the features IT wants. For the guide
+    # that is sampler space already; for the oracle it is physical one-hot.
+    want = f_sampler if cal.feats_are_normalised else f_physical
     with torch.no_grad():
-        h = cal.net.embed(c, cal._feats(f), m)
-    gate("embed_finite__%s" % tag, 0.0 if torch.isfinite(h).all() else 1.0, 0.5)
-    spread = float((h - h.mean(0, keepdim=True)).abs().mean())
-    gate("embed_varies__%s" % tag, 0.0 if spread > 1e-6 else 1.0, 0.5)
+        h_ref = raw.embed(c, want, m)
+        h_got = cal.embed(c, f_sampler, m)
+    gate("embed_path_matches_wrapper__%s" % tag,
+         (h_got - h_ref).abs().max() / h_ref.abs().mean().clamp(min=1e-9), 1e-10)
+
+    # And the negative control: feeding the WRONG space must move the answer.
+    # Without this, a future change that made `_feats` a no-op would pass every
+    # gate above.
+    wrong = f_physical if cal.feats_are_normalised else f_sampler
+    with torch.no_grad():
+        h_wrong = raw.embed(c, wrong, m)
+    moved = float((h_wrong - h_ref).abs().max() / h_ref.abs().mean().clamp(min=1e-9))
+    gate("embed_scale_actually_matters__%s" % tag, 0.0 if moved > 1e-3 else 1.0, 0.5)
+
+
+def check_shg_time_mirror():
+    """SHG schedules must be mirrored from flow time into VP time.
+
+    Flow time runs 0 (noise) -> 1 (data); VP time runs 1 (noise) -> 0 (data).
+    `_Base.active()` looks a schedule up with whatever scalar the sampler hands
+    it, so handing a flow-time schedule to a VPSampler puts every phase in the
+    WRONG HALF of the trajectory -- a band written for "the last 20%, where the
+    molecule is nearly formed" would fire in pure noise. Nothing raises; the arm
+    is just a different, worse method wearing its name.
+
+    Gated on the property that identifies the bug rather than on the numbers:
+    the phase covering the CLEANEST end of the trajectory must be the same
+    phase in both clocks.
+    """
+    sys.path.insert(0, os.path.join(ROOT, "proj1", "scripts"))
+    from transfer_sweep import flow_to_vp_schedule              # noqa: PLC0415
+    from guidance_sweep import SHG_SCHEDULES                    # noqa: PLC0415
+
+    bad_total = bad_order = bad_overlap = 0
+    for name, sched in SHG_SCHEDULES.items():
+        vp = flow_to_vp_schedule(sched)
+        # same total covered duration
+        fl_len = sum(hi - lo for lo, hi, _, _ in sched)
+        vp_len = sum(hi - lo for lo, hi, _, _ in vp)
+        bad_total += abs(fl_len - vp_len) > 1e-12
+        # the phase owning the data end: flow t -> 1, VP tau -> 0
+        flow_last = max(sched, key=lambda iv: iv[1])[2]
+        vp_last = min(vp, key=lambda iv: iv[0])[2]
+        bad_order += (flow_last != vp_last)
+        # and the images must stay disjoint, or `active()` picks arbitrarily
+        for i in range(len(vp) - 1):
+            bad_overlap += (vp[i][1] > vp[i + 1][0] + 1e-12)
+    gate("shg_mirror_preserves_duration", bad_total, 0.5)
+    gate("shg_mirror_data_end_phase", bad_order, 0.5)
+    gate("shg_mirror_disjoint", bad_overlap, 0.5)
+
+    # And the whole mirrored schedule must sit inside the guidance window the
+    # driver uses, or part of the arm is silently switched off by tau_max_guide.
+    win = 0.5          # the driver's --tau-max-guide default
+    outside = sum(1 for name in SHG_SCHEDULES
+                  for lo, hi, _, _ in flow_to_vp_schedule(SHG_SCHEDULES[name])
+                  if hi > win + 1e-12)
+    gate("shg_mirror_inside_window", outside, 0.5)
+
+
+def check_generator_defs():
+    """The vendored definitions EDMGenerator needs must all resolve.
+
+    This runs WITHOUT the checkpoint, and it is the gate that would have caught
+    the blocker: `EGNN.py` imports `remove_mean` and `remove_mean_with_mask`
+    from a `utils.py` that is not vendored, so `definitions()` raised KeyError
+    and, with the names simply dropped, `_forward` raised NameError on its
+    first call. Every generator gate below was behind a "checkpoint absent ->
+    skip", so the file reported ALL PASS with the whole generator path
+    unexecuted.
+    """
+    from external.tfg_assets import (_egnn_path, _remove_mean,  # noqa: PLC0415
+                                     _remove_mean_with_mask, definitions)
+    probe = os.path.join(TFG_ROOT, "tf_predict_mu", "args_2000.pickle")
+    try:
+        ns = definitions(
+            _egnn_path(probe),
+            {"EGNN_dynamics_QM9", "EGNN", "GCL", "EquivariantBlock",
+             "EquivariantUpdate", "SinusoidsEmbeddingNew", "coord2diff",
+             "unsorted_segment_sum"},
+            {"remove_mean": _remove_mean,
+             "remove_mean_with_mask": _remove_mean_with_mask})
+        ok = "EGNN_dynamics_QM9" in ns
+    except Exception:                                    # noqa: BLE001
+        ok = False
+    gate("generator_defs_resolve", 0.0 if ok else 1.0, 0.5)
+
+    # Drive a randomly-initialised dynamics module of the real class, so the
+    # injected helpers and the whole forward path execute even with no weights.
+    try:
+        net = ns["EGNN_dynamics_QM9"](
+            in_node_nf=6, context_node_nf=0, n_dims=3, device="cpu",
+            hidden_nf=16, n_layers=2, attention=False, tanh=True,
+            norm_constant=1, inv_sublayers=1, sin_embedding=False,
+            normalization_factor=1, aggregation_method="sum").double()
+        from external.tfg_assets import dense_edges                # noqa: PLC0415
+        b, n = 3, 7
+        m = torch.ones(b, n, dtype=torch.float64)
+        m[0, 5:] = 0.0
+        edges, emask = dense_edges(m)
+        net._edges_dict.setdefault(n, {})[b] = edges
+        xh = torch.randn(b, n, 8, dtype=torch.float64) * m[..., None]
+        out = net._forward(torch.full((b, 1), 0.3, dtype=torch.float64), xh, m,
+                           emask.reshape(b, n, n), None)
+        gate("generator_forward_runs",
+             0.0 if (out.shape == (b, n, 8) and torch.isfinite(out).all()) else 1.0,
+             0.5)
+        # remove_mean_with_mask must leave the coordinate output zero-CoM over
+        # REAL atoms only -- the injected port is ours, so it is gated.
+        com = (out[..., :3] * m[..., None]).sum(1) / m.sum(1, keepdim=True)
+        gate("generator_eps_zero_com_injected", com.abs().max(), 1e-12)
+        gate("generator_eps_padding_injected",
+             float(out[..., :3][m == 0].abs().max()), 1e-12)
+    except Exception:                                    # noqa: BLE001
+        gate("generator_forward_runs", 1.0, 0.5)
 
 
 def check_generator(d, require):
@@ -315,6 +479,8 @@ def main():
 
     check_schedule()
     check_property_nets(d)
+    check_shg_time_mirror()
+    check_generator_defs()
     check_generator(d, a.require_edm)
 
     print("%-44s %13s %11s   pass" % ("check", "error", "tolerance"))

@@ -148,3 +148,28 @@ class EDMSchedule:
         """beta(tau) = sigma^2(tau) * gamma'(tau) -- see the module docstring."""
         lo, _ = self._cell(tau)
         return torch.sigmoid(self.gamma_at(tau)) * self.dgamma[lo]
+
+    def tau_of_gamma(self, g):
+        """Inverse of `gamma_at`: the tau whose gamma is g.
+
+        gamma is strictly increasing in tau (gated), so the inverse is well
+        defined and is found by locating the cell and interpolating inside it
+        -- exactly undoing `gamma_at`, so `tau_of_gamma(gamma_at(t)) == t`.
+
+        This exists for ONE purpose: building a time grid uniform in gamma
+        instead of uniform in tau. EDM's polynomial_2 schedule is extremely
+        stiff at the noise end -- on a uniform 100-step tau grid the FIRST step
+        moves gamma by 3.70, against 0.20 for the linear-beta schedule our own
+        diffusion model uses, and |1 - beta*h/2| reaches 2.68 there. A grid
+        uniform in gamma spends steps where the distribution is actually
+        moving, which is the standard fix and costs nothing.
+        """
+        g = torch.as_tensor(g, dtype=self.gamma.dtype, device=self.gamma.device)
+        flat = g.reshape(-1).clamp(float(self.gamma[0]), float(self.gamma[-1]))
+        # right=True then -1 puts a value equal to a knot in the cell BELOW it,
+        # which keeps the top endpoint from indexing past the table.
+        idx = (torch.searchsorted(self.gamma, flat, right=True) - 1)
+        idx = idx.clamp(0, self.T - 1)
+        lo, hi = self.gamma[idx], self.gamma[idx + 1]
+        frac = (flat - lo) / (hi - lo).clamp(min=1e-30)
+        return ((idx.to(flat.dtype) + frac) / self.T).reshape(g.shape)

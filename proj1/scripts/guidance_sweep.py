@@ -46,7 +46,7 @@ sys.path.insert(0, os.path.join(ROOT, "proj1", "src"))
 sys.path.insert(0, os.path.join(ROOT, "proj1", "scripts"))
 from evaluation import choose_delta, evaluate_samples  # noqa: E402
 from m1_signed_bias import PhysicalProperty, load_fm  # noqa: E402
-from guidance import ResidualCalibrationHead  # noqa: E402
+from guidance import Cost, ResidualCalibrationHead  # noqa: E402
 from sampling import FlowSampler, VPSampler, initial_noise, integrate  # noqa: E402
 
 
@@ -138,6 +138,18 @@ V1_MISSING = ["smg_mean", "rch", "band"]
 # term) and 30 cells not worth spending. It remains implemented and gated.
 V2_ARMS = ["spbc", "btvg", "btvg_var"]
 
+# ---- the finalised comparison set -----------------------------------------
+# See this file's header in results/bench/add_compare_stage.py for why each
+# member is in and why tfg_mc / osc / rch are out.
+COMPARE_SET = ["unguided", "plug", "tmpd", "lgd_mc", "dflow"]
+
+# D-Flow is not a `mode`: it replaces the sampler rather than adding a field.
+# `w` scales its learning rate, the way `w` scales the field elsewhere, so the
+# strength axis means the same thing. n_iter is FIXED so a strength sweep does
+# not quietly become a compute sweep.
+DFLOW_LR = 0.05
+DFLOW_ITERS = 8
+
 # REFERENCES. Every v2 comparison re-runs these in the same cells so the
 # contrast is measured under identical seeds, targets and windows rather than
 # read off a table from another job.
@@ -201,6 +213,13 @@ SHG_ARMS = sorted(SHG_SCHEDULES)
 STRENGTHS = [0.01, 0.05, 0.25, 0.5, 1.0, 2.0, 4.0]
 WINDOWS = [0.05, 0.5, 0.75]          # t_min_guide: guidance is skipped below this
 DEFAULT_W, DEFAULT_WIN = 1.0, 0.05
+
+# The window stage v2 screens at. Chosen because it won a three-point sweep
+# {0.05, 0.5, 0.75} ON THE V1 ARMS -- an empirical choice on different arms,
+# not a derived optimum. Theory (k = (1-t)^2/t = 18.05 at t=0.05 and 0.083 at
+# t=0.75) says the optimum is interior, and no window between 0.05 and 0.5 has
+# ever been measured.
+V2_WIN = 0.5
 
 
 def cell_name(prop, arm, tgt, w, win, variant="-"):
@@ -315,12 +334,23 @@ def plan_cells(props, arms):
                     continue
                 for w in STRENGTHS:
                     add(prop, arm, tgt, w, DEFAULT_WIN)
+
+    # pass 5: THE MISSING CROSS. Passes 2 and 3 form a cross, not a grid --
+    # strengths are swept at DEFAULT_WIN (0.05) and windows at DEFAULT_W (1.0).
+    # So at t_min = 0.5, where every arm performs best on alpha, the v1 arms
+    # have exactly ONE cell (w=1) while the stage-v2 arms got a full 7-point
+    # strength sweep there. Any "best strength" table built on that compares
+    # tuned arms against untuned ones, in our own favour.
+    #
+    # Only the arms that stage v2 does NOT already sweep at V2_WIN need this;
+    # plug/tmpd/smg get it as v2 references.
+    for prop in props:
+        for arm in arms:
+            if arm in V2_REFERENCES or not expand(arm):
+                continue
+            for w in STRENGTHS:
+                add(prop, arm, "q50", w, V2_WIN)
     return cells
-
-
-# the window the v2 arms are screened at: the measured optimum of the U-shaped
-# window effect, not the v1 default of 0.05
-V2_WIN = 0.5
 
 
 def plan_v2_cells(props, arms):
@@ -399,13 +429,48 @@ def plan_v2_cells(props, arms):
     return cells
 
 
+def plan_compare_cells(props):
+    """The controlled comparison table: every arm, every strength, one window.
+
+    Ordered so a partial run is still a complete experiment -- pass 1 is the
+    whole set at the default strength, so even one link gives a full arm
+    comparison before any tuning is explored.
+    """
+    seen, cells = set(), []
+
+    def add(prop, arm, tgt, w, win):
+        k = (prop, arm, tgt, w, win, "cmp")
+        if k not in seen:
+            seen.add(k)
+            cells.append(k)
+
+    for prop in props:                       # pass 1: the comparison itself
+        for arm in COMPARE_SET:
+            add(prop, arm, "q50", DEFAULT_W, V2_WIN)
+    for prop in props:                       # pass 2: strength, per arm
+        for arm in COMPARE_SET:
+            if arm == "unguided":
+                continue
+            for w in STRENGTHS:
+                add(prop, arm, "q50", w, V2_WIN)
+    for prop in props:                       # pass 3: the q90 target
+        for arm in COMPARE_SET:
+            add(prop, arm, "q90", DEFAULT_W, V2_WIN)
+            if arm == "unguided":
+                continue
+            for w in STRENGTHS:
+                add(prop, arm, "q90", w, V2_WIN)
+    return cells
+
+
 def main():
     global OUT
     ap = argparse.ArgumentParser()
     ap.add_argument("--fm", default=os.path.join(ROOT, "betty_pull", "fm_last.pt"))
     ap.add_argument("--props", default="mu,alpha,gap")
     ap.add_argument("--arms", default="")
-    ap.add_argument("--stage", default="main", choices=["main", "v2", "all"],
+    ap.add_argument("--stage", default="main",
+                    choices=["main", "v2", "all", "compare"],
                     help="main = the v1 grid (default arms); v2 = the new arms "
                          "against re-run references; all = both, v1 first")
     ap.add_argument("--n", type=int, default=512)
@@ -453,6 +518,8 @@ def main():
         arms = list(ARMS)
     elif args.stage == "v2":
         arms = V1_MISSING + V2_ARMS + SHG_ARMS
+    elif args.stage == "compare":
+        arms = list(COMPARE_SET)
     else:
         arms = list(ARMS)
 
@@ -465,10 +532,13 @@ def main():
         # entered and shg_plug_btvg's preflight MAE came out exactly equal to
         # plug's. steps=10 puts a node in every scheduled interval.
         args.n, args.batch, args.steps = 8, 8, 10
+        globals()["DFLOW_ITERS"] = 2      # preflight exercises the path, not the optimum
 
     cells = []
     if args.stage in ("main", "all"):
         cells += plan_cells(props, list(ARMS) if args.stage == "all" else arms)
+    if args.stage == "compare":
+        cells += plan_compare_cells(props)
     if args.stage in ("v2", "all"):
         v2 = V1_MISSING + V2_ARMS + SHG_ARMS if args.stage == "all" else arms
         cells += plan_v2_cells(props, v2)
@@ -576,6 +646,20 @@ def main():
         for i in range(0, args.n, args.batch):
             m = mask_v[i:i + args.batch]
             c0, f0 = initial_noise(m, len(types), gen)
+            if arm == "dflow":
+                # Trajectory optimisation, not a guidance field: there is no
+                # `mode` and no posterior. The sampler is replaced wholesale.
+                from dflow import dflow_optimise
+                cst = Cost()
+                c, f = dflow_optimise(
+                    net, f_A, m, c0, f0, y_t[: m.shape[0]],
+                    n_steps=args.steps, n_iter=DFLOW_ITERS,
+                    lr=DFLOW_LR * w, cost=cst, trust=None)
+                cs.append(c); fs.append(f)
+                calls += cst.gen_fwd
+                for k in cost:
+                    cost[k] += getattr(cst, k)
+                continue
             kw = dict(f_net=(None if arm == "unguided" else f_A),
                       y=y_t[: m.shape[0]], s=s, mode=arm, w=w_applied,
                       clip=clip, n_probe=args.n_probe, n_mc=args.n_mc,

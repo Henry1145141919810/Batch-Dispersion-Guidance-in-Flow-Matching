@@ -58,7 +58,7 @@ class _Base:
                  n_mc=4, sigma_mc=0.1, want_kappa3=False, rch=None,
                  band_tau=None, band_eta=1.0, band_radius=None,
                  tau=None, spbc_eta=1.0, spbc_radius=None, schedule=None,
-                 update_rule="euler", update_kw=None):
+                 update_rule="euler", update_kw=None, log_velocity=False):
         self.net, self.mask = net, mask
         self.f_net, self.y, self.s, self.mode, self.w = f_net, y, s, mode, w
         self.n_probe, self.clip = n_probe, clip
@@ -79,6 +79,13 @@ class _Base:
         # Heun second stage so one ODE step advances the optimiser state once.
         self.updater = GuidanceUpdater(rule=update_rule, **(update_kw or {}))
         self._primary_stage = True
+        # Velocity diagnostic, OFF by default and pure logging: when enabled,
+        # every guided step also applies the SAME downstream conversion and
+        # clip to the RAW direction, so the counterfactual "what vanilla would
+        # have done from this very state" is measured rather than modelled.
+        self.log_velocity = log_velocity
+        self.vel_rows = []
+        self._raw_dir = None
         self.kappa3_log = []
         self.schedule_log = {}
         self.diag_acc = {}
@@ -125,6 +132,7 @@ class _Base:
         self.diag_acc = {}
         self.kappa3_log = []      # was omitted; would double-count on reuse
         self.updater.reset()      # moment buffers are per-trajectory
+        self.vel_rows = []
 
     # Diagnostics worth carrying out of the run. Deliberately a short list:
     # these are the quantities that decide whether BTVG's variance model held
@@ -152,6 +160,47 @@ class _Base:
     def diag_summary(self):
         return {k: tot / n for k, (tot, n) in self.diag_acc.items() if n}
 
+    def _log_velocity(self, t_scalar, v_c, v_f, Cd_c, Cd_f, mult):
+        """Record how much the update rule changes the ACTUAL sampling step.
+
+        `Cd` is the correction already applied (conversion, strength, clip).
+        The raw direction stashed by `_guide` is pushed through the identical
+        conversion and clip to give `Cg`, so the only difference between the
+        two total velocities is the rule.
+
+        r_t = |C(D)| / |V| answers whether guidance is a small perturbation of
+        the base velocity; the total-velocity angle answers whether a large
+        rotation in guidance space survives into the trajectory.
+        """
+        rg_c, rg_f = self._raw_dir
+        Cg_c, Cg_f = mult * rg_c, mult * rg_f
+        if self.clip is not None:
+            Cg_c, Cg_f = _clip_to_velocity(Cg_c, Cg_f, v_c, v_f, self.mask,
+                                           self.clip)
+
+        def _n(a, b):
+            return torch.sqrt((a ** 2).sum((1, 2)) + (b ** 2).sum((1, 2))
+                              + 1e-30)
+
+        def _cos(a1, b1, a2, b2):
+            dot = (a1 * a2).sum((1, 2)) + (b1 * b2).sum((1, 2))
+            return dot / (_n(a1, b1) * _n(a2, b2))
+
+        vn = _n(v_c, v_f)
+        tot_g = _cos(v_c + Cg_c, v_f + Cg_f, v_c + Cd_c, v_f + Cd_f)
+        gspace = _cos(Cg_c, Cg_f, Cd_c, Cd_f)
+        deg = lambda x: float(torch.rad2deg(torch.acos(x.clamp(-1, 1))).mean())
+        self.vel_rows.append({
+            "t": float(t_scalar),
+            "r_t": float((_n(Cd_c, Cd_f) / vn).mean()),
+            "r_t_raw": float((_n(Cg_c, Cg_f) / vn).mean()),
+            "total_vel_cos": float(tot_g.mean()),
+            "total_vel_angle_deg": deg(tot_g),
+            "guidance_cos": float(gspace.mean()),
+            "guidance_angle_deg": deg(gspace),
+        })
+        self._raw_dir = None
+
     def _guide(self, coords, feats, t, post_fn, mode=None, t_scalar=None):
         G_c, G_f, diag = guidance_field(
             self.f_net, post_fn, coords, feats, self.mask, self.y, self.s,
@@ -168,6 +217,9 @@ class _Base:
         # downstream -- the (1-t)/t conversion, the strength w, the
         # velocity-relative clip -- is unchanged and sees a direction of the
         # same per-sample norm, so only the DIRECTION is under test.
+        if self.log_velocity:
+            self._raw_dir = (zero_com(G_c, self.mask),
+                             G_f * self.mask.unsqueeze(-1))
         G_c, G_f = self.updater.apply(G_c, G_f, self.mask, t_scalar=t_scalar,
                                       update_state=self._primary_stage)
         return zero_com(G_c, self.mask), G_f * self.mask.unsqueeze(-1)
@@ -212,6 +264,8 @@ class FlowSampler(_Base):
             vn = torch.sqrt((v_c ** 2).sum((1, 2)) + (v_f ** 2).sum((1, 2)))
             self.n_clipped += int((gn > self.clip * vn).sum().item())
             G_c, G_f = _clip_to_velocity(G_c, G_f, v_c, v_f, self.mask, self.clip)
+        if self.log_velocity and self._raw_dir is not None:
+            self._log_velocity(t_scalar, v_c, v_f, G_c, G_f, mult)
         return v_c + G_c, v_f + G_f
 
     @torch.no_grad()
@@ -250,17 +304,38 @@ class VPSampler(_Base):
     """
 
     def __init__(self, net, mask, tau_min=1e-3, noise_schedule=None,
-                 tau_max_guide=None, **kw):
+                 tau_max_guide=None, grid="uniform", **kw):
         super().__init__(net, mask, **kw)
         self.tau_min = tau_min
         self.tau_max_guide = tau_max_guide
+        self.noise_schedule = noise_schedule
+        self.grid = grid
+        if grid == "gamma" and noise_schedule is None:
+            raise ValueError("grid='gamma' needs a noise_schedule to invert")
         self.alpha_sigma = (noise_schedule.alpha_sigma if noise_schedule
                             else alpha_sigma)
         self.beta = noise_schedule.beta if noise_schedule else beta
 
     def time_grid(self, n_steps, span=None):
+        """Decreasing tau grid, uniform in tau or uniform in gamma.
+
+        `grid="gamma"` spaces the steps evenly in log-SNR instead of evenly in
+        time. It is the same trajectory -- the ODE is unchanged and the
+        endpoints are identical -- integrated on a grid that puts its steps
+        where the distribution is moving. For a schedule whose stiffness is
+        uniform, the two are nearly the same and "uniform" stays the default;
+        for EDM's polynomial_2 they are not, and a uniform-in-tau grid spends
+        its first step crossing 3.7 nats of log-SNR.
+        """
         a, b = (1.0, self.tau_min) if span is None else span
-        return torch.linspace(a, b, n_steps + 1)                  # decreasing
+        if self.grid == "uniform":
+            return torch.linspace(a, b, n_steps + 1)              # decreasing
+        if self.grid != "gamma":
+            raise ValueError("grid must be 'uniform' or 'gamma'")
+        sch = self.noise_schedule
+        ga = float(sch.gamma_at(torch.tensor(float(a))).reshape(-1)[0])
+        gb = float(sch.gamma_at(torch.tensor(float(b))).reshape(-1)[0])
+        return sch.tau_of_gamma(torch.linspace(ga, gb, n_steps + 1))
 
     def field(self, coords, feats, tau_scalar):
         self.n_field += 1

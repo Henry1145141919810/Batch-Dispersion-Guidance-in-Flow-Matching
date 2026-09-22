@@ -93,6 +93,9 @@ from external.tfg_assets import (Calibrated, EDMGenerator, PROP_INDEX,  # noqa: 
                                  fit_calibration)
 from sampling import VPSampler, initial_noise, integrate     # noqa: E402
 
+sys.path.insert(0, os.path.join(ROOT, "proj1", "scripts"))
+from guidance_sweep import SHG_SCHEDULES, scale_schedule      # noqa: E402
+
 DATA = os.path.join(ROOT, "data", "qm9.pt")
 TFG_ROOT = os.path.join(ROOT, "audit", "fa_fb_search", "TFG")
 OUT = os.path.join(ROOT, "results", "transfer")
@@ -113,11 +116,24 @@ COMPARE_ARMS = [
     "lgd_mc",      # loss-guided diffusion (Song et al. 2023)
     "osc",         # observable-space closure
 ]
+# The arms we claim, chosen from what STAGE V2 ACTUALLY FOUND (commit 4b800ed,
+# 342 cells per seed, two seeds) -- not from what was designed:
+#   btvg           tied for best on all three properties (+8.9 / +6.7 / +7.0 sd)
+#   shg_plug_btvg  highest band coverage on mu of any arm (0.131); the arm that
+#                  exploits the window effect, which is the project's
+#                  best-supported claim
+#   smg / smg2     the shipped family. Neither wins on our own generator, and
+#                  they are here BECAUSE of that: if they place differently on
+#                  a borrowed backend, that is the finding
+# `spbc` is deliberately ABSENT. Stage v2 drops it on both seeds (+0.2 / +1.3 /
+# +0.1 sd -- it does nothing), and re-testing a replicated null on a second
+# backend buys nothing for ~22 cells of wall-clock we do not have. It stays a
+# clean negative result reported from the main sweep.
 OUR_ARMS = [
-    "smg",         # SMG as shipped
-    "smg2",        # completed-moment closure
-    "spbc",        # shape-preserving bias correction
-    "btvg",        # band-targeted variance guidance
+    "smg",             # SMG as shipped
+    "smg2",            # completed-moment closure
+    "btvg",            # band-targeted variance guidance -- the arm that survived
+    "shg_plug_btvg",   # scheduled handoff: plug early, btvg late
 ]
 BASELINE = ["unguided"]
 
@@ -155,17 +171,45 @@ def config_tag(args):
         args.n, args.steps, args.solver, args.tau_max_guide, args.seed)
 
 
+def flow_to_vp_schedule(sched):
+    """Mirror an SHG schedule from flow time into VP time.
+
+    THE TWO FAMILIES RUN TIME IN OPPOSITE DIRECTIONS. Flow time goes 0 (noise)
+    -> 1 (data); VP time goes 1 (noise) -> 0 (data). `SHG_SCHEDULES` is written
+    in flow time, and `_Base.active()` looks the schedule up with whatever
+    scalar the sampler hands it -- so handing a flow-time schedule to a
+    VPSampler runs every phase in the WRONG HALF of the trajectory: a band
+    meant for "the last 20%, where the molecule is nearly formed" would fire in
+    pure noise instead. Nothing would raise; the arm would simply be a
+    different, worse method wearing its name.
+
+    So each interval [lo, hi) becomes [1 - hi, 1 - lo), which maps the same
+    physical stage of generation onto VP's clock. Order does not matter --
+    `active()` scans for the first interval containing t and the images are
+    still disjoint -- but they are re-sorted so a printed schedule reads in
+    integration order.
+    """
+    return sorted(((1.0 - hi, 1.0 - lo, mode, mult)
+                   for (lo, hi, mode, mult) in sched),
+                  key=lambda iv: iv[0])
+
+
 def arm_kwargs(arm, delta):
     """Per-arm extra state, mirroring guidance_sweep.arm_kwargs.
 
     BTVG's tau is the target sd that makes the band a 95% interval, not delta
     itself: a centred Gaussian with sd = delta covers only 68.3% of the band.
     """
-    if arm in ("btvg", "btvg_var", "btvg_mean"):
-        return {"tau": delta / 1.96}
+    kw = {}
+    if arm in ("btvg", "btvg_var", "btvg_mean") or arm in SHG_SCHEDULES:
+        # An SHG schedule containing a btvg phase needs tau for the same
+        # reason a standalone btvg arm does.
+        kw["tau"] = delta / 1.96
     if arm == "band":
-        return {"band_tau": delta}
-    return {}
+        kw["band_tau"] = delta
+    if arm in SHG_SCHEDULES:
+        kw["schedule"] = flow_to_vp_schedule(SHG_SCHEDULES[arm])
+    return kw
 
 
 def strength_scale(arm, kw, s):
@@ -379,6 +423,13 @@ def main():
         extra = arm_kwargs(arm, delta)
         s = f_A.y_std
         w_applied = w * strength_scale(arm, extra, s)
+        if arm in SHG_SCHEDULES:
+            # Normalise the btvg phase INSIDE the schedule, per phase, leaving
+            # the plug phase alone -- finding S1: keying the normalisation off
+            # the arm name ran the identical btvg field 3139x stronger inside
+            # an SHG arm than standalone, clip-saturated at every strength.
+            extra["schedule"] = scale_schedule(extra["schedule"], s,
+                                               extra.get("tau"))
         target = targets[prop][tgt]
         y_t = torch.full((args.n,), target, device=dev)
         gen = torch.Generator(device=dev).manual_seed(args.seed)
