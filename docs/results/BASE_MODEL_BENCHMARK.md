@@ -32,6 +32,13 @@ scales its one-hot by 1/8 with a *narrower* network than ours, if it used EDM's 
 as its authors state. That is a hyperparameter, testable in one training run, and it could be
 wrong.
 
+**One caveat on all of the above, now being closed.** Every published number in
+this document is read from a PDF, and Section 4.1 shows one fixed set of
+molecules scoring 38%, 84% or 93% molecule-stable depending on whose rule is
+applied. Section 9 sets up the fix: TFG's *released* EDM checkpoints run through
+**our own evaluator**, so one row of the published column becomes measured
+rather than quoted. It is set up and gated; it has not been run.
+
 Three smaller findings from the sweep. The sampler is not the bottleneck: going from 100 to 500
 Euler steps buys 0.65 atom points (and 2.8 molecule, 2.1 validity) and 1000 steps buys nothing
 more. EMA versus raw weights is not distinguishable at this sample size. And the 512-sample
@@ -406,3 +413,140 @@ python proj1/scripts/eval_conventions.py --data 2000
 `results/bench/run_all.sh` is the sweep; `results/bench/rescored/` holds every result under the
 corrected evaluator; `results/bench/papers/` the PDFs; `results/bench/CLAIMS_TO_VERIFY.md` the
 claims; `results/bench/audit/AUDIT_REPORT.md` the audit.
+
+---
+
+## 9. Head-to-head against a borrowed checkpoint, through our own evaluator
+
+**Status: set up, not yet run.** No numbers below are filled in. The
+checkpoints are not downloaded and the table is here so the protocol is fixed
+before any result is seen.
+
+### 9.1 Why, given Sections 4 and 5 already compare against published work
+
+Every published row in Section 4 is read from a PDF. That comparison carries a
+caveat this document spends Section 4.1 demonstrating: **one fixed set of
+molecules scores 38%, 84% or 93% molecule-stable depending on whose rule is
+applied.** We control for that by quoting only rows we believe share EDM's
+convention — but "believe" is doing work there, and EEGSDE's unconditional
+half-data row, the single most important comparator in this document, is a
+**single run with no standard deviation** whose recipe we infer from "the same
+setting with EDM" plus EDM's released command.
+
+Running TFG's *released* EDM checkpoint through **this repository's evaluator**
+removes that caveat for one row. `benchmark_transfer_base.py` imports
+`score_samples` and `dataset_smiles` from `benchmark_base.py` — imported, not
+reimplemented — so the borrowed model and ours pass through the same bond
+tables, the same largest-fragment validity rule, the same SMILES
+canonicalisation. A difference in the output is then a difference in the
+models, and nothing else.
+
+This also does something Section 4 cannot: it puts a **measured** number on the
+published column. If TFG's `EDMsecond` scores near 98.4 / 81.7 under our
+evaluator, the published column is calibrated and Section 4's comparisons are
+sound as stated. If it does not, the gap in Section 1 is partly an
+evaluator-convention artefact and this document needs revising.
+
+### 9.2 What is and is not held equal
+
+| item | ours | borrowed | equal? |
+|---|---|---|---|
+| evaluator, bond tables, validity rule, SMILES | `score_samples` | **the same function object** | ✅ |
+| molecule sizes | drawn from `train_a` | drawn from `train_a`, same generator and seed | ✅ paired |
+| sample count, seeds | 10,000 × 3 | 10,000 × 3 | ✅ |
+| QM9 preprocessing | ours (133,885, private split) | ours | ✅ *applies to both* |
+| training data | our `train_a` half (51,527) | TFG's half (50,000), identity unknown | ⚠️ different halves |
+| training budget | 303k steps | ~1.56M steps | ❌ **not equal** |
+| architecture | EGNN 256×8, no attention | EGNN 192×9, attention | ❌ **not equal** |
+| feature scaling | one-hot ×1 | one-hot ×1/8 | ❌ **the hypothesis in Section 5** |
+| sampler | 100-step Euler PF-ODE | **the same** | ✅ *not EDM's own SDE* |
+
+**Drawing sizes from `train_a` for both is the right call, and it is measured,
+not asserted.** The two halves' size histograms have total variation **0.0064**
+(mean atoms 18.003 vs 17.985), so conditioning the borrowed model on our half's
+histogram costs it nothing, and in exchange the two runs are paired molecule
+for molecule rather than merely equal in distribution.
+
+**The sampler is the one deliberate asymmetry against the published number.**
+EDM samples a 1000-step ancestral SDE; we integrate the probability-flow ODE at
+100 steps, because that is the sampler our guidance fields are defined on and
+holding it fixed is what makes the transfer experiment internal. So a shortfall
+against EEGSDE's published row is **not by itself evidence of an adapter
+defect** — `--steps` and `--grid` separate the two.
+
+### 9.3 The stiffness problem, and the grid that fixes it
+
+EDM's `polynomial_2` schedule is far stiffer at the noise end than the
+linear-beta schedule our own diffusion model uses. Measured on the 101-point
+grid the benchmark actually integrates:
+
+| grid | worst Δγ in one step | best | comment |
+|---|---|---|---|
+| uniform in τ (naive) | **3.702** | 0.061 | the first Euler step crosses 3.7 nats of log-SNR — SNR ×40 |
+| uniform in γ (`--grid gamma`) | **0.228** | 0.228 | flat by construction |
+| *our own linear-β schedule, uniform in τ* | 0.20 | 0.11 | for scale |
+
+A naive uniform grid therefore spends its first step in a regime our own model
+never enters, at 18× the step size. `--grid gamma` re-spaces the same
+trajectory — identical ODE, identical endpoints — so the steps land where the
+distribution is moving. **`gamma` is the default**, and `uniform` is kept so
+the difference can be reported rather than assumed.
+
+### 9.4 The table to fill in
+
+10,000 samples, 3 seeds, 100 Euler steps, `--grid gamma`, our evaluator:
+
+| model | data | source | atom stab | mol stab | validity (EDM) | valid × unique | connected |
+|---|---|---|---|---|---|---|---|
+| Real QM9 (calibration) | — | — | 0.994 | 0.956 | 0.982 | — | 0.980 |
+| **ours** (`fm_last.pt`) | 51.5K | this repo | **0.9366 ± .0012** | **0.3993 ± .0085** | **0.7625 ± .0031** | 0.746 | 0.926 |
+| TFG `EDMsecond` | 50K | TFG release | — | — | — | — | — |
+| TFG `EDMfull` *(optional)* | 100K | TFG release | — | — | — | — | — |
+| *EDM half-data, as published* | 50K | EEGSDE Tab. 5 | *0.9837* | *0.8174* | — | — | — |
+| *EDM full, as published* | 100K | EDM Tab. 1 | *0.987* | *0.820* | *0.919* | *0.907* | — |
+
+The two italic rows are what Sections 4.2 and 4.4 already quote. The point of
+the two blank rows is to sit directly above them and say whether they survive
+re-measurement.
+
+**Novelty is not in this table and must not be added to it.** `score_samples`
+computes `novelty_vs_train_a` against *our* half; the borrowed models' own
+training halves are unknown, so their novelty numbers measure nothing about
+them. The field is written to the JSON (schema parity) and flagged in the
+output's `caveats`.
+
+### 9.5 The gate
+
+`benchmark_transfer_base.py` exits non-zero if the borrowed model scores
+**atom < 0.95 or molecule < 0.60**. That is deliberately loose — it asks *is
+the adapter driving this checkpoint at all*, not *does our ODE reproduce their
+SDE*. Our own model loses only 0.65 atom and 2.8 molecule points going from 500
+steps to 100 (Section 3.2), so a correct adapter on a model published at
+98.4 / 81.7 should clear this comfortably.
+
+**If it fails, no guidance cell runs.** Every guided number would inherit the
+fault while looking plausible. The order of investigation is in the script's
+docstring: re-run at the other `--grid` and at `--steps 1000`; if that fixes
+it, the cause is discretisation, not the adapter; if not, suspect the epsilon
+sign, the time direction, the one-hot scale, or the EMA key.
+
+### 9.6 Reproduce
+
+```bash
+python proj1/scripts/fetch_tfg_assets.py --models EDMsecond,EDMfull
+python proj1/tests/test_transfer_backend.py --require-edm      # 61 gates
+
+python proj1/scripts/benchmark_transfer_base.py --edm-dir weights/EDMsecond \
+    --n 2000 --steps 100 --grid gamma --seed 0 \
+    --out results/bench/edmsecond_nfe100_gamma_s0.json          # the gate
+
+# then the full 3-seed runs, and the uniform-grid comparison
+for s in 0 1 2; do
+  python proj1/scripts/benchmark_transfer_base.py --edm-dir weights/EDMsecond \
+      --n 10000 --steps 100 --grid gamma --seed $s \
+      --out results/bench/edmsecond_nfe100_gamma_s$s.json
+done
+python proj1/scripts/benchmark_transfer_base.py --edm-dir weights/EDMsecond \
+    --n 10000 --steps 100 --grid uniform --seed 0 \
+    --out results/bench/edmsecond_nfe100_uniform_s0.json
+```

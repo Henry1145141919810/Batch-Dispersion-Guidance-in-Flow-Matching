@@ -49,6 +49,8 @@ the order they were built.
 | 9 | `select_arms.py` | go/drop verdict per arm | ✅ DONE — 11 survivors, 3 dropped |
 | 10 | `final_benchmark.slurm` | full-scale numbers, survivors only, 3 seeds | ❌ NOT DONE |
 | 11 | robustness check (SchNet / TFG oracle) | independent scoring of the winner | ❌ NOT DONE |
+| 12 | `benchmark_transfer_base.py` | **TFG's released EDM run through OUR evaluator** — the apples-to-apples base-model row, and the hard gate before any transfer cell | ⏳ PENDING — built, 61/61 gates; needs the checkpoint. Protocol: [../results/BASE_MODEL_BENCHMARK.md](../results/BASE_MODEL_BENCHMARK.md) §9 |
+| 13 | `transfer_sweep.py` | **every arm re-run on a BORROWED base model + borrowed guide/oracle (TFG's `EDMsecond` + `tf_predict_*` + `evaluate_*`)** | ⏳ PENDING — harness built, reviewed, 61/61 gates; checkpoint not downloaded; 0/222 cells. See [../protocol/TRANSFER_EXPERIMENT_PLAN.md](../protocol/TRANSFER_EXPERIMENT_PLAN.md) |
 
 ---
 
@@ -93,6 +95,9 @@ This costs us: halving the data weakens the generator (§4).
 | md5 | `a190ac8394902027d4a951f8d30e8c5c` |
 
 ### Measured, under the EDM protocol (3 seeds × 10,000 samples) ✅
+
+*(Section 9 of the benchmark doc sets up re-measuring the published row below
+through our own evaluator; until that runs, it is a quoted number.)*
 
 | metric | ours | like-for-like published |
 |---|---|---|
@@ -352,6 +357,8 @@ se — or it collapses chemistry everywhere *and wins nothing*. Divergent cells
 ### Blocking for M1
 | item | status |
 |---|---|
+| **borrowed-base-model benchmark** | ⏳ built and gated, 0 runs. Turns one row of the published comparison column from *quoted* into *measured*, and is the hard gate for the line below |
+| **transfer experiment — nothing in it is ours except the guidance field** | ⏳ 0 / 222 cells; needs `fetch_tfg_assets.py` then the §6 order of work. The professor's ask: the innovation is the guidance, so the guidance is what must be portable |
 | stage-main sweep completion | 🟡 195 / 390 cells |
 | RCH heads for `alpha`, `gap` | ⏳ only `rch_mu.pt` exists; **hard dependency** of stage v2 |
 | **stage-v2 sweep — the three new arms have never been measured** | ⏳ 0 / 366 cells |
@@ -448,6 +455,141 @@ because both seeds reuse the same 512 validation masks and differ only in noise.
 Verdict stability: 3 of 3 drops replicate exactly (`band`, `rch`, `spbc`).
 `btvg_var` drops in seed 2 only — its single win (gap, +3.4σ in seed 1) falls
 below threshold in seed 2. Treat it as **marginal, not established**.
+
+### Full metrics change the conclusion — read this before quoting MAE
+
+The σ table above ranks on MAE alone. On the **full** metric block, at the only
+fair slice (w = 1, `t_min` = 0.5 — see below), the picture is different:
+
+| arm | mu MAE / \|bias\| / spread | alpha | gap | mol_stab |
+|---|---|---|---|---|
+| **`btvg`** (OURS) | **5.38 / 0.02 / 6.52** | 11.38 / **0.66** / 14.79 | **4.25 / 0.32 / 5.18** | 0.31–0.36 |
+| `plug` (prior) | 5.85 / 0.97 / 7.05 | **11.04** / 2.13 / **14.21** | 4.49 / 1.26 / 5.25 | 0.36–0.37 |
+| `unguided` | 7.27 / 2.48 / 8.75 | 13.93 / 0.78 / 17.95 | 5.03 / 0.99 / 5.92 | 0.402 |
+
+- **`btvg` has the lowest bias of any arm measured** — mu **0.02 δ** against `plug`'s
+  0.97 and unguided's 2.48. It centres the property distribution almost exactly.
+- It also has the **lowest spread** on mu and gap. It was built to cut spread; it
+  cuts spread *and* bias.
+- **The irony worth putting in the paper:** `spbc` was designed to correct bias and
+  does nothing (mu bias 2.23 vs unguided 2.48). `btvg`, designed for spread, is the
+  best bias corrector in the table.
+- **Cost:** `btvg` mol_stability 0.31–0.36 against unguided 0.402, validity 0.686 vs
+  0.785 on mu. Report in the same row as the win, per R4.
+- **`rch` (Haimo v1) on alpha is destructive**, not merely inert: bias **10.42 δ**,
+  spread 29.08, mol_stab 0.301.
+
+**Are we failing? No.** `btvg` beats the strongest prior-art arm on MAE, bias and
+spread on two of three properties, and is the best-centred arm on all three.
+
+### ⚠️ The best-strength comparison is biased toward us, and must be fixed
+
+The stage-main grid is a **cross, not a full grid**: the strength sweep runs at
+`t_min = DEFAULT_WIN = 0.05` and the window sweep at `w = DEFAULT_W = 1.0`. So at
+the good window (0.5) the v1-only arms — `tfg_mc`, `lgd_mc`, `osc`, `smg2`,
+`smg2_curv` — have exactly **one** cell, at w = 1, the pre-registered default.
+Stage v2 ran its **full 7-point strength sweep at window 0.5**.
+
+Any best-strength table therefore compares our *tuned* arms against their *untuned*
+ones. **Do not quote best-strength numbers until this is closed.**
+
+Missing: 5 arms × 6 strengths × 3 properties = **90 cells, ~2 GPU-h.**
+
+```bash
+sbatch --export=ALL,CMD="python -u proj1/scripts/guidance_sweep.py --arms tfg_mc,lgd_mc,osc,smg2,smg2_curv --props mu,alpha,gap --fm proj1/checkpoints/fm_last.pt --n 512 --batch 128 --steps 100 --max-minutes 215" proj1/cluster/run.slurm
+```
+
+Full per-property tables with every metric:
+[../results/ARM_RANKINGS.md](../results/ARM_RANKINGS.md)
+
+### THE COMPARISON GROUP — fixed 22 Sep, not to be changed after seeing results
+
+Four published methods plus the baseline. They span the design space on two
+axes: analytic-vs-Monte-Carlo, and uncertainty-aware-vs-not.
+
+| arm | published as | what it does | role |
+|---|---|---|---|
+| `plug` | **DPS**, Chung et al., ICLR 2023 | `(y − f(m))/s² · Jᵀg` — treats the endpoint estimate as exact | the no-uncertainty baseline |
+| `tmpd` | **ΠGDM / TMPD**, Boys et al., TMLR 2024 | adds the `s² + gᵀΣg` denominator — analytic first-order uncertainty | closest competitor to our SMG family |
+| `tfg_mc` | **TFG**, Ye et al., NeurIPS 2024 | K perturbations at a **tuned** σ, softmax-weighted | the Monte-Carlo alternative to linearising |
+| `lgd_mc` | **LGD**, Song et al., ICML 2023 | same MC, scale **read off the model** (`r² = tr(Σ)/d`) | isolates tuned-vs-derived scale |
+| `unguided` | — | no guidance | reference |
+
+**Excluded:** `osc` (labelled prior art, **no citation exists in this repo**);
+`rch` / Haimo v1 (prior art, but dropped — worse than unguided on alpha).
+
+**How these must be described in the paper.** All four are *our ports* onto our
+generator and our `f_A`/`f_B`. ΠGDM in particular was designed for **linear**
+inverse problems with a closed-form uncertainty denominator; a nonlinear EGNN
+property head on molecules is outside its regime, and its claimed contribution
+is calibration and strength-insensitivity, not raw MAE. **We must never write
+"TMPD is worse than DPS."** We write: *on our stack, our port of TMPD scores
+below our port of DPS.*
+
+### THE RANKING RUBRIC — stated, because it is a choice
+
+Score = mean over {mu, alpha, gap} of
+`(MAE_unguided − MAE_arm) / sqrt(se_arm² + se_unguided²)`,
+at each arm's **best strength**, slice `t_min = 0.5`, q50, n = 512,
+non-finite cells excluded. `se(MAE) = sqrt(RMSE² − MAE²)/sqrt(n)`, exact.
+
+Five choices are baked in, and each changes the answer:
+
+| choice | why | what it hides |
+|---|---|---|
+| MAE, not `in_band` | in_band is a binomial, se ≈ 0.013 — cannot separate arms at n=512 | in_band *is* the acceptance criterion |
+| unweighted mean over properties | no principled weighting exists | treats easy `gap` and hard `alpha` alike |
+| best strength (min over grid) | each arm at its own optimum | winner's curse; favours finer grids |
+| σ against `unguided` | a fixed reference | rewards *moving*, not band accuracy |
+| **chemistry excluded** | it is a cost, not the objective | `btvg` loses 7–9 mol-stability points |
+
+**Under a bias rubric the ranking inverts**: `btvg` wins outright (alpha 1.12 δ
+vs `plug` 3.23 δ). Under a chemistry rubric `btvg` is among the worst. **No
+single ordering exists, and that is a result, not an inconvenience.**
+
+### `plug` and `btvg` are TIED — do not report an ordering
+
+| property | `plug` MAE | `btvg` MAE | σ |
+|---|---|---|---|
+| mu | 0.7846 | 0.8078 | −0.67 |
+| alpha | 4.4819 | **4.1872** | **+1.33** |
+| gap | 0.0277 | 0.0284 | −0.59 |
+
+Mean σ vs unguided: `plug` **8.149**, `btvg` **8.093** — a gap of **0.056**.
+No pairwise comparison reaches 1.4 σ. Sorting a table on this number
+manufactures a ranking out of noise. Report "statistically tied", with the
+per-property σ visible.
+
+### SHG is a NEGATIVE result — report it as one
+
+Every schedule is **≤ its best component** at best strength:
+`shg_plug_btvg` +8.0 vs `plug` +8.1 and `btvg` +8.1 · `shg_plug_spbc` +7.3 vs
+`plug` +8.1 · `shg_three` +6.1 · `shg_smg_spbc` +4.0 vs `smg` +4.6.
+Handing off between arms buys nothing over running the better arm throughout.
+
+### τ is INERT — BTVG is not band-targeted at our operating point
+
+Measured `τ²/V_F` = **0.0011 (mu), 0.0024 (alpha), 0.0038 (gap)**. The variance
+coefficient `b = −½·w/s²·(1 − τ²/V)` is therefore τ-independent to **0.2 %**.
+
+So BTVG is **DPS + monotone variance descent**, not band targeting. The real
+mechanism is the **sign clamp**: the likelihood's variance coefficient is
+`+½[(y−μ)²/S² − 1/S]`, *positive* when the target is far, so standard guidance
+**widens** the property distribution exactly when it should concentrate. BTVG's
+is always ≤ 0. That is the contribution, and it is what the ablation supports —
+the variance term cuts `plug`'s alpha overshoot from 3.23 δ to 1.12 δ.
+
+Either rename the method, or re-sweep τ at ~20× larger values where `τ² ~ V_F`
+and band targeting could actually engage.
+
+### The BTVG ablation ladder (all four measured)
+
+| arm | what it is | mu | alpha | gap | \|bias\| alpha |
+|---|---|---|---|---|---|
+| `unguided` | neither term | 7.27 | 13.93 | 5.03 | 0.78 |
+| `plug` | **mean term only** — bit-identical to BTVG's mean half (9e-8) | **4.67** | 9.31 | **3.64** | 3.23 |
+| `btvg_var` | **variance term only** | 6.03 | 13.68 | 4.38 | 1.79 |
+| `btvg` | both | 4.81 | **8.70** | 3.74 | **1.12** |
 
 ### What this means
 
