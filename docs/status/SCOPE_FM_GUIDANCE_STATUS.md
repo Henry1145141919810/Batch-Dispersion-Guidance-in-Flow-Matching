@@ -591,6 +591,44 @@ and band targeting could actually engage.
 | `btvg_var` | **variance term only** | 6.03 | 13.68 | 4.38 | 1.79 |
 | `btvg` | both | 4.81 | **8.70** | 3.74 | **1.12** |
 
+### PRE-REGISTRATION — the go/no-go for the full-scale run
+
+Rules are named **FR1–FR5** (full-run rules). **Not G1–G5** — those already
+name the experiment plan's gates in `GUIDANCE_EXPERIMENT_PLAN.md`.
+Checked mechanically by `proj1/scripts/check_fullrun_go.py`.
+
+**Written 22 Sep, before any `--stage compare` cell has run.** These rules are
+fixed now so they cannot be chosen after seeing the numbers.
+
+**What the n = 512 compare stage can and cannot decide.** At n = 512, band
+coverage has se ≈ 0.013; the BTVG-vs-`plug` gap (≈ 0.011) is 0.6 σ. The screen
+therefore **cannot show BTVG wins**. It decides only whether BTVG is worth the
+expensive run.
+
+**FR1 — go/no-go.** BTVG proceeds to the full run unless, on **2 or more of the 3
+properties**, it is beaten by the best competitor by **> 3 combined standard
+errors on MAE** at best strength. This is deliberately a low bar: it removes
+"clearly worse", nothing else. Failing FR1 means BTVG is reported as a negative
+result, not re-tuned until it passes.
+
+**FR2 — the full run includes EVERY competitor, not just survivors.** `unguided`,
+`plug`, `tmpd`, `lgd_mc`, `dflow`, `btvg`, `btvg_var`. Dropping a competitor
+after seeing the screen is selection bias.
+
+**FR3 — strength is chosen on the screen and FROZEN.** Each arm runs at its
+best-MAE strength from the n = 512 compare stage (seed 20260921). The full run
+uses **new seeds**, so the strength choice is not also the evaluation — the
+full-run numbers are an unbiased estimate at the chosen strength.
+
+**FR4 — scale.** n = **10,000** per run (the EDM protocol, and what the base-model
+benchmark already uses), **3 seeds**. Reported with seed-to-seed spread, as the
+base benchmark is.
+
+**FR5 — the claim.** Scored under the saved rubric: `in_band` gain subject to
+`mol_stability ≥ 0.9×` unguided, with `|bias|` and `spread` in the same row.
+BTVG "beats" a competitor only at **≥ 3 σ**. Anything less is reported as a tie,
+with the σ shown.
+
 ### What this means
 
 1. **BTVG is the contribution that survived.** Best MAE on alpha of any arm

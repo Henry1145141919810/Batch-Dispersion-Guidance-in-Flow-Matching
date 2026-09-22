@@ -141,7 +141,17 @@ V2_ARMS = ["spbc", "btvg", "btvg_var"]
 # ---- the finalised comparison set -----------------------------------------
 # See this file's header in results/bench/add_compare_stage.py for why each
 # member is in and why tfg_mc / osc / rch are out.
-COMPARE_SET = ["unguided", "plug", "tmpd", "lgd_mc", "dflow"]
+# OURS is IN this list on purpose. The stage-v2 cells cannot be pooled with a
+# compare table: btvg has 9 strengths at q50 and only ONE at q90, against the
+# 7-point grid here -- a best-of-9 advantage at one target and a badly
+# under-tuned arm at the other, biased in opposite directions. The only way to
+# read "how does btvg compare" off one table is to run it in that table.
+#
+# btvg_var is here too because it is btvg's variance-only rung, and `plug` is
+# already its mean-only rung (bit-identical, 9e-8). So this single stage
+# carries the full 2x2 ablation AND the external comparison, on one grid.
+COMPARE_SET = ["unguided", "plug", "tmpd", "lgd_mc", "dflow",
+               "btvg", "btvg_var"]
 
 # D-Flow is not a `mode`: it replaces the sampler rather than adding a field.
 # `w` scales its learning rate, the way `w` scales the field elsewhere, so the

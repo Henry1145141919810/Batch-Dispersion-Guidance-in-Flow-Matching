@@ -46,14 +46,14 @@ echo
 # writing .failed files nobody reads until the job is over -- which is exactly
 # what a parameter-shadowing bug in the rch branch would have done.
 srun python -u proj1/scripts/guidance_sweep.py \
-    --stage v2 --preflight \
+    --stage "${STAGE:-v2}" --preflight \
     --fm proj1/checkpoints/fm_last.pt \
     --props "${SWEEP_PROPS:-mu,alpha,gap}"
 echo "preflight passed"
 echo
 
 srun python -u proj1/scripts/guidance_sweep.py \
-    --stage v2 \
+    --stage "${STAGE:-v2}" \
     --fm proj1/checkpoints/fm_last.pt \
     --props "${SWEEP_PROPS:-mu,alpha,gap}" \
     --n 512 \
