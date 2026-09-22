@@ -162,7 +162,16 @@ def embedding_diversity(f_net_eval, coords, feats, mask, eps=1e-6):
     even if a few outliers keep the mean distance high.
     """
     with torch.no_grad():
-        h = f_net_eval.net.embed(coords, feats, mask)
+        # `f_net_eval.embed`, NOT `f_net_eval.net.embed`. The wrapper is what
+        # knows which feature scale its inner network wants; reaching through
+        # to `.net` skips that conversion. For our own `PhysicalProperty` the
+        # two are identical, so this was invisible for the whole main sweep --
+        # but the borrowed evaluator in `external/tfg_assets.py` takes raw
+        # one-hot while the sampler carries one-hot/8, and going through `.net`
+        # fed it features 8x too small: the embeddings came out at cos 0.64 to
+        # the correct ones, not a rescaling of them, moving diversity_logdet by
+        # 12%. Finite, plausible, and wrong.
+        h = f_net_eval.embed(coords, feats, mask)
     h = h - h.mean(0, keepdim=True)
     hn = h / h.norm(dim=1, keepdim=True).clamp(min=eps)
     d = torch.cdist(hn, hn)

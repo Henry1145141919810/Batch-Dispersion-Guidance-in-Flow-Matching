@@ -91,6 +91,15 @@ def load_rch(path, dev, target="residual"):
     head.r2_test = ck[target]["r2_test"]
     return head.to(dev).eval()
 
+class MissingState(RuntimeError):
+    """An arm's prerequisite file does not exist yet.
+
+    Distinct from every other error on purpose: this one means ONE arm cannot
+    run, not that the job is broken. Preflight skips it; a real run records a
+    .failed sidecar so the cell is retried when the file appears.
+    """
+
+
 DATA = os.path.join(ROOT, "data", "qm9.pt")
 CKPT = os.path.join(ROOT, "proj1", "checkpoints")
 OUT = os.path.join(ROOT, "results", "sweep")
@@ -525,6 +534,7 @@ def main():
     t0 = time.time()
     done = 0
     failed = []
+    skipped = []
 
     def run_cell(prop, arm, tgt, w, win, variant="-"):
         f_A, f_B = guides[prop], evals[prop]
@@ -536,8 +546,10 @@ def main():
             # report a number that looks like a result.
             rp = os.path.join(CKPT, "rch_%s.pt" % prop)
             if not os.path.exists(rp):
-                raise RuntimeError("rch needs %s -- fit it with "
-                                   "proj1/scripts/fit_rch.py first" % rp)
+                raise MissingState(
+                    "rch needs %s -- run proj1/cluster/fit_rch.slurm. The rest "
+                    "of this job is unaffected; these cells retry on the next "
+                    "link once the head exists." % rp)
             # NOT `tgt`: that parameter holds the q50/q90 target name, and
             # shadowing it here sent "residual" into TARGETS[prop][...].
             rch_target = (variant if variant in ("residual", "direct")
@@ -633,6 +645,13 @@ def main():
             # A failure must NOT be written under the completed-cell name, or
             # no later link ever retries it and the sweep reports success with
             # a hole in it. Record it beside the cell and move on.
+            if args.preflight and isinstance(e, MissingState):
+                # not a failure: one arm's prerequisite is absent, the job is
+                # fine. Skipping it here is what stops a two-minute fitting job
+                # from gating a fourteen-hour sweep.
+                skipped.append(arm)
+                print("  PREFLIGHT SKIP   %-22s %s" % (arm, e))
+                continue
             failed.append(name)
             if args.preflight:
                 print("  PREFLIGHT FAILED %-22s %s: %s"
@@ -655,11 +674,15 @@ def main():
                  time.time() - cs))
 
     if args.preflight:
-        print("\npreflight: %d arms ran, %d failed" % (done, len(failed)))
+        print("\npreflight: %d arms ran, %d failed, %d skipped"
+              % (done, len(failed), len(skipped)))
+        if skipped:
+            print("SKIPPED (prerequisite missing, job proceeds): %s"
+                  % ",".join(sorted(set(skipped))))
         if failed:
             print("PREFLIGHT FAILED -- fix these before submitting the sweep")
             return 1
-        print("PREFLIGHT OK -- every arm runs end to end")
+        print("PREFLIGHT OK -- every runnable arm works end to end")
         return 0
 
     print("\n%d cells this job, %.1f min total" % (done, (time.time() - t0) / 60.0))

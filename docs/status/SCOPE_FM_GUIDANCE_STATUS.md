@@ -43,10 +43,10 @@ the order they were built.
 | 3 | `benchmark_base.py` | EDM-protocol base numbers + published comparison | ✅ DONE |
 | 4 | `train_predictor.py` ×6 | `f_A_*`, `f_B_*` — guide and evaluator per property | ✅ DONE |
 | 5 | `predictor_table.py` | cross-architecture predictor comparison | ✅ DONE |
-| 6 | `guidance_sweep.py --stage main` | screening grid, 9 v1 arms | 🟡 **RUNNING** (195/390) |
-| 7 | `fit_rch.py` ×3 | Haimo v1 heads (only `mu` exists) | ⏳ PENDING |
-| 8 | `guidance_sweep.py --stage v2` | screening grid, the 3 new arms + 3 unqueued v1 arms | ⏳ PENDING (0/366) |
-| 9 | `select_arms.py` | go/drop verdict per arm | ⏳ PENDING (needs 6 and 8) |
+| 6 | `guidance_sweep.py --stage main` | screening grid, 9 v1 arms | ✅ DONE (348 cells) |
+| 7 | `fit_rch.py` ×3 | Haimo v1 heads | ✅ DONE (all three, 21 Sep 23:38) |
+| 8 | `guidance_sweep.py --stage v2` | screening grid, the 3 new arms + 3 unqueued v1 arms | ✅ DONE (342 cells, ×2 seeds) |
+| 9 | `select_arms.py` | go/drop verdict per arm | ✅ DONE — 11 survivors, 3 dropped |
 | 10 | `final_benchmark.slurm` | full-scale numbers, survivors only, 3 seeds | ❌ NOT DONE |
 | 11 | robustness check (SchNet / TFG oracle) | independent scoring of the winner | ❌ NOT DONE |
 
@@ -410,6 +410,62 @@ bigger than every arm difference combined, and it is a **scheduling** result.
 
 **"When you guide matters more than how" is currently our strongest defensible
 claim, and the arm built to exploit it (`shg_*`) has never run.**
+
+---
+
+## 10c. Stage-v2 results (22 Sep) — the three new arms, measured
+
+690 cells at seed 20260921 plus a full replication at seed 20260922 (338 cells).
+Screening config: n=512, 100 Euler steps, **t_min_guide = 0.5**, q50 target.
+σ is against `unguided` on MAE.
+
+| arm | class | mu | alpha | gap | verdict |
+|---|---|---|---|---|---|
+| `btvg` | **OURS (new)** | **+8.9σ** | **+6.7σ** | **+7.0σ** | PROCEED — tied for best on all three |
+| `shg_plug_btvg` | **OURS (new)** | +9.2σ | +4.6σ | +7.3σ | PROCEED — highest band coverage on mu (0.131) |
+| `shg_plug_spbc` | **OURS (new)** | +7.7σ | +4.5σ | +6.6σ | PROCEED |
+| `shg_three` | **OURS (new)** | +6.3σ | +4.5σ | +2.8σ | PROCEED |
+| `shg_smg_spbc` | **OURS (new)** | +2.6σ | +6.4σ | +0.8σ | PROCEED |
+| `tmpd` | PRIOR | +8.1σ | **+8.1σ** | +5.2σ | reference — strongest single arm |
+| `plug` | PRIOR | +9.2σ | +4.5σ | +7.8σ | reference |
+| `smg_mean` | ABLATION | +2.6σ | +7.3σ | +2.4σ | PROCEED |
+| `smg` | **OURS** | +4.2σ | +6.8σ | +0.9σ | reference |
+| `btvg_var` | ABLATION | +0.8σ | +0.4σ | +3.4σ | PROCEED (seed 1) / DROP (seed 2) — **marginal** |
+| `spbc` | **OURS (new)** | +0.2σ | +1.3σ | +0.1σ | **DROP — does nothing** |
+| `band` | **OURS** | +0.5σ | +0.0σ | +0.6σ | **DROP — bit-identical to unguided on alpha** |
+| `rch` | PRIOR (Haimo v1) | +1.2σ | **−1.7σ** | +1.2σ | **DROP — worse than unguided on alpha** |
+
+### Replication across seeds — the project's first error bars
+
+338 cells matched between seeds. `|MAE₁ − MAE₂|` divided by the claimed combined
+standard error: **median 0.43, mean 0.54, 1 % above 2σ, none above 3σ.**
+
+For two independent draws the expected median is 0.67, so the observed spread is
+**smaller** than the reported se — the error bars are conservative by ~1.5×,
+because both seeds reuse the same 512 validation masks and differ only in noise.
+**Reported σ understate significance; they do not overstate it.**
+
+Verdict stability: 3 of 3 drops replicate exactly (`band`, `rch`, `spbc`).
+`btvg_var` drops in seed 2 only — its single win (gap, +3.4σ in seed 1) falls
+below threshold in seed 2. Treat it as **marginal, not established**.
+
+### What this means
+
+1. **BTVG is the contribution that survived.** Best MAE on alpha of any arm
+   (8.70 δ vs `plug` 9.31, `tmpd` 9.12), and statistically tied for first on
+   all three properties. It does **not** clearly beat prior art — the alpha
+   edge is ~0.8σ.
+2. **SHG works.** `shg_plug_btvg` has the highest band coverage on mu of any
+   arm measured.
+3. **SPBC is a clean negative result.** Built to correct a bias measured at up
+   to 13.99 δ; moves nothing (0.2/1.3/0.1σ). Its best alpha cell is
+   bit-identical to no guidance.
+4. **Haimo v1 fails its own deflation test**, and worse than predicted — it is
+   *harmful* on alpha, not merely inert.
+5. **The window dominates.** Same arms, same data: `plug` is −8.2σ on alpha at
+   `t_min=0.05` and +4.5σ at 0.5, and the SMG family overtakes it. **"When you
+   guide matters more than how" is the best-supported claim in the project** —
+   it replicates across both windows, all three properties and both seeds.
 
 ---
 

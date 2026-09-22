@@ -38,6 +38,7 @@ import torch
 from diffusion import alpha_sigma, beta
 from guidance import (Cost, DISPLACEMENT_MODES, fm_posterior,  # noqa: E501
                       guidance_field, vp_posterior)
+from guidance_update import GuidanceUpdater
 from models.egnn import zero_com
 
 
@@ -56,7 +57,8 @@ class _Base:
                  w=1.0, n_probe=1, probe_seed=0, clip=1.0,
                  n_mc=4, sigma_mc=0.1, want_kappa3=False, rch=None,
                  band_tau=None, band_eta=1.0, band_radius=None,
-                 tau=None, spbc_eta=1.0, spbc_radius=None, schedule=None):
+                 tau=None, spbc_eta=1.0, spbc_radius=None, schedule=None,
+                 update_rule="euler", update_kw=None):
         self.net, self.mask = net, mask
         self.f_net, self.y, self.s, self.mode, self.w = f_net, y, s, mode, w
         self.n_probe, self.clip = n_probe, clip
@@ -70,6 +72,13 @@ class _Base:
         # wins; outside every interval, guidance is off. `mode`/`w` on the
         # sampler are the fallback when no schedule is given.
         self.schedule = schedule
+        # THE UPDATE RULE. The only thing this changes is how the guidance
+        # direction returned by guidance_field is turned into the correction
+        # added to the field; "euler" is the original first-order behaviour and
+        # returns the direction untouched. `_primary_stage` is False during a
+        # Heun second stage so one ODE step advances the optimiser state once.
+        self.updater = GuidanceUpdater(rule=update_rule, **(update_kw or {}))
+        self._primary_stage = True
         self.kappa3_log = []
         self.schedule_log = {}
         self.diag_acc = {}
@@ -115,6 +124,7 @@ class _Base:
         self.schedule_log = {}
         self.diag_acc = {}
         self.kappa3_log = []      # was omitted; would double-count on reuse
+        self.updater.reset()      # moment buffers are per-trajectory
 
     # Diagnostics worth carrying out of the run. Deliberately a short list:
     # these are the quantities that decide whether BTVG's variance model held
@@ -142,7 +152,7 @@ class _Base:
     def diag_summary(self):
         return {k: tot / n for k, (tot, n) in self.diag_acc.items() if n}
 
-    def _guide(self, coords, feats, t, post_fn, mode=None):
+    def _guide(self, coords, feats, t, post_fn, mode=None, t_scalar=None):
         G_c, G_f, diag = guidance_field(
             self.f_net, post_fn, coords, feats, self.mask, self.y, self.s,
             mode or self.mode, self.n_probe, self.probe_gen, self.cost,
@@ -154,6 +164,12 @@ class _Base:
         self._accumulate_diag(diag)
         if self.want_kappa3 and "kappa3_skew" in diag:
             self.kappa3_log.append(diag["kappa3_skew"].detach().cpu())
+        # THE ONE PLACE THE GUIDANCE DIRECTION BECOMES AN UPDATE. Everything
+        # downstream -- the (1-t)/t conversion, the strength w, the
+        # velocity-relative clip -- is unchanged and sees a direction of the
+        # same per-sample norm, so only the DIRECTION is under test.
+        G_c, G_f = self.updater.apply(G_c, G_f, self.mask, t_scalar=t_scalar,
+                                      update_state=self._primary_stage)
         return zero_com(G_c, self.mask), G_f * self.mask.unsqueeze(-1)
 
 
@@ -181,7 +197,8 @@ class FlowSampler(_Base):
         self.n_guided += 1
         self.note_guided(mode)
         post_fn = lambda c, f: fm_posterior(self.net, c, f, self.mask, t)  # noqa: E731
-        G_c, G_f = self._guide(coords, feats, t, post_fn, mode)
+        G_c, G_f = self._guide(coords, feats, t, post_fn, mode,
+                               t_scalar=t_scalar)
         if mode in DISPLACEMENT_MODES:
             # Already a state displacement. Converting it again through the
             # score-to-velocity factor (1-t)/t would apply that factor twice
@@ -203,9 +220,43 @@ class FlowSampler(_Base):
 
 
 class VPSampler(_Base):
-    def __init__(self, net, mask, tau_min=1e-3, **kw):
+    """Probability-flow ODE for a VP diffusion model.
+
+    `noise_schedule` selects which VP schedule the checkpoint was trained
+    under. The default is `diffusion.py`'s linear-beta schedule, which is what
+    OUR diffusion generator uses. A borrowed checkpoint trained under a
+    different schedule must pass its own (see
+    `external/edm_schedule.EDMSchedule`): sampling EDM under the linear-beta
+    schedule does not give a weaker EDM, it gives a different model, and the
+    failure is silent -- samples still come out, they are just not draws from
+    the trained distribution.
+
+    `tau_max_guide` is the VP counterpart of `FlowSampler.t_min_guide`: guidance
+    is skipped while `tau > tau_max_guide`, i.e. in the noisy part of the
+    trajectory. The two are the SAME window under the time convention of each
+    family -- flow time runs 0 (noise) -> 1 (data) and VP time runs 1 (noise)
+    -> 0 (data), so `t_min_guide = w` corresponds to `tau_max_guide = 1 - w`.
+
+    It defaults to `None` (guide everywhere), which is what this class did
+    before the parameter existed, so nothing already measured changes. But
+    `None` is not a neutral choice and a caller should not take it as one: the
+    guidance window is the largest single effect measured anywhere in this
+    project -- alpha MAE 10.02 -> 5.32 as `t_min_guide` goes 0.05 -> 0.5,
+    bigger than every arm difference combined -- and guiding at tau near 1 asks
+    the guide to read a property off a posterior mean formed by dividing by
+    alpha(1) ~ 0.003, which amplifies any epsilon error by ~300x. A sweep that
+    leaves this at `None` is measuring arms at the bad end of that curve and
+    must say so.
+    """
+
+    def __init__(self, net, mask, tau_min=1e-3, noise_schedule=None,
+                 tau_max_guide=None, **kw):
         super().__init__(net, mask, **kw)
         self.tau_min = tau_min
+        self.tau_max_guide = tau_max_guide
+        self.alpha_sigma = (noise_schedule.alpha_sigma if noise_schedule
+                            else alpha_sigma)
+        self.beta = noise_schedule.beta if noise_schedule else beta
 
     def time_grid(self, n_steps, span=None):
         a, b = (1.0, self.tau_min) if span is None else span
@@ -215,8 +266,8 @@ class VPSampler(_Base):
         self.n_field += 1
         B = coords.shape[0]
         tau = torch.full((B,), float(tau_scalar), device=coords.device)
-        a, s = alpha_sigma(tau)
-        b = beta(tau).view(-1, 1, 1)
+        a, s = self.alpha_sigma(tau)
+        b = self.beta(tau).view(-1, 1, 1)
         sb = s.view(-1, 1, 1)
         with torch.no_grad():
             e_c, e_f = self.net(coords, feats, self.mask, tau)
@@ -226,11 +277,15 @@ class VPSampler(_Base):
         base_c = -0.5 * b * coords - 0.5 * b * score_c
         base_f = -0.5 * b * feats - 0.5 * b * score_f
         mode, w = self.active(tau_scalar)
+        if (self.tau_max_guide is not None
+                and tau_scalar > self.tau_max_guide):
+            mode = None
         if self.f_net is not None and mode is not None:
             self.n_guided += 1
             self.note_guided(mode)
             post_fn = lambda c, f: vp_posterior(self.net, c, f, self.mask, tau, a, s)  # noqa: E731
-            G_c, G_f = self._guide(coords, feats, tau, post_fn, mode)
+            G_c, G_f = self._guide(coords, feats, tau, post_fn, mode,
+                                   t_scalar=tau_scalar)
             # Same units rule as the flow sampler: a displacement arm must not
             # be pushed through the score-to-drift conversion. Without this,
             # every SHG cell on a diffusion checkpoint would hand a schedule
@@ -252,7 +307,8 @@ class VPSampler(_Base):
     def terminal(self, coords, feats, tau_scalar):
         B = coords.shape[0]
         tau = torch.full((B,), float(tau_scalar), device=coords.device)
-        p = vp_posterior(self.net, coords, feats, self.mask, tau, *alpha_sigma(tau))
+        p = vp_posterior(self.net, coords, feats, self.mask, tau,
+                         *self.alpha_sigma(tau))
         self.cost.gen_fwd += 1
         return zero_com(p.mean_coords, self.mask), p.mean_feats * self.mask.unsqueeze(-1)
 
@@ -277,7 +333,12 @@ def integrate(sampler, coords, feats, n_steps, solver="euler", span=None,
         elif solver == "heun":
             xt_c = coords + h * k1_c
             xt_f = feats + h * k1_f
+            # The second stage reads the moment buffers but must not write to
+            # them, or one ODE step would take two optimiser steps and Heun
+            # would no longer be a controlled comparison against Euler.
+            sampler._primary_stage = False
             k2_c, k2_f = sampler.field(xt_c, xt_f, t1)
+            sampler._primary_stage = True
             coords = coords + 0.5 * h * (k1_c + k2_c)
             feats = feats + 0.5 * h * (k1_f + k2_f)
         else:

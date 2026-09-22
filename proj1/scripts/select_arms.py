@@ -12,7 +12,7 @@ KEEP and an arm is dropped only when the evidence against it is unambiguous.
 An arm is DROPPED only if, on EVERY property, both of:
 
   (a) it is separated from the best arm by more than `--sigma` combined
-      standard errors on band coverage, AND
+      standard errors ON MAE, AND
   (b) it is no better than doing nothing on EITHER metric -- neither its band
       coverage nor its MAE beats the unguided baseline by `--sigma` combined
       standard errors
@@ -29,6 +29,16 @@ UNCERTAINTY IS COMPUTED, NOT ASSUMED.
   MAE             |e| has mean MAE and second moment RMSE^2 by definition, so
                   var(|e|) = RMSE^2 - MAE^2 exactly and se = sqrt(var/n). No
                   distributional assumption is involved.
+
+WHY CLAUSE (a) USES MAE AND NOT COVERAGE -- a post-hoc change, recorded.
+The first real stage-v2 screen dropped 0 of 14 arms, because clause (a) was
+measured on band coverage: a binomial with se ~ 0.012 at n=512, which cannot
+separate anything. The same comparisons run at 6-9 sigma on MAE. Coverage is
+the acceptance criterion and stays in the report; it is a poor test statistic
+because it discards every sample's magnitude. This rule was changed AFTER
+seeing that screen, which is why it is written down here. The three arms it
+drops (band, rch, spbc) fail clause (b) on BOTH metrics independently, so the
+change moved only clause (a), and by margins of 6-9 sigma against under 1.3.
 
 DIVERGENCE IS NOT ALLOWED TO WIN. Taking each arm's best cell silently rewards
 an arm that is excellent at one strength and catastrophic at another -- exactly
@@ -167,14 +177,19 @@ def decide(summary, unguided, sigma, chem_floor):
     # cells each arm had; it is only used as one half of a two-part test whose
     # other half is "beats unguided", which has no such bias. Restricted to the
     # same stratum so a q90 cell cannot set the bar for q50 arms.
-    ceiling = {}
+    ceiling = {}          # best band coverage -- reported, not tested on
+    floor = {}            # best (lowest) MAE and its se -- what clause (a) tests
     for p in props:
         for (pp, _a), v in summary.items():
             if pp != p or not v["best"]:
                 continue
+            b = v["best"]
             key = (p, v["stratum"])
-            ceiling[key] = max(ceiling.get(key, 0.0),
-                               v["best"]["in_band_fraction"])
+            ceiling[key] = max(ceiling.get(key, 0.0), b["in_band_fraction"])
+            cand = (b["prop_mae_eval"],
+                    se_mae(b["prop_mae_eval"], b["prop_rmse_eval"], b["n"]))
+            if key not in floor or cand[0] < floor[key][0]:
+                floor[key] = cand
 
     verdicts = {}
     for a in arms:
@@ -205,10 +220,12 @@ def decide(summary, unguided, sigma, chem_floor):
             n = b["n"]
             ib = b["in_band_fraction"]
             s_ib = se_prop(ib, n)
-            top = ceiling.get((p, v["stratum"]), 0.0)
-            s_top = se_prop(top, n)
-            comb = math.sqrt(s_ib ** 2 + s_top ** 2)
-            if ib + sigma * comb >= top:
+            # clause (a), on MAE: is this arm clearly worse than the best?
+            bm, bse = floor.get((p, v["stratum"]), (float("-inf"), 0.0))
+            m_here = b["prop_mae_eval"]
+            s_here = se_mae(m_here, b["prop_rmse_eval"], n)
+            comb = math.sqrt(s_here ** 2 + bse ** 2)
+            if m_here - sigma * comb <= bm:
                 beaten_everywhere = False
 
             ref = v.get("ref")
@@ -254,8 +271,8 @@ def decide(summary, unguided, sigma, chem_floor):
             # buying anything with it
             verdicts[a] = ("DROP (chemistry collapse, wins nothing)", notes)
         elif beaten_everywhere and useless_everywhere:
-            verdicts[a] = ("DROP (beaten everywhere and no better than "
-                           "unguided on either metric)", notes)
+            verdicts[a] = ("DROP (beaten on MAE everywhere and no better "
+                           "than unguided on either metric)", notes)
         elif tradeoff:
             verdicts[a] = ("PROCEED (chemistry trade-off -- re-tune strength "
                            "at full scale)", notes)
