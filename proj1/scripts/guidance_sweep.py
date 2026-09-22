@@ -45,6 +45,8 @@ ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
 sys.path.insert(0, os.path.join(ROOT, "proj1", "src"))
 sys.path.insert(0, os.path.join(ROOT, "proj1", "scripts"))
 from evaluation import choose_delta, evaluate_samples  # noqa: E402
+from checkpoint_paths import (default_generator, describe,  # noqa: E402
+                              find_predictor, require_predictor)
 from m1_signed_bias import PhysicalProperty, load_fm  # noqa: E402
 from guidance import Cost, ResidualCalibrationHead  # noqa: E402
 from sampling import FlowSampler, VPSampler, initial_noise, integrate  # noqa: E402
@@ -101,7 +103,7 @@ class MissingState(RuntimeError):
 
 
 DATA = os.path.join(ROOT, "data", "qm9.pt")
-CKPT = os.path.join(ROOT, "proj1", "checkpoints")
+CKPT = os.path.join(ROOT, "proj1", "checkpoints")   # legacy; see checkpoint_paths
 OUT = os.path.join(ROOT, "results", "sweep")
 
 # measured on the target distribution of train_a; see GUIDANCE_EXPERIMENT_PLAN.md
@@ -476,7 +478,11 @@ def plan_compare_cells(props):
 def main():
     global OUT
     ap = argparse.ArgumentParser()
-    ap.add_argument("--fm", default=os.path.join(ROOT, "betty_pull", "fm_last.pt"))
+    ap.add_argument("--fm", default=None,
+                    help="generator checkpoint. Default: the first of "
+                         "betty_pull/fm_last.pt, proj1/checkpoints/fm_last.pt, "
+                         "weights/fm_ema.pt that exists -- so a fresh clone "
+                         "uses the published weights without being told to.")
     ap.add_argument("--props", default="mu,alpha,gap")
     ap.add_argument("--arms", default="")
     ap.add_argument("--stage", default="main",
@@ -517,6 +523,8 @@ def main():
                          "Catches missing checkpoints and wiring errors in a "
                          "minute instead of after a four-hour queue window.")
     args = ap.parse_args()
+    if args.fm is None:
+        args.fm = default_generator()
 
     OUT = args.out_dir
     dev = ("cuda" if torch.cuda.is_available() else "cpu") if args.device == "auto" else args.device
@@ -578,8 +586,9 @@ def main():
     types = d["types"]
     net, ck = load_fm(args.fm, len(types), dev)
     family = ck.get("family", "flow")
-    print("generator: %s  family=%s  epoch=%s" % (os.path.basename(args.fm),
-                                                  family, ck.get("epoch")))
+    print("generator: %s  [%s]  family=%s  epoch=%s"
+          % (os.path.basename(args.fm), describe(args.fm), family,
+             ck.get("epoch")))
 
     prov = {"fm_path": os.path.abspath(args.fm),
             "fm_md5": file_md5(args.fm),
@@ -593,11 +602,10 @@ def main():
 
     guides, evals, deltas = {}, {}, {}
     for prop in props:
-        ga = os.path.join(CKPT, "f_A_%s.pt" % prop)
-        gb = os.path.join(CKPT, "f_B_%s.pt" % prop)
-        for p_ in (ga, gb):
-            if not os.path.exists(p_):
-                raise SystemExit("missing predictor %s -- pull it from the cluster" % p_)
+        ga = require_predictor("f_A_%s.pt" % prop,
+                               "f_A steers guidance for property %r." % prop)
+        gb = require_predictor("f_B_%s.pt" % prop,
+                               "f_B is the held-out evaluator for %r." % prop)
         guides[prop] = PhysicalProperty(ga, len(types), dev)
         evals[prop] = PhysicalProperty(gb, len(types), dev)
         mae_b = float(torch.load(gb, map_location="cpu", weights_only=False)["val_mae"])
@@ -624,7 +632,8 @@ def main():
             # Haimo v1 needs a head fitted for THIS property. Running it
             # without one would silently fall back to an untrained head and
             # report a number that looks like a result.
-            rp = os.path.join(CKPT, "rch_%s.pt" % prop)
+            rp = find_predictor("rch_%s.pt" % prop) or os.path.join(
+                CKPT, "rch_%s.pt" % prop)
             if not os.path.exists(rp):
                 raise MissingState(
                     "rch needs %s -- run proj1/cluster/fit_rch.slurm. The rest "

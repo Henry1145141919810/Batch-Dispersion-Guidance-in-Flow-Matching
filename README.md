@@ -49,10 +49,15 @@ that code or those weights are ours.
 
 ## Reproducing
 
+**New to the project? Read [ONBOARDING.md](ONBOARDING.md) instead** — it is the
+same ground with every step's expected output, so you can tell success from a
+silent failure.
+
 ```bash
 python -m venv .venv && ./.venv/Scripts/activate      # or source .venv/bin/activate
 pip install torch rdkit
 
+python proj1/scripts/download_qm9.py                   # raw QM9, SHA-256 verified
 python proj1/scripts/prepare_qm9.py                    # rebuilds data/qm9.pt (seeded)
 python proj1/tests/test_v2_arms.py                     # expect ALL PASS
 python proj1/tests/test_arms_exact.py                  # expect ALL PASS

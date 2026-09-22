@@ -18,7 +18,8 @@ needs a predictor that is roughly right, and chasing the official split files is
 not on the critical path. Phase 1 should switch to them before any number is
 quoted against published work.
 
-Run: python proj1/scripts/prepare_qm9.py
+Run: python proj1/scripts/download_qm9.py   (once, fetches + verifies the raw data)
+     python proj1/scripts/prepare_qm9.py
 """
 from __future__ import annotations
 
@@ -64,7 +65,11 @@ def load_properties():
 def main():
     for p in (SDF, CSV):
         if not os.path.exists(p):
-            print("missing %s - run the download first" % p)
+            print("missing %s\n\nRun:  python proj1/scripts/download_qm9.py\n\n"
+                  "That fetches the DeepChem QM9 packaging this project was "
+                  "built on and\nverifies it by SHA-256 -- a different QM9 "
+                  "distribution parses fine and\nsilently changes every "
+                  "number in docs/results/." % p)
             return 1
 
     t0 = time.time()

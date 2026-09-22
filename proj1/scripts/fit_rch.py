@@ -35,6 +35,8 @@ import torch
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
 sys.path.insert(0, os.path.join(ROOT, "proj1", "src"))
+
+from checkpoint_paths import default_generator  # noqa: E402
 sys.path.insert(0, os.path.join(ROOT, "proj1", "scripts"))
 from guidance import (ResidualCalibrationHead, fm_posterior,  # noqa: E402
                       hutchinson_tr_H_Sigma)
@@ -47,7 +49,9 @@ CKPT = os.path.join(ROOT, "proj1", "checkpoints")
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--fm", default=os.path.join(ROOT, "betty_pull", "fm_last.pt"))
+    ap.add_argument("--fm", default=None,
+                    help="generator checkpoint; default resolves betty_pull -> "
+                         "proj1/checkpoints -> weights, so a fresh clone works")
     ap.add_argument("--guide", required=True)
     ap.add_argument("--prop", required=True, choices=["mu", "alpha", "gap"])
     ap.add_argument("--n", type=int, default=2000, help="molecules to cache")
@@ -59,6 +63,8 @@ def main():
     ap.add_argument("--seed", type=int, default=20260920)
     ap.add_argument("--device", default="auto", choices=["auto", "cpu", "cuda"])
     args = ap.parse_args()
+    if args.fm is None:
+        args.fm = default_generator()
 
     dev = ("cuda" if torch.cuda.is_available() else "cpu") if args.device == "auto" else args.device
     d = torch.load(DATA, weights_only=False)
