@@ -650,6 +650,20 @@ negative over a literature that cannot be checked from this repo. Before the
 write-up, cite the EDM/EEGSDE sampler code or paper text for the conditioning
 protocol, or state the protocol as our choice rather than as the field's.
 
+**How `dist` is constructed, exactly.** Take the first `n` molecules of the
+**test** split. Molecule *i* of the batch is generated at **that molecule's atom
+count**, and its target is **that same molecule's** real property value. Sizes
+and targets come from the SAME molecule, which matters: corr(size, alpha) is
+**+0.755** in the data, and an earlier version that took sizes from `val` and
+targets from `test` destroyed it (**-0.033**) -- a 10-atom molecule asked to hit
+a 25-atom molecule's polarisability. Verified end to end: the sampler sees
++0.777, identical to the test data.
+
+The targets are neither above nor below the mean -- they ARE the property
+distribution (mu: target mean 2.68 vs data 2.70, sd 1.61 vs 1.54). Roughly half
+sit above the generator's output mean and half below, which is why the *mean*
+offset is near zero while the *per-molecule* steering demand averages 0.80 sd.
+
 **What is independently true, and is the real argument for `dist`:** it involves
 **no choice by us**, so it cannot be cherry-picked, and it is measurably harder
 than q50 (0.80-0.85 sd of steering against 0.05-0.27).

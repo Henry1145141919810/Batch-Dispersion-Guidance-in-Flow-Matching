@@ -665,6 +665,10 @@ def main():
 
     va = d["split"]["val"][: args.n]
     mask_v = d["mask"][va].to(dev)
+    # the `dist` protocol's own index set: sizes AND targets from the same
+    # held-out test molecules, so the size-property coupling survives
+    te_idx = d["split"]["test"][: args.n]
+    mask_t = d["mask"][te_idx].to(dev)
     coords_v, feats_v = d["coords"][va].to(dev), d["feats"][va].to(dev)
     clip = None if args.clip < 0 else args.clip
     t0 = time.time()
@@ -694,6 +698,14 @@ def main():
             extra["rch"] = load_rch(rp, dev, rch_target)
         if arm == "band":
             extra["band_tau"] = delta
+        # `dist` draws BOTH the molecule sizes and the targets from the SAME
+        # held-out molecules. Taking sizes from one split and targets from
+        # another destroys the size-property coupling that is physics: in the
+        # real data corr(size, alpha) = +0.755, but pairing val sizes with test
+        # targets gives -0.033, i.e. a 10-atom molecule asked to hit a 25-atom
+        # molecule's polarisability. Every arm would fail that for reasons
+        # having nothing to do with guidance.
+        mask_c = mask_t if tgt == DIST_TARGET else mask_v
         if tgt == DIST_TARGET:
             # The field's protocol: each molecule gets its OWN target, the real
             # property of a held-out molecule.
@@ -704,11 +716,7 @@ def main():
             # from it as well would make the headline number rest on a split
             # every component has already seen. `test` is untouched: verified
             # zero index overlap with train_a, train_b and val.
-            te = d["split"]["test"][: args.n]
-            y_real = d["y"][te, d["props"].index(prop)].to(dev).float()
-            if y_real.shape[0] < args.n:      # pad by cycling, never silently short
-                reps = -(-args.n // y_real.shape[0])
-                y_real = y_real.repeat(reps)[: args.n]
+            y_real = d["y"][te_idx, d["props"].index(prop)].to(dev).float()
             target = float(y_real.mean())
         else:
             target = TARGETS[prop][tgt]
@@ -729,7 +737,7 @@ def main():
         clipped = 0
         sched_log, diag_log, k3_acc = {}, {}, []
         for i in range(0, args.n, args.batch):
-            m = mask_v[i:i + args.batch]
+            m = mask_c[i:i + args.batch]
             c0, f0 = initial_noise(m, len(types), gen)
             if arm == "dflow":
                 # Trajectory optimisation, not a guidance field: there is no
@@ -775,7 +783,7 @@ def main():
                 tot, cnt = diag_log.get(dk, (0.0, 0))
                 diag_log[dk] = (tot + dv, cnt + 1)
         C, F = torch.cat(cs), torch.cat(fs)
-        r = evaluate_samples(C, F, mask_v, types, f_A, f_B, y_t, delta)
+        r = evaluate_samples(C, F, mask_c, types, f_A, f_B, y_t, delta)
         r.pop("delta", None)
         r.update({"prop": prop, "arm": arm, "target_name": tgt, "target": target,
                   "variant": variant, "stage": args.stage, "prov": prov,
