@@ -666,6 +666,14 @@ def btvg2_weighted_grad(f_net, post_fn, coords, feats, mask, m_c, m_f, k,
                         is where flatness-seeking is least trustworthy.
         field   M - gamma b P(dV/dm)
 
+    GEOMETRY CAVEAT (23 Sep audit, docs/methods/BTVG_FAILURE_AUDIT_AND_REDESIGN.md
+    section 3): `orth` and "never widens" hold in m-SPACE only. The step is
+    pulled back by J^T and applied to x_t, where the mean changes at rate
+    g^T J J^T S_m != 0 in general (exact counterexample with symmetric J;
+    real-checkpoint |cos| 0.45-0.51 at t=0.8). Repair = project against
+    Q J^T g and Q J^T h in x-space. Not implemented here; the chemistry
+    guard (chem_safe_project) does project in x-space.
+
     WHAT "DESCENDING V" MEANS HERE, stated plainly. The draws are isotropic
     with a detached radius, so dV/dm measures how FLAT f is around m under
     that probe -- not the generator's commitment (J), and not Sigma's shape.
@@ -786,12 +794,15 @@ def btvg2_weighted_grad(f_net, post_fn, coords, feats, mask, m_c, m_f, k,
 # would increase that violation to first order.
 #
 # ONE-SIDED, BY DESIGN. The component that would REDUCE the violation is left
-# alone and nothing is ever added, so CSG can only stop the push from
-# damaging chemistry; it cannot push a molecule toward stability. Molecule
-# stability above unguided's would therefore be a red flag, not a result.
-# Because the relaxation mirrors the evaluator's own table, the pilot also
-# scores chemistry with an INDEPENDENT rule (RDKit rdDetermineBonds, covalent
-# radii), see proj1/scripts/independent_chem.py.
+# alone and no chemistry push is ever ADDED. But every guarded step is then
+# violation-non-increasing to first order (and strictly decreasing wherever
+# the property push happened to help), so the guided trajectory is biased
+# toward lower violation and CAN end up MORE stable than unguided (pilot, mu
+# w=8: 0.417 vs unguided 0.390). An earlier comment here said that could not
+# happen; it was wrong. Because the relaxation mirrors the evaluator's own
+# table, a stability gain could be the table being gamed, so every CSG result
+# must be scored with an INDEPENDENT rule too (RDKit rdDetermineBonds,
+# covalent radii): proj1/scripts/independent_chem.py.
 #
 # FIXED BEFORE ANY RUN: kappa = 0.03 A (the sigmoid width, the size of the
 # table's own margins, 3-10 pm) and a type temperature of 0.1 on the one-hot

@@ -392,7 +392,7 @@ ls results/full/n5000/frozen_q90.json
 python proj1/scripts/guidance_sweep.py --stage compare --arms tfg --dry-run
 ```
 
-Expect paths starting `proj1/`, then **`62 gates, 0 failed`**, then
+Expect paths starting `proj1/`, then **`68 gates, 0 failed`**, then
 **`ALL PASS`**, then md5 **`a190ac8394902027d4a951f8d30e8c5c`**, then the
 frozen file listed (not "No such file"), then
 **`cells total 42 | already done 0 | to run 42`**. Anything else: stop.

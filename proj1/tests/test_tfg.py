@@ -462,6 +462,45 @@ def main():
         not (float(d_plain["tfg_var_rescaled"][1]) == 1.0
              and float(d_scaled["tfg_var_rescaled"][1]) == 0.0))
 
+    # ---- T17 the decoded-type view in evaluate_samples
+    import evaluation as ev
+
+    class Stub(torch.nn.Module):
+        def forward(self, cc, ff, mm):
+            return (cc ** 2 * mm.unsqueeze(-1)).sum((1, 2)) + (ff * torch.arange(
+                1.0, ff.shape[-1] + 1)).sum((1, 2))
+
+        def embed(self, cc, ff, mm):
+            return torch.cat([cc, ff], -1).mul(mm.unsqueeze(-1)).sum(1)
+
+    types5 = ["H", "C", "N", "O", "F"]
+    Bq, Nq = 7, 6
+    mq = torch.ones(Bq, Nq)
+    mq[:, -2:] = 0.0
+    cq = torch.randn(Bq, Nq, 3, generator=torch.Generator().manual_seed(2)) * mq.unsqueeze(-1)
+    oh = torch.nn.functional.one_hot(torch.randint(0, 5, (Bq, Nq), generator=torch.Generator(
+        ).manual_seed(3)), 5).double() * mq.unsqueeze(-1)
+    yq = torch.linspace(0.0, 3.0, Bq)
+    r_exact = ev.evaluate_samples(cq, oh, mq, types5, Stub(), Stub(), yq, 0.7, per_mol=True)
+    R["T17_onehot_dec_equals_soft"] = (
+        abs(r_exact["prop_mae_eval_dec"] - r_exact["prop_mae_eval"])
+        + abs(r_exact["in_band_fraction_dec"] - r_exact["in_band_fraction"])
+        + float((r_exact["_per_mol"]["f_B_dec"] - r_exact["_per_mol"]["f_B"]).abs().max()))
+    r_q = ev.evaluate_samples(cq, oh / 4.0, mq, types5, Stub(), Stub(), yq, 0.7,
+                              hot_value=0.25)
+    r_q_soft = ev.evaluate_samples(cq, oh / 4.0, mq, types5, Stub(), Stub(), yq, 0.7)
+    R["T17_scaled_onehot_hot_value"] = abs(r_q["prop_mae_eval_dec"] - r_q["prop_mae_eval"])
+    R["T17_wrong_hot_value_would_differ"] = 0.0 if abs(
+        r_q_soft["prop_mae_eval_dec"] - r_q_soft["prop_mae_eval"]) > 1e-6 else 1.0
+    soft = oh + 0.3 * torch.randn(Bq, Nq, 5, generator=torch.Generator().manual_seed(4)) * mq.unsqueeze(-1)
+    r_s = ev.evaluate_samples(cq, soft, mq, types5, Stub(), Stub(), yq, 0.7, per_mol=True)
+    dec = torch.nn.functional.one_hot(soft.argmax(-1), 5).double() * mq.unsqueeze(-1)
+    want = (Stub()(cq, dec, mq) - yq).abs().mean()
+    R["T17_dec_is_argmax_onehot"] = abs(r_s["prop_mae_eval_dec"] - float(want))
+    R["T17_dec_differs_from_soft"] = 0.0 if abs(
+        r_s["prop_mae_eval_dec"] - r_s["prop_mae_eval"]) > 1e-6 else 1.0
+    R["T17_decode_masks_padding"] = float(ev.decode_types(soft, mq)[:, -2:].abs().max())
+
     # ---------------------------------------------------------------- report
     bad = {k: v for k, v in R.items() if not (v <= TOL)}
     width = max(len(k) for k in R)

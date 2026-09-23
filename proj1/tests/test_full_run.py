@@ -358,11 +358,12 @@ def main():
         Stub.calls = 0
         r2 = ev.evaluate_samples(coords, feats, mask, types, Stub(), Stub(), y, 0.7,
                                  per_mol=True)
-        sliced_calls = Stub.calls                 # f_A + f_B, 4 slices each
+        # f_A + f_B, on the soft AND the decoded features, 4 slices each
+        sliced_calls = Stub.calls
     finally:
         ev.EVAL_CHUNK = old
     keys = [k for k in r1 if k not in ("_per_mol", "smiles_sample")]
-    gate("chunked_path_actually_slices", sliced_calls == 8, "calls=%d" % sliced_calls)
+    gate("chunked_path_actually_slices", sliced_calls == 16, "calls=%d" % sliced_calls)
     gate("chunked_eval_equals_single_call",
          all(r1[k] == r2[k] or (r1[k] != r1[k] and r2[k] != r2[k]) for k in keys)
          and torch.equal(r1["_per_mol"]["f_B"], r2["_per_mol"]["f_B"]),

@@ -996,11 +996,31 @@ bite is logged as `tfg_corr_over_v` and `clipped_sample_steps`).
 **Port, not reproduction.** Our samplers are deterministic ODEs, where TFG
 used DDIM with eta = 1. The flow model gets TFG's VP update through the exact
 rescaling x_vp = x / sqrt(t^2 + (1-t)^2), verified to 4e-16 against TFG's
-formula (`proj1/tests/test_tfg.py`, 62 gates). The flow model's one-hot
+formula (`proj1/tests/test_tfg.py`, 68 gates). The flow model's one-hot
 features are unscaled where EDMsecond divides them by 4, so the clean-space
 step moves features about 16x less relative to coordinates than on EDM: that
 is each model's native space, as for every other ported arm. **Never quote
 a tfg number against TFG's published table.**
+
+**Decoded scoring, found in the pilot (23 Sep, before any compare-stage tfg
+cell).** Every arm's property metrics have always been computed on the
+CONTINUOUS atom-type features a trajectory ends on, not on the molecule that
+decodes (argmax one-hot) -- a harness gap flagged on 19 Sep and never
+closed. For the existing arms it barely matters (plug, mu, w=1, n=64: MAE
+0.90 -> 0.94 D decoded). For tfg it matters a lot, because its clean-space
+step writes directly on the feature channels: mu w=1 0.31 -> 0.44 D; alpha
+(n=32) w=1 1.94 -> 3.06, w=4 0.97 -> 2.62, in_band 0.47 -> 0.13. TFG's own
+pipeline scores DECODED molecules (EDM.py:170 takes the argmax one-hot before
+its oracle), so a soft-scored tfg number flatters TFG by its own paper's
+standard. Consequences, fixed now:
+`evaluate_samples` also reports every property metric on the decoded types
+(`*_dec`, additive; every existing metric unchanged), so every new cell --
+including every tfg cell -- carries both views. The freeze and FR5 keep the
+soft metric, the rule every arm was judged by. But **a tfg number is never
+quoted without its decoded twin**, and any claim that tfg beats an arm
+must survive on the decoded metric too. The existing arms' cells have no
+decoded view. Their soft/decoded gap is small where measured, but closing
+that properly needs a re-run (see the TFG handoff).
 
 **Protocol.** The main protocol for one arm, via `proj1/cluster/tfg_run.slurm`.
 Compare stage: 42 cells, identical settings to the other 216 (seed 20260921,
@@ -1036,9 +1056,20 @@ term unchanged and adds BTVG's forward-KL variance term, both read off the
 same K = 4 smoothed draws, so `btvg2 − lgd_mc` isolates the variance term.
 The variance step is:
 - gated by exp(−(y−μ̂)²/2V̂);
-- made orthogonal to ∇μ̂;
+- made orthogonal to ∇μ̂ **in m-space**;
 - capped at max(|y−μ̂|, √V̂)·|ḡ|/s²;
-- never allowed to widen V̂.
+- never allowed to widen V̂ **in m-space**.
+
+**Correction (23 Sep, from docs/methods/BTVG_FAILURE_AUDIT_AND_REDESIGN.md
+§3).** Those two protections are imposed BEFORE the J^T pullback, and the
+state actually updated is x_t. After the pullback, the mean moves at rate
+g^T J J^T S_m, which need not be 0, and the variance can rise. The audit gives
+an exact counterexample with a symmetric J. On the real checkpoint at t = 0.8
+the median |cos| to the mean direction is 0.45–0.51, where m-space gives
+~1e-7. Gates G3 and G6 checked m-space only, so they could not catch this.
+BTVG-2's pilot numbers stand as measurements of the arm as implemented. Its
+"mean-preserving, never widens" description is withdrawn. The x-space repair
+(project a = QJ^Tg and b = QJ^Th) has not been run.
 
 `btvg2_band` gates by the band instead (width δ). Its cost counters
 (generator and guide passes) are identical to lgd_mc's, and in the pilot its
