@@ -5,9 +5,12 @@ pre-registration, not a report — it is written before any transfer cell has ru
 and the decision rules below are fixed now so that they cannot be chosen after
 seeing the numbers.
 
-**Status as of 2026-09-22.** Harness built, adversarially reviewed, revised, and
-gated (**61/61**). Base-model checkpoint not yet downloaded. Zero cells run.
-What the review found and what changed is §8 — read it before trusting §3.
+**Status as of 2026-09-23.** Checkpoint downloaded (md5 `6abbd010…`), hard gate
+passed, harness re-cut to the main sweep's compare → freeze → full protocol,
+gated (**74/74**), rehearsed end to end at toy scale, independently audited.
+Zero real cells run. **Read §9 first**: it amends §4 before any cell existed
+and records a silent feature-scale defect that was found and fixed. §8 is the
+22-Sep review.
 
 ---
 
@@ -31,7 +34,7 @@ Two questions follow that nothing in our own sweep can answer:
    claim this project can make at all, and saying so is the finding.
 2. **Do our conclusions survive on a generator that does not have our known
    defect?** The leading suspect for our stability gap is unscaled one-hot atom
-   features. The borrowed generator scales them by 1/8, which is exactly the
+   features. The borrowed generator scales them by 1/4 (§9.1; this said 1/8 until 23 Sep), which is exactly the
    choice we did not make. This experiment therefore doubles as a partial test
    of that hypothesis's consequences for guidance.
 
@@ -147,7 +150,7 @@ it at 1.3%, which is what the gate is for.
 
 Deliberately short. The main sweep's job is to screen twenty arms; this one's
 job is to **re-test a verdict**, and each cell here costs ~3× a main-sweep cell
-(EDM is 192×9 with attention and a dense edge list).
+(EDM is 256×9 with attention and a dense edge list — §9.1).
 
 | arm | class | what it is |
 |---|---|---|
@@ -425,3 +428,130 @@ time grid added as the F7 mitigation, §8.3).
   experiment is blocked a second time; real epsilon magnitudes; sample quality;
   wall-clock. The generator gates used random weights, so **structure and wiring
   are verified, numerics are not.**
+
+---
+
+## 9. Amendment, 23 Sep — the main sweep's protocol, and a defect found first
+
+**Written before any transfer cell existed.** Everything in this section was
+decided with zero transfer cells on disk; the only numbers seen were the base-
+model gate (unguided, no guidance) and toy-scale pipeline tests.
+
+### 9.1 A silent defect, found before the first real cell
+
+**EDMsecond divides one-hot by 4, not 8.** Its `normalize_factors` are
+`[1, 4, 10]` — EDM's unconditional default — while TFG's guides were trained on
+`[1, 8, 1]`. The adapter assumed the sampler's space *was* the guide's
+(onehot / 8), so on every generated molecule **the guide read one-hot 2× too
+large and the oracle read 2 × one-hot**. Nothing raised; every number was finite.
+
+| unguided EDMsecond, 256 molecules, μ | oracle median | guide median | \|guide − oracle\| |
+|---|---|---|---|
+| before the fix (soft features) | 4.15 D | 6.06 D | **2.50 D** |
+| after the fix (soft features) | 2.50 D | 2.62 D | **0.18 D** |
+| argmax-decoded, either | 2.57 D | 2.69 D | 0.20 D |
+| *real test molecules* | *2.44 D* | *2.45 D* | *0.06 D* |
+
+QM9's median μ is 2.49 D. **Why no gate saw it:** every calibration gate fed
+each network in the space *that network* wants, so none joined the generator's
+normalisation to the guide's; and the base-model gate scores stability, which
+reads argmax and is blind to a uniform scale. **Fix:** `build_pair` takes the
+generator's scale as a required argument, read off the checkpoint, and gives
+each wrapper the multiplier from the sampler's space to its own (guide 4/8,
+oracle 4). **New gates** (`pair_*`, 8 of them, 74 total): the production pair on
+real molecules put through the generator's own `normalise`, a negative control
+that the old wiring fails (2.3 × MAD error against 0.07), and a real generation
+ending at one-hot / 4.
+
+The same review corrected two facts in §2/§3 and in BASE_MODEL_BENCHMARK §9.2:
+the network is **256 × 9** (not 192 × 9), and it scales one-hot by **1/4** (not
+1/8). §1's "scales them by 1/8" is wrong for this checkpoint.
+
+### 9.2 What changed, and why each change is not a choice made on results
+
+| item | §4 (22 Sep) | now | why |
+|---|---|---|---|
+| arms | 10 (tfg_mc, osc, smg, smg2, shg_plug_btvg, …) | **unguided, plug, tmpd, lgd_mc, btvg, btvg_var** | the main full run's set (`full_run.slurm`), so the two backends run one comparison; btvg_var carries the 2×2 ablation (plug is btvg's mean-only rung). `dflow` is out: dropped from the main full run on 23 Sep, and its rollout integrates a flow velocity, which EDM does not output |
+| strengths | 4 points | the main sweep's **7** (imported) | same grid as the main compare stage |
+| targets | q50/q90 from all of QM9 | the main sweep's **`TARGETS`** (imported) | identical numbers on both backends; the old ones differed by 0.1–0.3 % |
+| stages | one sweep | **compare (n=512) → freeze (FR3a on q90) → full (`dist`, n=5000, 3 seeds, per-molecule sidecars)** | the main sweep's protocol stage for stage |
+| calibration set | 3,000 from all of QM9 | 3,000 from **train_a + train_b** | ~10 % of the old set were test molecules, whose labels become `dist` targets |
+| time grid | uniform (implicit) | uniform (explicit, in the cell name) | the gate measured uniform **better** than gamma (0.964/0.673 vs 0.959/0.638), contrary to §8.3's prediction |
+| cell name | n, steps, solver, window, seed | + grid, **batch** | batch changes the initial noise, so cells at different batches are not paired |
+
+**`tfg` joins the transfer set (23 Sep, before any transfer cell ran).** It
+replaced dflow in the main compare set (SCOPE_FM_GUIDANCE_STATUS.md,
+"AMENDMENT FR2a"). It is the FULL TFG update, not `tfg_mc`, run with TFG's
+published QM9 configuration and TFG's own energy normaliser (`QM9_MAD`). On
+this backend it is therefore TFG's own method on TFG's own generator, guide
+and oracle, which makes it **the real R3 home-turf test**, replacing the
+`tfg_mc` stand-in. It is still a port: our PF-ODE Euler sampler, not TFG's
+DDIM with eta = 1, plus the shared window and clip. So its numbers are not
+comparable with TFG's published table. The compare stage is now 258 cells.
+
+**R3 via `tfg_mc` no longer runs by default**, because `tfg_mc` is not in
+the compare set. It is one `--arms` flag away (`--arms unguided,tfg_mc`) and
+would then be reported as a separate analysis under R5. **R1, R2 and R4 are
+unchanged.** FR1 is computed by `--stage freeze` and printed **for the record
+only**: this experiment's rules are R1–R5, which are reporting rules, and a
+negative transfer result is a result — so it never stops the full run here.
+
+### 9.3 Checks run before handing it over
+
+- **74/74 gates** with the checkpoint required; preflight: all 6 arms end to end.
+- **Hard gate passed** (BASE_MODEL_BENCHMARK §9.4).
+- **The `dist` ladder reproduces EDM's published reference rows** through
+  TFG's oracle and our data — U-bound 1.60 D / 8.96 / 1486 meV (EDM 1.616 /
+  9.01 / 1470), #Atoms 1.05 / 3.93 / 868 (EDM 1.053 / 3.86 / 866). L-bound
+  0.076 D / 0.085 / 49 meV (EDM 0.043 / 0.10 / 64): TFG's μ oracle is ~1.8×
+  worse on our test molecules than EDM's reported φ_c, and δ inherits that.
+- **A toy end-to-end run** (μ, n=16, 10 steps): compare → freeze → full × 3
+  seeds + secondary → `full_run_table.py` → `dist_report.py --backend tfg`, all
+  reading transfer cells unchanged. It found and forced fixes to: freeze
+  crashing when its output directory did not exist; `dist_report` silently
+  reading *nothing* (not refusing) under the wrong `--backend`; a δ guard too
+  strict for the calibration's ~2e-7 GPU non-determinism; and, in
+  `transfer_run.slurm`, an array named `GROUPS` — a reserved Bash variable,
+  so every task's `--arms` came out as the user's group id. Guards verified to
+  refuse: a partial compare grid, a reduced arm set at freeze, the main
+  sweep's frozen file, and the wrong backend in `dist_report`.
+- **An independent adversarial audit** of the revised harness (11 claims, run
+  live): no blocker, no defect; four risks, of which three are fixed (the
+  arm-set guard, this section's existence, the ladder's calibration being
+  covered by the δ guard). The fourth — `full_run_table.py` keys cells by
+  (prop, arm, w) without a backend field — is safe because the two backends
+  write to different roots and their generator md5s differ, which that script
+  already refuses to mix.
+- `dist_report.py` gained `--backend tfg`: it previously hard-coded **our**
+  f_B and **our** δ for the ladder and cached f_B-on-test by property name
+  alone, so run on transfer cells it would have scored them with the wrong
+  oracle and the wrong band.
+
+### 9.4 Caveats added to §5
+
+8. **δ comes from TFG's oracle on train_a + train_b**, some of which it trained
+   on (§5.2 still applies), and TFG's μ oracle is ~1.8× worse than EDM's
+   published one on our test molecules (§9.3).
+9. **Guide–oracle disagreement on generated molecules is 3× that on real ones**
+   (μ 0.18 vs 0.06 D unguided). A guided arm can move f_A further than f_B;
+   `guide_eval_gap_mean` is recorded per cell and must be read beside MAE.
+
+### 9.5 Cost, measured, and the job layout it forces
+
+Seconds per n = 512 cell on the local RTX 5080 (batch 64; everything after
+`plug` ran beside other jobs, so these are upper-ish):
+
+| unguided | plug | tmpd | lgd_mc | btvg_var | btvg |
+|---|---|---|---|---|---|
+| 35 | 106 | 164 | 204 | 332 | ~400 (638 contended) |
+
+(EDM is 256 × 9 with attention and a dense edge list; our own generator was
+never timed on this card, so no ratio is claimed.) A whole (property,
+target) of the compare stage is ~2.4 h and a whole
+(property, seed) of the full stage ~3.4 h at 5080 speed — past the 225-min
+guard on a slice — so `transfer_run.slurm` splits every task by arm group
+(A = unguided, plug, tmpd, lgd_mc; B = btvg, btvg_var): **12 compare tasks**
+(~1–1.5 h) and **24 full tasks** (~1.4–2 h). Totals at 5080 speed: compare
+≈ 14 GPU-h, full ≈ 30–40 GPU-h. A B200 MIG slice's speed relative to the 5080
+is not measured, so treat these as estimates until the first compare task's
+log reports its own minutes per cell.

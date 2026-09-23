@@ -82,7 +82,24 @@ VENDORED = [os.path.join("tf_predict_%s" % p, f)
 # only report what is on disk, which cannot detect a truncated or substituted
 # download -- the exact failure the docstring above says hashes are for. Record
 # them once, commit them, and every later run is checked.
-EXPECTED = {}
+# Recorded 23 Sep 2026 from the first download (gdown, TFG's Drive folder),
+# the file the hard gate and every local transfer cell were produced with.
+EXPECTED = {
+    'weights/EDMsecond/generative_model_ema.npy': '6abbd010d766a3e44c06448e0aa94bd3',
+    'weights/EDMsecond/args.pickle': '28d7ffff0ecdd138017de5d74748e632',
+    'audit/fa_fb_search/TFG/tf_predict_mu/model_ema_2000.npy': 'fe4ba055e39f8afa4dd96041c652ab74',
+    'audit/fa_fb_search/TFG/tf_predict_mu/args_2000.pickle': 'a588297715df64d02aa0f2ca55718b1d',
+    'audit/fa_fb_search/TFG/tf_predict_alpha/model_ema_2000.npy': '1b8bf52cac44d2e0e907da2e7c4b985b',
+    'audit/fa_fb_search/TFG/tf_predict_alpha/args_2000.pickle': '3323f22c5e043fc2c514d58600b800be',
+    'audit/fa_fb_search/TFG/tf_predict_gap/model_ema_2000.npy': '29c21e4a61d49d24bc9ef3d51fe0e234',
+    'audit/fa_fb_search/TFG/tf_predict_gap/args_2000.pickle': 'd7cef4ca43e1f126aa4ab591f565cfa0',
+    'audit/fa_fb_search/TFG/evaluate_mu/best_checkpoint.npy': 'f2e74eed23303485b94739ef34fe37be',
+    'audit/fa_fb_search/TFG/evaluate_mu/args.pickle': '4c65f459cea4783ce4a5dad77892393d',
+    'audit/fa_fb_search/TFG/evaluate_alpha/best_checkpoint.npy': '15cc4ae1dc21739b450469a988b3d60f',
+    'audit/fa_fb_search/TFG/evaluate_alpha/args.pickle': 'feae2b0ba62b2f6f66ef9bd404be230f',
+    'audit/fa_fb_search/TFG/evaluate_gap/best_checkpoint.npy': '6ff449ceae5e1b8bda44a016d277c462',
+    'audit/fa_fb_search/TFG/evaluate_gap/args.pickle': '7115230d41bf24697f1fd1e041104954',
+}
 
 
 def md5(path, chunk=1 << 20):

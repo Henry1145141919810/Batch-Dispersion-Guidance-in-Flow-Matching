@@ -1,0 +1,7 @@
+EDMsecond | EDM nf=256 layers=9 attention=True | schedule=polynomial_2 steps=1000
+  n=2000  steps=100  grid=uniform  solver=euler  seed=0  sizes<-train_a  device=cuda
+  train_a vs train_b size-histogram total variation: 0.0064
+  first batch 13.2s -> projected 106s total
+  atom 0.9644  mol 0.6725  valid(EDM) 0.8490  uniq 0.9994  VxU 0.8485  connected 0.9523  nonfinite 0  [sample 105s eval 3s]
+  vs EDMsecond published (EEGSDE Tab. 5): atom -0.0193  mol -0.1449
+  GATE PASSED: the adapter drives this checkpoint correctly.

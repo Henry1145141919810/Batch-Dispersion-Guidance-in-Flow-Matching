@@ -1,0 +1,97 @@
+{
+ "mu": {
+  "ladder": {
+   "n": 512,
+   "u_bound": {
+    "mae": 1.6485163243290166,
+    "in_band": 0.0698604236737502
+   },
+   "size_shuffle": {
+    "mae": 1.4987328303219651,
+    "in_band": 0.08304949121176972,
+    "n_no_same_size": 0
+   },
+   "atoms_median": {
+    "mae": 1.0662615237160935,
+    "in_band": 0.09765625,
+    "n_size_fallback": 0
+   },
+   "atoms_mean": {
+    "mae": 1.0805506354948067,
+    "in_band": 0.08984375
+   },
+   "l_bound": {
+    "mae": 0.08199483798671281,
+    "in_band": 0.884765625,
+    "partial_corr": 0.9969887235618325
+   },
+   "delta": 0.16798594810953543
+  },
+  "arms": {
+   "unguided@w1": {
+    "n": 512,
+    "n_nonfinite": 0,
+    "mae": 1.5365170988879981,
+    "mae_ci": [
+     1.4302783159570027,
+     1.662438135247612
+    ],
+    "rmse": 2.0166946012282634,
+    "mae_published_units": 1.5365170988879981,
+    "published_unit": "D",
+    "in_band": 0.08203125,
+    "in_band_ci": [
+     0.061259190135511496,
+     0.10902874321457116
+    ],
+    "mol_stability": 0.384765625,
+    "validity": 0.771484375,
+    "atom_stability": 0.9326555154695528,
+    "gap_closure": -0.026669905635658183,
+    "beats_atoms": false,
+    "beats_size_shuffle": false,
+    "beats_u_bound": true,
+    "in_band_gain_vs_size_shuffle": -0.001018241211769716,
+    "pearson": 0.1639354816917683,
+    "spearman": 0.1863098629452961,
+    "partial_corr": 0.050638536240470086,
+    "partial_corr_ceiling": 0.9969887235618325,
+    "valid_in_band": 0.0625,
+    "distinct_valid_in_band_per_attempt": 0.0625,
+    "chem_ratio": 1.0,
+    "passes_chem_floor": true,
+    "guide_eval_gap": 0.15315222437493503,
+    "hack_rate": 0.021484375,
+    "guide_in_band": 0.080078125,
+    "in_band_by_size": {
+     "small (<=17)": 0.06779661016949153,
+     "mid": 0.10144927536231885,
+     "large (>19)": 0.08695652173913043
+    },
+    "in_band_by_demand": {
+     "near (<=0.5 sd)": {
+      "in_band": 0.10526315789473684,
+      "n": 209
+     },
+     "mid": {
+      "in_band": 0.08496732026143791,
+      "n": 153
+     },
+     "far (>1.0 sd)": {
+      "in_band": 0.04666666666666667,
+      "n": 150
+     }
+    },
+    "mean_demand_sd": 0.7631042488715443,
+    "seeds": [
+     20260921
+    ],
+    "mae_per_seed": [
+     1.5365170988879981
+    ],
+    "mae_seed_sd": null
+   }
+  },
+  "paired": {}
+ }
+}

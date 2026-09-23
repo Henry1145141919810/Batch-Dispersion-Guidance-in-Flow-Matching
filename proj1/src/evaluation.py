@@ -154,6 +154,28 @@ def choose_delta(mae_eval, k=2.0):
 # aggregate
 # ---------------------------------------------------------------------------
 
+EVAL_CHUNK = 1024
+
+
+def _chunked(fn, coords, feats, mask, chunk=None):
+    """Apply a per-molecule network in slices of at most `chunk` molecules.
+
+    The predictors are per-molecule (eval mode, no batch statistics), so this
+    equals one call up to float rounding -- and at n <= chunk it IS one call,
+    so every n=512 screening cell is unchanged. At n=5000 a single call builds
+    5000 x 29 x 29 edge tensors in every layer, and an OOM there would strike
+    AFTER the whole sampling run, losing a cell that took up to an hour.
+    `chunk` defaults to the module's EVAL_CHUNK read at CALL time, so a test
+    can shrink it and drive evaluate_samples through the sliced path.
+    """
+    chunk = EVAL_CHUNK if chunk is None else chunk
+    if coords.shape[0] <= chunk:
+        return fn(coords, feats, mask)
+    return torch.cat([fn(coords[i:i + chunk], feats[i:i + chunk],
+                         mask[i:i + chunk])
+                      for i in range(0, coords.shape[0], chunk)])
+
+
 def embedding_diversity(f_net_eval, coords, feats, mask, eps=1e-6):
     """(mean pairwise distance, normalised log-det) of the evaluator embedding.
 
@@ -171,7 +193,7 @@ def embedding_diversity(f_net_eval, coords, feats, mask, eps=1e-6):
         # fed it features 8x too small: the embeddings came out at cos 0.64 to
         # the correct ones, not a rescaling of them, moving diversity_logdet by
         # 12%. Finite, plausible, and wrong.
-        h = f_net_eval.embed(coords, feats, mask)
+        h = _chunked(f_net_eval.embed, coords, feats, mask)
     h = h - h.mean(0, keepdim=True)
     hn = h / h.norm(dim=1, keepdim=True).clamp(min=eps)
     d = torch.cdist(hn, hn)
@@ -182,11 +204,42 @@ def embedding_diversity(f_net_eval, coords, feats, mask, eps=1e-6):
     return mean_pair, logdet
 
 
-def evaluate_samples(coords, feats, mask, types, f_A, f_B, y, delta):
+def decode_types(feats, mask, hot_value=1.0):
+    """The atom types that actually decode: argmax -> one-hot, masked, at the
+    SAMPLER's feature scale (`hot_value` = 1 / the generator's one-hot
+    divisor; 1 for our flow model, 1/4 for EDMsecond).
+
+    The property metrics were always computed on the continuous features a
+    trajectory ends on, which a predictor reads even where they are not a
+    valid one-hot. An arm that pushes the FEATURES along grad f (TFG's
+    clean-space step does, on every guided step including the last) can move
+    that number without moving the molecule. Measured on the tfg pilot
+    (mu, w=1, n=64): MAE 0.31 -> 0.44 D decoded, where plug moved 0.90 ->
+    0.94. So every cell now also carries the decoded view.
+    """
+    oh = torch.nn.functional.one_hot(feats.argmax(-1), feats.shape[-1])
+    return oh.to(feats.dtype) * hot_value * mask.unsqueeze(-1)
+
+
+def evaluate_samples(coords, feats, mask, types, f_A, f_B, y, delta,
+                     per_mol=False, hot_value=1.0):
     """The full metric block for one arm. Returns a plain dict.
 
     `y` is the target in physical units, one per sample. f_A is the guide
     (what guidance optimised), f_B the held-out evaluator (what we believe).
+
+    per_mol=True adds "_per_mol": CPU tensors, one row per sample (f_A, f_B,
+    y, finite, mol_stable, valid, n_atoms). The caller must pop it before
+    json-serialising. It exists so two arms run on the same noise and the same
+    targets can be compared PAIRED, which the aggregate numbers cannot do.
+
+    NOTE diversity_logdet depends on n (the Gram matrix is n x n but its rank
+    is at most the embedding width), so it is comparable only between cells of
+    the same n.
+
+    Every property metric also has a `_dec` twin scored on the DECODED atom
+    types (decode_types; `hot_value` is the sampler's one-hot scale). The
+    un-suffixed metrics are unchanged, so every existing cell stays comparable.
     """
     B = coords.shape[0]
     # An exploded trajectory is a failed sample. It counts against stability,
@@ -206,21 +259,47 @@ def evaluate_samples(coords, feats, mask, types, f_A, f_B, y, delta):
     valid = [s for s in smiles if s is not None]
     uniq = len(set(valid))
 
+    feats_dec = decode_types(feats, mask, hot_value)
     with torch.no_grad():
-        fa = f_A(coords, feats, mask)
-        fb = f_B(coords, feats, mask)
+        fa = _chunked(f_A, coords, feats, mask)
+        fb = _chunked(f_B, coords, feats, mask)
+        fa_d = _chunked(f_A, coords, feats_dec, mask)
+        fb_d = _chunked(f_B, coords, feats_dec, mask)
+    pm = None
+    if per_mol:
+        pm = {"f_A": fa.detach().float().cpu(),
+              "f_B": fb.detach().float().cpu(),
+              "f_A_dec": fa_d.detach().float().cpu(),
+              "f_B_dec": fb_d.detach().float().cpu(),
+              "y": torch.as_tensor(y).detach().float().cpu(),
+              "finite": finite.detach().cpu(),
+              "mol_stable": torch.tensor([bool(ok) and bool(s[2])
+                                          for s, ok in zip(st, finite)]),
+              "valid": torch.tensor([s is not None for s in smiles]),
+              "n_atoms": mask.float().sum(1).round().to(torch.int32).cpu(),
+              # canonical SMILES per row (None where invalid). The headline
+              # metric -- DISTINCT valid molecules inside the band per attempt
+              # -- needs identity per molecule, which the aggregate
+              # `uniqueness_of_valid` cannot give once it is intersected with
+              # the band.
+              "smiles": list(smiles)}
     err_b = (fb - y).abs()
     in_band = ((err_b <= delta) & finite).float().mean().item()
     gap = (fa - fb).abs()
+    err_d = (fb_d - y).abs()
+    in_band_d = ((err_d <= delta) & finite).float().mean().item()
+    gap_d = (fa_d - fb_d).abs()
+    fb_d_m = fb_d[finite].mean().item() if finite.any() else float("nan")
     if finite.any():
         err_b, gap = err_b[finite], gap[finite]
+        err_d, gap_d = err_d[finite], gap_d[finite]
         fa_m, fb_m = fa[finite].mean().item(), fb[finite].mean().item()
         mean_pair, logdet = embedding_diversity(
             f_B, coords[finite], feats[finite], mask[finite])
     else:
         fa_m = fb_m = mean_pair = logdet = float("nan")
 
-    return {
+    out = {
         "n": B,
         "n_nonfinite": n_bad,
         "atom_stability": n_stable_atoms / max(n_atoms, 1),
@@ -240,4 +319,13 @@ def evaluate_samples(coords, feats, mask, types, f_A, f_B, y, delta):
         "diversity_mean_pairwise": mean_pair,
         "diversity_logdet": logdet,
         "smiles_sample": valid[:5],
+        # the same property metrics on the DECODED atom types (decode_types)
+        "prop_mae_eval_dec": err_d.mean().item(),
+        "prop_rmse_eval_dec": err_d.pow(2).mean().sqrt().item(),
+        "in_band_fraction_dec": in_band_d,
+        "guide_eval_gap_dec_mean": gap_d.mean().item(),
+        "f_B_dec_mean": fb_d_m,
     }
+    if pm is not None:
+        out["_per_mol"] = pm
+    return out

@@ -1,5 +1,14 @@
 # Two proposed guidance methods, derived from what the sweep measured
 
+> **Superseded interpretation, 23 Sep 2026:** this is the original proposal,
+> not the current evidence. Local probe/posterior variance is not terminal
+> residual spread; shrinking it can decrease band probability. BTVG lost the
+> registered full run and BTVG2 has no demonstrated incremental gain. Several
+> claims below (exact nonlinear variance, an HVP-free original BTVG, and a null
+> result proving spread irreducible) are not justified. See the
+> [current failure audit](BTVG_FAILURE_AUDIT_AND_REDESIGN.md) for corrected
+> reasoning, the newly verified geometry failure and the experimental decision.
+
 **21 September 2026.** Both attack the one gap every measurement points at: **guidance solves the
 mean and does nothing about the spread.** Both use a quantity our existing arms already compute
 and throw away. Novelty is assessed honestly in Section 5 -- one is narrow, one is moderate, and

@@ -160,8 +160,47 @@ V2_ARMS = ["spbc", "btvg", "btvg_var"]
 # btvg_var is here too because it is btvg's variance-only rung, and `plug` is
 # already its mean-only rung (bit-identical, 9e-8). So this single stage
 # carries the full 2x2 ablation AND the external comparison, on one grid.
-COMPARE_SET = ["unguided", "plug", "tmpd", "lgd_mc", "dflow",
+#
+# `tfg` REPLACED `dflow` (Henry, 23 Sep, AFTER the full run was read -- so
+# every tfg number is post hoc and is labelled so). dflow was dropped for
+# cost (104.5 min per n=5000 cell against btvg's 31) and because it cannot
+# run on a diffusion model; its 42 compare cells stay on disk and reportable,
+# and `--arms dflow` still runs it. The assignment needs three recent
+# external methods at the same protocol: tmpd, lgd_mc and now tfg. `plug` is
+# btvg's own mean term, an ablation rung, not one of the three.
+COMPARE_SET = ["unguided", "plug", "tmpd", "lgd_mc", "tfg",
                "btvg", "btvg_var"]
+
+# TFG (Ye et al., NeurIPS 2024), full update at N_recur = 1 -- NOT `tfg_mc`,
+# which is its smoothing ingredient alone. (rho_bar, mu_bar, gamma_bar) are
+# TFG's OWN published QM9 values (App. E.3, Table 11, the TFG columns; gap is
+# the "Delta" row). The sweep's `w` multiplies (rho_bar, mu_bar), so w = 1 is
+# TFG's configuration and the shared 7-point grid brackets it 100x below and
+# 4x above; gamma_bar, the iterations and the schedules are fixed.
+#   n_iter 4, eps_bsz 1   paper section 5.1; eps_bsz > 1 crashes TFG's
+#                         molecule code (issue #10: "should always be 1")
+#   rho/mu "increase"     paper section 5.1 and utils/configs.py. The public
+#                         QM9 script says mu "decrease", which puts ~90% of mu
+#                         in the steps our t_min = 0.5 window switches off.
+#   sigma "decrease"      std = gamma_bar sqrt(1 - abar_t), script + configs
+#   clip_scale 100        utils/configs.py default (rescale_grad)
+# Energy: TFG's -((f - y)/mad)^2 with mad over the guide's own training split.
+TFG_QM9 = {"alpha": (0.016, 0.001, 0.0001),
+           "mu":    (0.001, 0.002, 0.1),
+           "gap":   (0.032, 0.001, 0.001)}
+TFG_FIXED = {"n_iter": 4, "eps_bsz": 1, "rho_schedule": "increase",
+             "mu_schedule": "increase", "sigma_schedule": "decrease",
+             "clip_scale": 100.0}
+
+
+def tfg_config(prop, mad):
+    """The sampler's `tfg=` dict for one property: Table 11 plus the fixed
+    settings, and the MAD that puts TFG's energy in this guide's units."""
+    if prop not in TFG_QM9:
+        raise KeyError("no TFG QM9 configuration for property %r" % prop)
+    rho, mu, gamma = TFG_QM9[prop]
+    return dict(rho=rho, mu=mu, gamma=gamma, mad=float(mad), **TFG_FIXED)
+
 
 # D-Flow is not a `mode`: it replaces the sampler rather than adding a field.
 # `w` scales its learning rate, the way `w` scales the field elsewhere, so the
@@ -310,7 +349,10 @@ def strength_scale(arm, kw, s):
     by that ratio restores the comparison; the raw and applied strengths are
     both recorded so nothing is hidden.
     """
-    if arm.startswith("btvg") and kw.get("tau"):
+    # btvg2 is excluded: its mean term IS lgd_mc's and its variance
+    # coefficient is already written in plug units (1/s^2), so w means the
+    # same thing for btvg2 as for lgd_mc with no rescaling.
+    if arm.startswith("btvg") and not arm.startswith("btvg2") and kw.get("tau"):
         return (kw["tau"] / float(s)) ** 2
     return 1.0
 
@@ -449,13 +491,18 @@ def plan_v2_cells(props, arms):
     return cells
 
 
-def plan_compare_cells(props):
+def plan_compare_cells(props, arms=None):
     """The controlled comparison table: every arm, every strength, one window.
 
     Ordered so a partial run is still a complete experiment -- pass 1 is the
     whole set at the default strength, so even one link gives a full arm
     comparison before any tuning is explored.
+
+    `arms` (default COMPARE_SET) restricts the plan, e.g. `--arms tfg` for an
+    arm added after the rest of the stage ran. The cells, names, seed and
+    settings are identical either way, so they pair with the existing ones.
     """
+    arms = list(COMPARE_SET) if arms is None else list(arms)
     seen, cells = set(), []
 
     def add(prop, arm, tgt, w, win):
@@ -465,16 +512,16 @@ def plan_compare_cells(props):
             cells.append(k)
 
     for prop in props:                       # pass 1: the comparison itself
-        for arm in COMPARE_SET:
+        for arm in arms:
             add(prop, arm, "q50", DEFAULT_W, V2_WIN)
     for prop in props:                       # pass 2: strength, per arm
-        for arm in COMPARE_SET:
+        for arm in arms:
             if arm == "unguided":
                 continue
             for w in STRENGTHS:
                 add(prop, arm, "q50", w, V2_WIN)
     for prop in props:                       # pass 3: the q90 target
-        for arm in COMPARE_SET:
+        for arm in arms:
             add(prop, arm, "q90", DEFAULT_W, V2_WIN)
             if arm == "unguided":
                 continue
@@ -514,6 +561,69 @@ def plan_target_cells(props, arms, targets, win=None, strengths=None):
     return cells
 
 
+# The frozen-strength sets check_fullrun_go.py writes. "primary" is FR3a, the
+# headline; "mae" is FR3 as registered (unconstrained best MAE).
+FROZEN_SETS = {"primary": "frozen_w", "mae": "frozen_w_mae"}
+
+
+def load_frozen(path, props, arms, sets=("primary",)):
+    """Read the frozen strengths, and refuse anything incomplete.
+
+    `path` is what check_fullrun_go.py --json-out wrote from the finished
+    compare stage. A missing (set, arm, prop) raises here, before any GPU time
+    is spent, rather than surfacing as a KeyError after the first cell.
+    """
+    with open(path) as fh:
+        fz = json.load(fh)
+    # FR3-corrected: dist freezes at the q90 compare-stage strength. A file
+    # from any other screen is the wrong decision, however complete it is.
+    if fz.get("source_stage") != "compare" or fz.get("target") != "q90":
+        raise SystemExit("frozen-strength file %s came from stage=%r target=%r; "
+                         "the full run needs stage='compare', target='q90' (FR3)"
+                         % (path, fz.get("source_stage"), fz.get("target")))
+    missing = []
+    for s in sets:
+        if s not in FROZEN_SETS:
+            raise SystemExit("unknown strength set %r (have %s)" % (s, sorted(FROZEN_SETS)))
+        w = fz.get(FROZEN_SETS[s]) or {}
+        missing += ["%s:%s/%s" % (s, a, p) for a in arms for p in props
+                    if p not in w.get(a, {})]
+    if missing:
+        raise SystemExit("frozen-strength file %s has no entry for: %s"
+                         % (path, ", ".join(missing)))
+    return fz
+
+
+def plan_full_cells(props, arms, frozen, sets=("primary",), exclude=(),
+                    target=DIST_TARGET, win=None):
+    """The full-scale run: each arm once per property PER STRENGTH SET, at the
+    frozen strength, minus any cell that also belongs to an `exclude` set.
+
+    No strength axis on purpose (FR3): the strength was chosen on the n=512
+    compare stage, and this run uses new seeds so the choice is not also the
+    evaluation. Two sets can share a cell (same w) -- it is then one cell, run
+    once. `exclude` lets the secondary-set tasks run ONLY the cells the primary
+    tasks do not, so no two concurrent tasks ever write the same cell. The
+    "full" variant keeps these names disjoint from every screening cell.
+    """
+    win = V2_WIN if win is None else win
+
+    def cells_of(names):
+        out = []
+        for s in names:
+            w = frozen[FROZEN_SETS[s]]
+            out += [(prop, arm, target, float(w[arm][prop]), win, "full")
+                    for prop in props for arm in arms]
+        return out
+    drop = set(cells_of(exclude))
+    seen, cells = set(), []
+    for c in cells_of(sets):
+        if c not in seen and c not in drop:
+            seen.add(c)
+            cells.append(c)
+    return cells
+
+
 def main():
     global OUT
     ap = argparse.ArgumentParser()
@@ -529,9 +639,38 @@ def main():
                          "'dist' (per-molecule, the published protocol), or any "
                          "TARGETS key such as q50,q90")
     ap.add_argument("--stage", default="main",
-                    choices=["main", "v2", "all", "compare", "targets"],
+                    choices=["main", "v2", "all", "compare", "targets", "full"],
                     help="main = the v1 grid (default arms); v2 = the new arms "
-                         "against re-run references; all = both, v1 first")
+                         "against re-run references; all = both, v1 first; "
+                         "full = every compare-set arm once at its --frozen "
+                         "strength on the `dist` target")
+    ap.add_argument("--frozen", default="",
+                    help="--stage full only: the json check_fullrun_go.py "
+                         "--json-out wrote (FR3's frozen strengths)")
+    ap.add_argument("--sets", default="primary",
+                    help="--stage full: comma-separated strength sets to run "
+                         "(primary = FR3a headline, mae = FR3 as registered)")
+    ap.add_argument("--exclude-sets", default="",
+                    help="--stage full: drop cells that also belong to these "
+                         "sets (so secondary tasks never duplicate primary ones)")
+    ap.add_argument("--save-coords", action="store_true",
+                    help="with --per-mol: also store the final coordinates and "
+                         "atom types in the sidecar (pilot use; ~1 MB per 2k)")
+    ap.add_argument("--per-mol", action="store_true",
+                    help="also save each cell's per-molecule f_A/f_B/target/"
+                         "stability as <cell>.permol.pt, so arms can be "
+                         "compared PAIRED (same noise, same targets) and "
+                         "re-scored without re-sampling")
+    ap.add_argument("--only-w", default="",
+                    help="comma list: keep only planned cells at these "
+                         "strengths (a pilot filter; planning is unchanged)")
+    ap.add_argument("--strengths", default="",
+                    help="--stage targets only: comma list replacing the "
+                         "registered strength grid (default: STRENGTHS)")
+    ap.add_argument("--dist-offset", type=int, default=0,
+                    help="dist targets from test[offset : offset+n] (default 0 "
+                         "= the full run's block). Use a disjoint block to tune "
+                         "strengths without touching the scored targets.")
     ap.add_argument("--n", type=int, default=512)
     ap.add_argument("--batch", type=int, default=128)
     ap.add_argument("--steps", type=int, default=100)
@@ -581,7 +720,7 @@ def main():
         arms = V1_MISSING + V2_ARMS + SHG_ARMS
     elif args.stage == "compare":
         arms = list(COMPARE_SET)
-    elif args.stage == "targets":
+    elif args.stage in ("targets", "full"):
         arms = list(COMPARE_SET)
     else:
         arms = list(ARMS)
@@ -601,10 +740,23 @@ def main():
     if args.stage in ("main", "all"):
         cells += plan_cells(props, list(ARMS) if args.stage == "all" else arms)
     if args.stage == "compare":
-        cells += plan_compare_cells(props)
+        # --arms restricts the compare plan (an arm added later, e.g. tfg);
+        # without it, the whole COMPARE_SET as before
+        cells += plan_compare_cells(props, arms if args.arms else None)
     if args.stage == "targets":
         cells += plan_target_cells(
-            props, arms, [t for t in args.targets.split(",") if t])
+            props, arms, [t for t in args.targets.split(",") if t],
+            strengths=([float(x) for x in args.strengths.split(",") if x]
+                       if args.strengths else None))
+    frozen = None
+    if args.stage == "full":
+        if not args.frozen:
+            raise SystemExit("--stage full needs --frozen (the json written by "
+                             "check_fullrun_go.py --json-out)")
+        sets = [s for s in args.sets.split(",") if s]
+        excl = [s for s in args.exclude_sets.split(",") if s]
+        frozen = load_frozen(args.frozen, props, arms, sets + excl)
+        cells += plan_full_cells(props, arms, frozen, sets, excl)
     if args.stage in ("v2", "all"):
         v2 = V1_MISSING + V2_ARMS + SHG_ARMS if args.stage == "all" else arms
         cells += plan_v2_cells(props, v2)
@@ -616,6 +768,9 @@ def main():
             seen_arm.add(c[1])
             first.append(c)
         cells = first
+    if args.only_w:
+        keep = {float(x) for x in args.only_w.split(",") if x}
+        cells = [c for c in cells if float(c[3]) in keep]
     todo = [c for c in cells if not os.path.exists(os.path.join(OUT, cell_name(*c)))]
     if args.preflight:
         todo = list(cells)          # never skip: nothing was written
@@ -644,11 +799,21 @@ def main():
             "cuda": torch.version.cuda,
             "device": (torch.cuda.get_device_name(0)
                        if dev == "cuda" and torch.cuda.is_available() else "cpu")}
+    if frozen is not None:
+        # which screen the strengths came from travels with every cell, so a
+        # full-run number can always be traced to the decision that set it
+        prov.update({"frozen_path": os.path.abspath(args.frozen),
+                     "frozen_md5": file_md5(args.frozen),
+                     "frozen_source_stage": frozen.get("source_stage"),
+                     "frozen_source_target": frozen.get("target"),
+                     "frozen_source_seed": frozen.get("source_seed"),
+                     "frozen_sets": args.sets,
+                     "frozen_exclude_sets": args.exclude_sets})
     print("provenance: %s  md5 %s  torch %s  cuda %s  on %s"
           % (os.path.basename(prov["fm_path"]), prov["fm_md5"][:12],
              prov["torch"], prov["cuda"], prov["device"]))
 
-    guides, evals, deltas = {}, {}, {}
+    guides, evals, deltas, tfg_mads = {}, {}, {}, {}
     for prop in props:
         ga = require_predictor("f_A_%s.pt" % prop,
                                "f_A steers guidance for property %r." % prop)
@@ -656,6 +821,16 @@ def main():
                                "f_B is the held-out evaluator for %r." % prop)
         guides[prop] = PhysicalProperty(ga, len(types), dev)
         evals[prop] = PhysicalProperty(gb, len(types), dev)
+        # TFG's energy is MAD-normalised (energy.py:369; TFG computes the MAD
+        # on the guide's training data). Ours comes from the split f_A itself
+        # records, so the normaliser and the guide saw the same molecules.
+        ck_a = torch.load(ga, map_location="cpu", weights_only=False)
+        split_a = ck_a.get("split") or ck_a.get("args", {}).get("split")
+        if split_a not in d["split"]:
+            raise SystemExit("f_A_%s.pt records split %r, not one of %s"
+                             % (prop, split_a, sorted(d["split"])))
+        ya = d["y"][d["split"][split_a], d["props"].index(prop)].double()
+        tfg_mads[prop] = float((ya - ya.mean()).abs().mean())
         mae_b = float(torch.load(gb, map_location="cpu", weights_only=False)["val_mae"])
         deltas[prop] = (choose_delta(mae_b, args.k_delta), mae_b)
         print("  %-6s f_A %.5f  f_B %.5f  delta %.5f"
@@ -667,7 +842,14 @@ def main():
     mask_v = d["mask"][va].to(dev)
     # the `dist` protocol's own index set: sizes AND targets from the same
     # held-out test molecules, so the size-property coupling survives
-    te_idx = d["split"]["test"][: args.n]
+    # --dist-offset takes the targets from a DIFFERENT block of test, so a
+    # strength can be tuned on one block and scored on another (0 = the
+    # full run's test[:n], unchanged)
+    n_test = len(d["split"]["test"])
+    if args.dist_offset < 0 or args.dist_offset + args.n > n_test:
+        raise SystemExit("--dist-offset %d + --n %d exceeds the %d test molecules"
+                         % (args.dist_offset, args.n, n_test))
+    te_idx = d["split"]["test"][args.dist_offset: args.dist_offset + args.n]
     mask_t = d["mask"][te_idx].to(dev)
     coords_v, feats_v = d["coords"][va].to(dev), d["feats"][va].to(dev)
     clip = None if args.clip < 0 else args.clip
@@ -698,6 +880,10 @@ def main():
             extra["rch"] = load_rch(rp, dev, rch_target)
         if arm == "band":
             extra["band_tau"] = delta
+        if arm == "tfg":
+            # TFG's own published QM9 configuration for this property; the
+            # strength w multiplies its (rho, mu) inside the sampler
+            extra["tfg"] = tfg_config(prop, tfg_mads[prop])
         # `dist` draws BOTH the molecule sizes and the targets from the SAME
         # held-out molecules. Taking sizes from one split and targets from
         # another destroys the size-property coupling that is physics: in the
@@ -783,8 +969,20 @@ def main():
                 tot, cnt = diag_log.get(dk, (0.0, 0))
                 diag_log[dk] = (tot + dv, cnt + 1)
         C, F = torch.cat(cs), torch.cat(fs)
-        r = evaluate_samples(C, F, mask_c, types, f_A, f_B, y_t, delta)
+        r = evaluate_samples(C, F, mask_c, types, f_A, f_B, y_t, delta,
+                             per_mol=args.per_mol)
         r.pop("delta", None)
+        if args.per_mol:
+            # which real molecule each row took its size (and, for dist, its
+            # target) from -- the key that pairs rows across arms and seeds
+            r["_per_mol"]["mol_idx"] = (te_idx if tgt == DIST_TARGET
+                                        else va).clone().cpu()
+            if args.save_coords:
+                # the final molecules themselves, so chemistry can be re-scored
+                # by an independent rule (scripts/independent_chem.py)
+                r["_per_mol"]["coords"] = C.detach().float().cpu()
+                r["_per_mol"]["types"] = F.argmax(-1).to(torch.uint8).cpu()
+                r["_per_mol"]["mask"] = mask_c.detach().bool().cpu()
         r.update({"prop": prop, "arm": arm, "target_name": tgt, "target": target,
                   "variant": variant, "stage": args.stage, "prov": prov,
                   "schedule_used": sched_log,
@@ -800,9 +998,14 @@ def main():
                   "n_mc": args.n_mc, "delta": delta, "mae_B": mae_b,
                   "cost": cost, "field_evals": calls,
                   "clipped_sample_steps": clipped, "seed": args.seed,
+                  "dist_offset": args.dist_offset,
                   "fm": os.path.basename(args.fm),
                   "clip": args.clip, "k_delta": args.k_delta,
                   "sigma_mc": args.sigma_mc, "batch": args.batch})
+        if arm == "tfg":
+            # n_mc / sigma_mc above are lgd_mc's and tfg_mc's settings; tfg
+            # uses none of them. Its real configuration travels with the cell.
+            r["tfg_config"] = extra["tfg"]
         return r
 
     for (prop, arm, tgt, w, win, variant) in todo:
@@ -838,7 +1041,14 @@ def main():
                 json.dump({"cell": name, "error": "%s: %s" % (type(e).__name__, e)}, fh)
             print("  CELL FAILED (will be retried on the next link) %s: %s" % (name, e))
             continue
+        per_mol = r.pop("_per_mol", None)
         if not args.preflight:
+            if per_mol is not None:
+                # the sidecar lands BEFORE the json: the json is the
+                # completion marker, so a cell is never "done" without it
+                ptmp = os.path.join(OUT, name + ".permol.tmp")
+                torch.save(per_mol, ptmp)
+                os.replace(ptmp, os.path.join(OUT, name[:-5] + ".permol.pt"))
             tmp = os.path.join(OUT, name + ".tmp")
             with open(tmp, "w") as fh:
                 json.dump(r, fh)

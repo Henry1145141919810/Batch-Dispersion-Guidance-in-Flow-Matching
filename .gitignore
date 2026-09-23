@@ -93,3 +93,24 @@ results/bench/conv_*.json
 results/bench/calib_*.json
 results/bench/ep0*.json
 results/bench/ep1*.json
+
+# ---------------------------------------------------------------- third-party weights
+# TFG's released EDMsecond generator, 21 MB, used by the transfer experiment.
+# NOT ours to redistribute, and one command rebuilds it:
+#   python proj1/scripts/fetch_tfg_assets.py --models EDMsecond
+weights/EDMsecond/
+
+# ---------------------------------------------------------------- extracted paper text
+# Full text dumps of EDM and EEGSDE, produced while verifying the dist
+# protocol's citations. Third-party copyrighted text; the quotes we rely on are
+# reproduced with their section numbers in docs/protocol/DIST_PROTOCOL.md.
+edm_full.txt
+eegsde_full.txt
+
+# ---------------------------------------------------------------- derived caches
+# f_B's predictions on the 13,083 real test molecules, rebuilt in ~1 min by
+# dist_report.py whenever they are missing.
+results/dist_fB_test_*.pt
+
+# ---------------------------------------------------------------- cluster logs
+logs/

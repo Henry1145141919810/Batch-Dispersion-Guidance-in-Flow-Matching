@@ -9,6 +9,14 @@ this file's row when you need to look a method up.
 Last verified against the code **2026-09-21** by a full docs-vs-implementation
 audit. Paths are relative to the repository root.
 
+**23 Sep outcome correction:** the section-2 “zero measurements” inventory below
+is historical. BTVG has now lost to LGD-MC in the registered full run; BTVG2's
+pilot does not establish added benefit from its variance term. Its local
+mean-preservation argument also fails after pullback. Read
+[BTVG failure audit and redesign](BTVG_FAILURE_AUDIT_AND_REDESIGN.md) and the
+latest [living status](../status/SCOPE_FM_GUIDANCE_STATUS.md) before interpreting
+“OURS/new” as a supported novelty or performance claim.
+
 ## How to read the columns
 
 | column | meaning |

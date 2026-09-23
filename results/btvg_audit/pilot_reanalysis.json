@@ -1,0 +1,447 @@
+{
+  "exact_checks": {
+    "pullback_counterexample": {
+      "J": [
+        [
+          3.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0
+        ]
+      ],
+      "mean_gradient_m": [
+        [
+          1.0,
+          1.0
+        ]
+      ],
+      "variance_gradient_m": [
+        [
+          1.0,
+          2.0
+        ]
+      ],
+      "correction_m": [
+        [
+          0.5,
+          -0.5
+        ]
+      ],
+      "mean_derivative_m": 0.0,
+      "mean_derivative_after_pullback": 4.0,
+      "variance_derivative_after_pullback": 3.5,
+      "corrected_mean_derivative": 8.881784197001252e-16,
+      "corrected_variance_derivative": -0.899999999999999
+    },
+    "band_counterexample": {
+      "residual_in_delta": 3.0,
+      "wide_sd_in_delta": 1.0,
+      "narrow_sd_in_delta": 0.5,
+      "wide_coverage": 0.022718460706346096,
+      "narrow_coverage": 3.167124183249787e-05,
+      "coverage_ratio": 717.3214371100117
+    },
+    "gaussian_sample_variance_relative_sd_K4": 0.816496580927726,
+    "clip_counterexample": {
+      "baseline_progress": 1.0,
+      "progress_after_orthogonal_addition_and_clip": 0.7071067811865475
+    }
+  },
+  "pilot": {
+    "rows": [
+      {
+        "property": "alpha",
+        "arm": "btvg2",
+        "w": 4.0,
+        "n": 2048,
+        "coverage": 0.07373046875,
+        "valid_and_in_band": 0.0576171875,
+        "stable_and_in_band": 0.02880859375,
+        "distinct_valid_in_band_per_attempt": 0.0576171875,
+        "guide_hit_precision": 0.7394366197183099,
+        "guide_false_hit_per_attempt": 0.01806640625,
+        "mae_delta": 8.492345336772928,
+        "molecule_stability": 0.37548828125
+      },
+      {
+        "property": "alpha",
+        "arm": "btvg2",
+        "w": 8.0,
+        "n": 2048,
+        "coverage": 0.08837890625,
+        "valid_and_in_band": 0.0654296875,
+        "stable_and_in_band": 0.03076171875,
+        "distinct_valid_in_band_per_attempt": 0.0654296875,
+        "guide_hit_precision": 0.7046632124352331,
+        "guide_false_hit_per_attempt": 0.02783203125,
+        "mae_delta": 7.380876988643392,
+        "molecule_stability": 0.37890625
+      },
+      {
+        "property": "alpha",
+        "arm": "btvg2_band",
+        "w": 8.0,
+        "n": 2048,
+        "coverage": 0.0966796875,
+        "valid_and_in_band": 0.068359375,
+        "stable_and_in_band": 0.0341796875,
+        "distinct_valid_in_band_per_attempt": 0.068359375,
+        "guide_hit_precision": 0.7552083333333334,
+        "guide_false_hit_per_attempt": 0.02294921875,
+        "mae_delta": 7.5338084096429645,
+        "molecule_stability": 0.3759765625
+      },
+      {
+        "property": "alpha",
+        "arm": "lgd_mc",
+        "w": 4.0,
+        "n": 2048,
+        "coverage": 0.08447265625,
+        "valid_and_in_band": 0.0634765625,
+        "stable_and_in_band": 0.03466796875,
+        "distinct_valid_in_band_per_attempt": 0.0634765625,
+        "guide_hit_precision": 0.7484276729559748,
+        "guide_false_hit_per_attempt": 0.01953125,
+        "mae_delta": 8.480905619909215,
+        "molecule_stability": 0.37646484375
+      },
+      {
+        "property": "alpha",
+        "arm": "lgd_mc",
+        "w": 8.0,
+        "n": 2048,
+        "coverage": 0.10205078125,
+        "valid_and_in_band": 0.07373046875,
+        "stable_and_in_band": 0.0390625,
+        "distinct_valid_in_band_per_attempt": 0.07373046875,
+        "guide_hit_precision": 0.7563451776649747,
+        "guide_false_hit_per_attempt": 0.0234375,
+        "mae_delta": 7.542507567387915,
+        "molecule_stability": 0.38134765625
+      },
+      {
+        "property": "gap",
+        "arm": "btvg2",
+        "w": 4.0,
+        "n": 2048,
+        "coverage": 0.16259765625,
+        "valid_and_in_band": 0.12109375,
+        "stable_and_in_band": 0.05810546875,
+        "distinct_valid_in_band_per_attempt": 0.12109375,
+        "guide_hit_precision": 0.5897435897435898,
+        "guide_false_hit_per_attempt": 0.0625,
+        "mae_delta": 4.465440078595362,
+        "molecule_stability": 0.3623046875
+      },
+      {
+        "property": "gap",
+        "arm": "btvg2",
+        "w": 8.0,
+        "n": 2048,
+        "coverage": 0.1748046875,
+        "valid_and_in_band": 0.123046875,
+        "stable_and_in_band": 0.0615234375,
+        "distinct_valid_in_band_per_attempt": 0.123046875,
+        "guide_hit_precision": 0.5681159420289855,
+        "guide_false_hit_per_attempt": 0.07275390625,
+        "mae_delta": 3.9691809967917635,
+        "molecule_stability": 0.35302734375
+      },
+      {
+        "property": "gap",
+        "arm": "btvg2_band",
+        "w": 8.0,
+        "n": 2048,
+        "coverage": 0.17333984375,
+        "valid_and_in_band": 0.1298828125,
+        "stable_and_in_band": 0.06640625,
+        "distinct_valid_in_band_per_attempt": 0.1298828125,
+        "guide_hit_precision": 0.5415472779369628,
+        "guide_false_hit_per_attempt": 0.078125,
+        "mae_delta": 3.9559414621829774,
+        "molecule_stability": 0.34228515625
+      },
+      {
+        "property": "gap",
+        "arm": "lgd_mc",
+        "w": 4.0,
+        "n": 2048,
+        "coverage": 0.1611328125,
+        "valid_and_in_band": 0.12451171875,
+        "stable_and_in_band": 0.0625,
+        "distinct_valid_in_band_per_attempt": 0.12451171875,
+        "guide_hit_precision": 0.5807453416149069,
+        "guide_false_hit_per_attempt": 0.06591796875,
+        "mae_delta": 4.405919418403871,
+        "molecule_stability": 0.37109375
+      },
+      {
+        "property": "gap",
+        "arm": "lgd_mc",
+        "w": 8.0,
+        "n": 2048,
+        "coverage": 0.18603515625,
+        "valid_and_in_band": 0.130859375,
+        "stable_and_in_band": 0.06591796875,
+        "distinct_valid_in_band_per_attempt": 0.130859375,
+        "guide_hit_precision": 0.6,
+        "guide_false_hit_per_attempt": 0.068359375,
+        "mae_delta": 3.868352831716573,
+        "molecule_stability": 0.3388671875
+      },
+      {
+        "property": "mu",
+        "arm": "btvg2",
+        "w": 4.0,
+        "n": 2048,
+        "coverage": 0.1005859375,
+        "valid_and_in_band": 0.0732421875,
+        "stable_and_in_band": 0.041015625,
+        "distinct_valid_in_band_per_attempt": 0.0732421875,
+        "guide_hit_precision": 0.5885167464114832,
+        "guide_false_hit_per_attempt": 0.0419921875,
+        "mae_delta": 6.355358832657022,
+        "molecule_stability": 0.3896484375
+      },
+      {
+        "property": "mu",
+        "arm": "btvg2",
+        "w": 8.0,
+        "n": 2048,
+        "coverage": 0.11181640625,
+        "valid_and_in_band": 0.0859375,
+        "stable_and_in_band": 0.04931640625,
+        "distinct_valid_in_band_per_attempt": 0.0859375,
+        "guide_hit_precision": 0.5811965811965812,
+        "guide_false_hit_per_attempt": 0.0478515625,
+        "mae_delta": 5.5570858191456525,
+        "molecule_stability": 0.373046875
+      },
+      {
+        "property": "mu",
+        "arm": "btvg2_band",
+        "w": 8.0,
+        "n": 2048,
+        "coverage": 0.11865234375,
+        "valid_and_in_band": 0.08642578125,
+        "stable_and_in_band": 0.044921875,
+        "distinct_valid_in_band_per_attempt": 0.08642578125,
+        "guide_hit_precision": 0.6188340807174888,
+        "guide_false_hit_per_attempt": 0.04150390625,
+        "mae_delta": 5.700107773690194,
+        "molecule_stability": 0.3701171875
+      },
+      {
+        "property": "mu",
+        "arm": "lgd_mc",
+        "w": 4.0,
+        "n": 2048,
+        "coverage": 0.1015625,
+        "valid_and_in_band": 0.07568359375,
+        "stable_and_in_band": 0.046875,
+        "distinct_valid_in_band_per_attempt": 0.07568359375,
+        "guide_hit_precision": 0.5933014354066986,
+        "guide_false_hit_per_attempt": 0.04150390625,
+        "mae_delta": 6.392030109726038,
+        "molecule_stability": 0.400390625
+      },
+      {
+        "property": "mu",
+        "arm": "lgd_mc",
+        "w": 8.0,
+        "n": 2048,
+        "coverage": 0.12353515625,
+        "valid_and_in_band": 0.0947265625,
+        "stable_and_in_band": 0.0419921875,
+        "distinct_valid_in_band_per_attempt": 0.0947265625,
+        "guide_hit_precision": 0.6266094420600858,
+        "guide_false_hit_per_attempt": 0.04248046875,
+        "mae_delta": 5.685915714124762,
+        "molecule_stability": 0.36865234375
+      }
+    ],
+    "paired_vs_lgd_mc": [
+      {
+        "property": "alpha",
+        "arm": "btvg2",
+        "w": 4.0,
+        "coverage": {
+          "difference": -0.0107421875,
+          "paired_se": 0.006798487141249058,
+          "rescued": 86,
+          "lost": 108,
+          "retained": 65
+        },
+        "valid_and_in_band": {
+          "difference": -0.005859375,
+          "paired_se": 0.005980257995972452,
+          "rescued": 69,
+          "lost": 81,
+          "retained": 49
+        }
+      },
+      {
+        "property": "alpha",
+        "arm": "btvg2",
+        "w": 8.0,
+        "coverage": {
+          "difference": -0.013671875,
+          "paired_se": 0.00792981332330369,
+          "rescued": 118,
+          "lost": 146,
+          "retained": 63
+        },
+        "valid_and_in_band": {
+          "difference": -0.00830078125,
+          "paired_se": 0.006817673689658466,
+          "rescued": 89,
+          "lost": 106,
+          "retained": 45
+        }
+      },
+      {
+        "property": "alpha",
+        "arm": "btvg2_band",
+        "w": 8.0,
+        "coverage": {
+          "difference": -0.00537109375,
+          "paired_se": 0.004228006115385655,
+          "rescued": 32,
+          "lost": 43,
+          "retained": 166
+        },
+        "valid_and_in_band": {
+          "difference": -0.00537109375,
+          "paired_se": 0.0035536269617473634,
+          "rescued": 21,
+          "lost": 32,
+          "retained": 119
+        }
+      },
+      {
+        "property": "gap",
+        "arm": "btvg2",
+        "w": 4.0,
+        "coverage": {
+          "difference": 0.00146484375,
+          "paired_se": 0.00716128394763097,
+          "rescued": 109,
+          "lost": 106,
+          "retained": 224
+        },
+        "valid_and_in_band": {
+          "difference": -0.00341796875,
+          "paired_se": 0.006001090368260042,
+          "rescued": 72,
+          "lost": 79,
+          "retained": 176
+        }
+      },
+      {
+        "property": "gap",
+        "arm": "btvg2",
+        "w": 8.0,
+        "coverage": {
+          "difference": -0.01123046875,
+          "paired_se": 0.009015477730067663,
+          "rescued": 159,
+          "lost": 182,
+          "retained": 199
+        },
+        "valid_and_in_band": {
+          "difference": -0.0078125,
+          "paired_se": 0.007781907616221799,
+          "rescued": 119,
+          "lost": 135,
+          "retained": 133
+        }
+      },
+      {
+        "property": "gap",
+        "arm": "btvg2_band",
+        "w": 8.0,
+        "coverage": {
+          "difference": -0.0126953125,
+          "paired_se": 0.006866673499872281,
+          "rescued": 86,
+          "lost": 112,
+          "retained": 269
+        },
+        "valid_and_in_band": {
+          "difference": -0.0009765625,
+          "paired_se": 0.006177794292331231,
+          "rescued": 79,
+          "lost": 81,
+          "retained": 187
+        }
+      },
+      {
+        "property": "mu",
+        "arm": "btvg2",
+        "w": 4.0,
+        "coverage": {
+          "difference": -0.0009765625,
+          "paired_se": 0.008764007110225428,
+          "rescued": 160,
+          "lost": 162,
+          "retained": 46
+        },
+        "valid_and_in_band": {
+          "difference": -0.00244140625,
+          "paired_se": 0.00751863653543576,
+          "rescued": 116,
+          "lost": 121,
+          "retained": 34
+        }
+      },
+      {
+        "property": "mu",
+        "arm": "btvg2",
+        "w": 8.0,
+        "coverage": {
+          "difference": -0.01171875,
+          "paired_se": 0.009492057806723138,
+          "rescued": 177,
+          "lost": 201,
+          "retained": 52
+        },
+        "valid_and_in_band": {
+          "difference": -0.0087890625,
+          "paired_se": 0.008314891934648976,
+          "rescued": 136,
+          "lost": 154,
+          "retained": 40
+        }
+      },
+      {
+        "property": "mu",
+        "arm": "btvg2_band",
+        "w": 8.0,
+        "coverage": {
+          "difference": -0.0048828125,
+          "paired_se": 0.00534907084791815,
+          "rescued": 55,
+          "lost": 65,
+          "retained": 188
+        },
+        "valid_and_in_band": {
+          "difference": -0.00830078125,
+          "paired_se": 0.004551800632590021,
+          "rescued": 35,
+          "lost": 52,
+          "retained": 142
+        }
+      }
+    ],
+    "note": "Exploratory reanalysis of existing overlapping test[:2048]; no new independent evidence. f_B received continuous features in the original evaluator."
+  },
+  "torch_version": "2.11.0+cu128",
+  "source_sha256": {
+    "proj1\\scripts\\audit_btvg_mechanism.py": "0ea54825f93650344e4d02d33111252c8c9391dd36095a887efebefbf1dc86eb",
+    "proj1\\src\\guidance.py": "3ce6a8cdd8ca9972488a7840395c485fe44a93855b0a820d8a05bc085e110df8",
+    "proj1\\src\\sampling.py": "86f23640fbb4965f6cf3ca75a0a335f68226bf53008c844f4158feaeb055a0e4",
+    "proj1\\src\\evaluation.py": "202071fcc877288c666d0802d25c033437a3c2dcfb96cc5e79ae99ad56139bc0"
+  }
+}

@@ -144,15 +144,27 @@ def dense_edges(mask: torch.Tensor):
     return [row, col], pm.reshape(-1, 1)
 
 
+# The vendored TFG tree. The property networks live inside it, so walking up
+# from their args files finds EGNN.py; the generator does NOT --
+# fetch_tfg_assets.py puts it in weights/<model>/, outside the tree, and
+# without this fallback EDMGenerator could not be built from the checkpoint
+# the fetch script downloads.
+_VENDORED_EGNN = (Path(__file__).resolve().parents[3] / "audit" / "fa_fb_search"
+                  / "TFG" / "tasks" / "networks" / "egnn" / "EGNN.py")
+
+
 def _egnn_path(args_path) -> Path:
-    """Locate the vendored EGNN.py above a checkpoint's args file."""
+    """Locate EGNN.py above a checkpoint's args file, else the vendored copy."""
     p = Path(args_path).resolve()
     for parent in p.parents:
         cand = parent / "tasks" / "networks" / "egnn" / "EGNN.py"
         if cand.exists():
             return cand
+    if _VENDORED_EGNN.exists():
+        return _VENDORED_EGNN
     raise FileNotFoundError(
-        "could not find tasks/networks/egnn/EGNN.py above %s" % args_path)
+        "could not find tasks/networks/egnn/EGNN.py above %s, nor the vendored "
+        "copy at %s" % (args_path, _VENDORED_EGNN))
 
 
 def _coord2diff(x, edge_index, norm_constant=1):
@@ -194,14 +206,19 @@ class EDMGenerator(nn.Module):
     """TFG's `EDMsecond` as net(coords, feats, mask, tau) -> (eps_c, eps_f).
 
     UNITS. Everything this module sees is in EDM's NORMALISED space: the
-    sampler's state is (x / norm_values[0], onehot / norm_values[1]), which for
-    EDM's QM9 recipe is (x, onehot / 8). That is deliberate -- it is the space
-    the network was trained in and the space its epsilon lives in, so no
-    rescaling happens on the hot path where a factor could go missing. The
-    conversion back to physical coordinates and one-hot features happens once,
-    at the boundary, in `denormalise`.
+    sampler's state is (x / norm_values[0], onehot / norm_values[1]). For
+    EDMsecond that is (x, onehot / 4) -- its normalize_factors are [1, 4, 10],
+    EDM's own QM9 default. It is NOT the / 8 that TFG's property networks were
+    trained on ([1, 8, 1]); an earlier version of this docstring said / 8 and
+    the driver built on it fed the guide 2x and the oracle 4x/8x the intended
+    features. `transfer_sweep.build_pair` now takes this module's
+    norm_values[1] explicitly and converts per network. Normalised space is
+    deliberate -- it is the space the network was trained in and the space its
+    epsilon lives in, so no rescaling happens on the hot path. The conversion
+    back to physical coordinates and one-hot features happens once, at the
+    boundary, in `denormalise`.
 
-    The 1/8 is not cosmetic. It is the feature scaling our own generator does
+    The type scaling is not cosmetic. It is the scaling our own generator does
     NOT do, and which BASE_MODEL_BENCHMARK.md Section 5 names as the leading
     suspect for our stability gap. Running the arms here therefore also asks
     whether our guidance conclusions survive on a generator whose type channel
@@ -331,13 +348,14 @@ class TFGGuide(nn.Module):
     hook in the sampler. Until someone does that, this file measures t = 0 and
     says so.
 
-    FEATURE UNITS. `feats` arrives ALREADY divided by norm_values[1], because
-    the sampler runs in EDM's normalised space, and that is exactly what this
-    network expects -- so there is no second division here. Dividing again (the
-    obvious way to write it) would feed one-hot values of 1/64 and the guide
-    would predict a near-constant property: guidance would still run, and its
-    gradient would be tiny but finite, which is a silent failure rather than a
-    crash. `test_transfer_backend.py` gates the scale against real molecules.
+    FEATURE UNITS. `feats` must arrive as onehot / THIS network's
+    norm_values[1] (8), and this class does no conversion. That is NOT the
+    sampler's space -- EDMsecond's state is onehot / 4 -- so production code
+    reaches this network only through `Calibrated`, whose `feat_scale` maps
+    sampler space to this one (4 / 8 = 0.5 for EDMsecond). Feeding it the
+    sampler's features directly reads one-hot 2x too large: guidance still
+    runs, predictions are finite and wrong. `test_transfer_backend.py` gates
+    the scale against real molecules AND against generated ones.
     """
 
     def __init__(self, root, prop: str, device="cpu"):
@@ -472,10 +490,13 @@ class Calibrated(nn.Module):
     pair `guidance.py` and `evaluation.py` require of any f_A / f_B, and
     `.y_std`, which the sweep uses to set the likelihood scale.
 
-    `feats_are_normalised` records which space this predictor wants, so the
-    driver cannot hand the oracle EDM-scaled features by accident: the guide
-    takes onehot/8, the oracle takes raw onehot, and getting that backwards
-    produces plausible numbers rather than an error.
+    Every caller hands it features in the SAMPLER's space (the generator's
+    onehot / normalize_factors[1]); `_feats` maps that to this network's own
+    space. `feats_are_normalised=True` means "the two spaces coincide" (factor
+    1); otherwise `feat_scale` is the multiplier. For EDMsecond the guide's is
+    4/8 = 0.5 and the oracle's is 4. Build the pair with
+    `transfer_sweep.build_pair`, which reads both scales off the checkpoints:
+    assuming them is how an earlier version fed both networks the wrong scale.
     """
 
     def __init__(self, inner, slope, intercept, prop, y_std,
@@ -495,7 +516,7 @@ class Calibrated(nn.Module):
         self.feat_scale = float(feat_scale)
 
     def _feats(self, feats):
-        """Convert from the SAMPLER's space (EDM-normalised) to this net's."""
+        """Convert from the SAMPLER's space (the generator's) to this net's."""
         return feats if self.feats_are_normalised else feats * self.feat_scale
 
     def forward(self, coords, feats, mask):

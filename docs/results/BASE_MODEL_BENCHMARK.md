@@ -457,8 +457,8 @@ evaluator-convention artefact and this document needs revising.
 | QM9 preprocessing | ours (133,885, private split) | ours | ✅ *applies to both* |
 | training data | our `train_a` half (51,527) | TFG's half (50,000), identity unknown | ⚠️ different halves |
 | training budget | 303k steps | ~1.56M steps | ❌ **not equal** |
-| architecture | EGNN 256×8, no attention | EGNN 192×9, attention | ❌ **not equal** |
-| feature scaling | one-hot ×1 | one-hot ×1/8 | ❌ **the hypothesis in Section 5** |
+| architecture | EGNN 256×8, no attention | EGNN **256×9**, attention (read from the checkpoint's args, 23 Sep) | ❌ **not equal** |
+| feature scaling | one-hot ×1 | one-hot **×1/4** (`normalize_factors` [1, 4, 10], read from the checkpoint) | ❌ **the hypothesis in Section 5** |
 | sampler | 100-step Euler PF-ODE | **the same** | ✅ *not EDM's own SDE* |
 
 **Drawing sizes from `train_a` for both is the right call, and it is measured,
@@ -509,6 +509,29 @@ The two italic rows are what Sections 4.2 and 4.4 already quote. The point of
 the two blank rows is to sit directly above them and say whether they survive
 re-measurement.
 
+**Measured 23 Sep — the gate run, not yet the table's protocol.** n = 2,000,
+**one seed**, sizes from `train_a`, 100 Euler steps, local RTX 5080, md5
+`6abbd010…`. It passes the gate at both grids; the 10,000 × 3 row above is
+still to be run, and these numbers must not be quoted in its place.
+
+| grid | atom stab | mol stab | validity (EDM) | valid × unique | connected (of valid) |
+|---|---|---|---|---|---|
+| `uniform` | **0.9644** | **0.6725** | 0.849 | 0.8485 | 0.952 |
+| `gamma` | 0.9589 | 0.6380 | 0.831 | 0.8305 | 0.938 |
+
+Three things follow. (1) Through **our** evaluator at 100 steps, the borrowed
+model beats ours by ~2.8 atom / ~27–31 molecule points; it is itself ~2 / ~15
+below its published row, the price of our 100-step ODE against EDM's
+1000-step SDE (§9.2). (2) **Section 9.3's prediction did not hold**: the
+gamma-uniform grid is *worse* than the naive one, by 0.6 / 3.5 points. The
+transfer sweep therefore runs `--grid uniform`. (3) The model the gate
+measures scales one-hot by **1/4** and is **256** wide — not the 1/8 / 192
+recipe this document infers for EEGSDE's half-data row (§1, §2, §5). That
+inference was about EEGSDE's model, which is not released; but the one
+half-data EDM we *can* inspect uses EDM's unconditional default, and any
+sentence saying "the model beating us scales by 1/8" should say which model
+it means.
+
 **Novelty is not in this table and must not be added to it.** `score_samples`
 computes `novelty_vs_train_a` against *our* half; the borrowed models' own
 training halves are unknown, so their novelty numbers measure nothing about
@@ -534,7 +557,7 @@ sign, the time direction, the one-hot scale, or the EMA key.
 
 ```bash
 python proj1/scripts/fetch_tfg_assets.py --models EDMsecond,EDMfull
-python proj1/tests/test_transfer_backend.py --require-edm      # 61 gates
+python proj1/tests/test_transfer_backend.py --require-edm      # 74 gates
 
 python proj1/scripts/benchmark_transfer_base.py --edm-dir weights/EDMsecond \
     --n 2000 --steps 100 --grid gamma --seed 0 \

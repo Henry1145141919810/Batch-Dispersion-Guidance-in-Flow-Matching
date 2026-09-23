@@ -57,6 +57,15 @@ WHAT EACH CHECK IS PROTECTING
                          getting it backwards is a factor of 64 that produces
                          plausible-looking numbers.
 
+  pair_*                 the PRODUCTION pair (transfer_sweep.build_pair) on
+                         real molecules put through the GENERATOR's
+                         normalisation -- the only gate that joins the two
+                         sides. EDMsecond divides one-hot by 4, TFG's guides by
+                         8, and every gate above passed while the driver fed
+                         both networks the wrong scale on every sample. Carries
+                         a negative control (the old wiring must fail it) and
+                         checks a real generation ends at one-hot / 4.
+
 The generator checks are skipped with a printed notice when EDMsecond has not
 been downloaded, so this file is runnable before the fetch. They are not
 optional in substance -- `--require-edm` turns a skip into a failure, which is
@@ -466,6 +475,63 @@ def check_generator(d, require):
          max(float(ec[pad].abs().max()), float(ef[pad].abs().max())), 1e-12)
 
 
+def check_production_pair(d, require):
+    """The pair transfer_sweep.build_pair hands the sampler, fed features in
+    the GENERATOR's space -- the space every production caller uses.
+
+    Every other calibration gate feeds each network in the space IT wants, so
+    none of them could see that EDMsecond's space (onehot / 4) is not the
+    guide's (onehot / 8). That mismatch shipped: on generated molecules the
+    guide read one-hot 2x too large, the oracle 2 x one-hot, and the unguided
+    guide-oracle gap on mu was 2.50 D (0.18 D once fixed). Stability, which
+    reads argmax, could not see it either.
+    """
+    have = all(os.path.exists(os.path.join(EDM_DIR, n))
+               for n in ("generative_model_ema.npy", "args.pickle"))
+    if not have:
+        if require:
+            gate("pair_edm_present", 1.0, 0.5)
+        return
+    sys.path.insert(0, os.path.join(ROOT, "proj1", "scripts"))
+    import transfer_sweep as ts
+    from sampling import VPSampler, initial_noise, integrate
+
+    net = EDMGenerator(os.path.join(EDM_DIR, "generative_model_ema.npy"),
+                       os.path.join(EDM_DIR, "args.pickle")).double()
+    scale = ts.generator_feat_scale(EDM_DIR)
+    gate("pair_scale_is_generators", abs(scale - net.norm_values[1]), 1e-12)
+    d64 = dict(d, coords=d["coords"].double(), feats=d["feats"].double(),
+               mask=d["mask"].double(), y=d["y"].double())
+    sel = ts.calibration_indices(d64, 600)
+    te = d["split"]["test"][:400]
+    c, f, m = d64["coords"][te], d64["feats"][te], d64["mask"][te]
+    cn, fn = net.normalise(c, f)          # real molecules, in sampler space
+    for prop in ("mu", "gap"):
+        f_A, f_B, _, rep = ts.build_pair(prop, d64, sel, "cpu", 2.0, scale)
+        truth = d64["y"][te, PROP_INDEX[prop]]
+        with torch.no_grad():
+            for who, fn_ in (("guide", f_A), ("oracle", f_B)):
+                mae = (fn_(cn, fn, m) - truth).abs().mean() / QM9_MAD[prop]
+                gate("pair_sampler_space__%s_%s" % (prop, who), mae, 0.1)
+            # NEGATIVE CONTROL: the old wiring (sampler space assumed to be the
+            # guide's onehot / 8) must fail the same test, or it proves nothing.
+            old = Calibrated(f_B.net, f_B.slope, f_B.intercept, prop, 1.0,
+                             feats_are_normalised=False,
+                             feat_scale=rep["guide_feat_scale"])
+            bad = (old(cn, fn, m) - truth).abs().mean() / QM9_MAD[prop]
+            gate("pair_old_wiring_detected__%s" % prop, 0.1 / max(float(bad), 1e-12), 1.0)
+
+    # The sampler's features really ARE onehot / scale at the end of a run.
+    g = torch.Generator().manual_seed(0)
+    mm = d64["mask"][te[:4]]
+    c0, f0 = initial_noise(mm, 5, g)
+    smp = VPSampler(net, mm, tau_min=1e-3, noise_schedule=net.schedule)
+    _, fT, _ = integrate(smp, c0.double(), f0.double(), 40, "euler")
+    hot = (fT * mm.unsqueeze(-1)).max(-1).values[mm.bool()]
+    gate("pair_generated_hot_is_1_over_scale",
+         (hot.median() * scale - 1.0).abs(), 0.05)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--require-edm", action="store_true",
@@ -482,6 +548,7 @@ def main():
     check_shg_time_mirror()
     check_generator_defs()
     check_generator(d, a.require_edm)
+    check_production_pair(d, a.require_edm)
 
     print("%-44s %13s %11s   pass" % ("check", "error", "tolerance"))
     print("-" * 78)

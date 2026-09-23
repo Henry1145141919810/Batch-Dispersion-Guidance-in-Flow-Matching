@@ -228,7 +228,8 @@ def tfg_mc_weighted_grad(f_net, m_c, m_f, mask, y, s, n_mc, sigma,
         schedule; SMG uses the model's own posterior covariance
         Sigma_t = (sigma_t^2/alpha_t) d xhat_1/d x_t, which is anisotropic and
         read off the denoiser rather than tuned;
-      * this is K-sample Monte Carlo (K = eps_bsz = 4 in their molecule script);
+      * this is K-sample Monte Carlo (K = 4 here, our choice: TFG's QM9 runs
+        use eps_bsz = 1, and its molecule code crashes for > 1, issue #10);
         SMG is deterministic at one JVP;
       * this averages the LIKELIHOOD; SMG corrects the property MOMENTS and then
         forms the likelihood.
@@ -259,6 +260,147 @@ def tfg_mc_weighted_grad(f_net, m_c, m_f, mask, y, s, n_mc, sigma,
     G_c = (W * torch.stack(gcs)).sum(0)
     G_f = (W * torch.stack(gfs)).sum(0)
     return G_c, G_f, LP
+
+
+# --------------------------------------------------------------------------
+# TFG, the full per-step update (Ye et al., NeurIPS 2024), N_recur = 1
+# --------------------------------------------------------------------------
+#
+# NOT `tfg_mc`. That arm is one of TFG's three ingredients -- the MC
+# smoothing -- at settings TFG itself does not use on QM9 (K=4, a fixed
+# sigma). TFG's own QM9 search (App. E.3, Table 11) turned the smoothing
+# almost OFF (gamma_bar 1e-4 .. 0.1) and the clean-space "mean guidance" ON
+# on all six properties. These two functions are the whole of
+# methods/tfg.py:96-129 at N_recur = 1; the sampler (sampling.py, the
+# `tfg` branch) supplies the time schedules and the step geometry, because
+# only it knows the grid.
+
+def tfg_rescale_grad(g_c, g_f, mask, clip_scale):
+    """TFG's gradient safeguard, tasks/utils.py:rescale_grad, in effect.
+
+    ms = per-sample mean of g^2 over active atoms and all 3+T channels; the
+    gradient is multiplied by min(ms, clip)/ms. It is ms, NOT sqrt(ms): above
+    the threshold the gradient's RMS becomes clip/RMS, so a larger raw
+    gradient comes out SMALLER. That is TFG's code, reproduced rather than
+    corrected. One deliberate difference: ms == 0 returns the (zero) gradient
+    unchanged, where TFG's 0/0 would give NaN.
+
+    Returns (g_c, g_f, hit) with hit[B] = 1.0 where the clamp bound.
+    """
+    n_act = mask.sum(dim=1).clamp(min=1.0)
+    ch = g_c.shape[-1] + g_f.shape[-1]
+    ms = ((g_c ** 2).sum(dim=(1, 2)) + (g_f ** 2).sum(dim=(1, 2))) / (ch * n_act)
+    hit = ms > clip_scale
+    coef = torch.where(hit, clip_scale / ms.clamp(min=1e-300),
+                       torch.ones_like(ms)).view(-1, 1, 1)
+    return g_c * coef, g_f * coef, hit.to(g_c.dtype)
+
+
+def tfg_logf(f_net, c, f, mask, y, mad):
+    """TFG's molecule log-likelihood, -((f - y) / mad)^2.
+
+    energy.py:369 squares the difference of a MAD-normalised prediction and a
+    MAD-normalised target, so in physical units it is this. It is NOT the
+    project's -(y - f)^2 / (2 s^2): the two differ by the constant
+    2 s^2 / mad^2, which a strength sweep would absorb -- except that
+    rescale_grad's threshold is absolute, so TFG's published (rho, mu, gamma)
+    only mean what they meant in TFG's own energy.
+    """
+    return -((f_net(c, f, mask) - y) / mad) ** 2
+
+
+def tfg_components(f_net, post_fn, coords, feats, mask, y, mad, std, mu_step,
+                   n_iter=4, eps_bsz=1, want_var=True, var_scale=1.0,
+                   clip_scale=100.0, generator=None, cost=_NOCOST):
+    """One TFG step's two guidance pieces (methods/tfg.py:96-123, N_recur = 1).
+
+      eps_k   K draws of std * N(0, I) -- zero-CoM coordinates, masked
+              features -- drawn ONCE and shared by both pieces (tfg.py:99).
+              std == 0 draws nothing and uses a single zero perturbation,
+              exactly as TFG's get_noise does.
+      G       rescale_grad(var_scale * grad_{x_t} L(m(x_t))),
+              L(x0) = log mean_k exp(logf(x0 + eps_k)),
+              i.e. TFG's Delta_t / rho, through the denoiser.
+      D0      x0' <- m; repeat n_iter: x0' += mu_step * rescale_grad(
+              grad_{x0'} L(x0')); D0 = x0' - m. TFG's Delta_0, clean space
+              only -- no generator backprop.
+
+    `var_scale` puts the gradient in the space TFG's rescale_grad saw: TFG
+    differentiates w.r.t. its VP-normalised state, so on a flow path
+    x_vp = x_t / c_t the gradient is c_t times ours, and the clip must see
+    that (1 on a VP model). G is returned WITHOUT rho: the sampler applies rho
+    and the step geometry. mu_step IS applied here, because D0 is nonlinear in
+    it -- the iterations compound.
+
+    Cost: want_var -> 1 generator forward with graph + 1 VJP; otherwise one
+    no-grad forward for m. Guide: K forwards/backwards for G (if want_var)
+    plus n_iter * K for D0 (none when mu_step == 0 -- TFG skips the loop).
+    """
+    import math
+
+    from models.egnn import zero_com
+
+    msk = mask.unsqueeze(-1)
+    if std is None or float(std) == 0.0:
+        eps = [(torch.zeros_like(coords), torch.zeros_like(feats))]
+    else:
+        eps = []
+        for _ in range(max(int(eps_bsz), 1)):
+            e_c = torch.randn(coords.shape, generator=generator,
+                              device=coords.device, dtype=coords.dtype)
+            e_f = torch.randn(feats.shape, generator=generator,
+                              device=feats.device, dtype=feats.dtype)
+            eps.append((zero_com(e_c * msk, mask) * float(std),
+                        e_f * msk * float(std)))
+    K = len(eps)
+
+    def L(c, f):
+        lp = torch.stack([tfg_logf(f_net, c + e_c, f + e_f, mask, y, mad)
+                          for (e_c, e_f) in eps])                # [K, B]
+        cost.guide_fwd += K
+        return torch.logsumexp(lp, dim=0) - math.log(K)
+
+    zeros_B = torch.zeros(coords.shape[0], device=coords.device, dtype=coords.dtype)
+    G_c = torch.zeros_like(coords)
+    G_f = torch.zeros_like(feats)
+    hit_var = zeros_B
+    if want_var:
+        c_in = coords.detach().requires_grad_(True)
+        f_in = feats.detach().requires_grad_(True)
+        p = post_fn(c_in, f_in)
+        g_c, g_f = torch.autograd.grad(L(p.mean_coords, p.mean_feats).sum(),
+                                       (c_in, f_in))
+        cost.gen_fwd += 1
+        cost.gen_vjp += 1
+        cost.guide_bwd += K
+        m_c, m_f = p.mean_coords.detach(), p.mean_feats.detach()
+        G_c, G_f, hit_var = tfg_rescale_grad(var_scale * g_c.detach() * msk,
+                                             var_scale * g_f.detach() * msk,
+                                             mask, clip_scale)
+    else:
+        with torch.no_grad():
+            p = post_fn(coords, feats)
+        cost.gen_fwd += 1
+        m_c, m_f = p.mean_coords.detach(), p.mean_feats.detach()
+
+    x_c, x_f = m_c.clone(), m_f.clone()
+    hits0 = []
+    if float(mu_step) != 0.0:
+        for _ in range(int(n_iter)):
+            xc = x_c.detach().requires_grad_(True)
+            xf = x_f.detach().requires_grad_(True)
+            gc, gf = torch.autograd.grad(L(xc, xf).sum(), (xc, xf))
+            cost.guide_bwd += K
+            gc, gf, h0 = tfg_rescale_grad(gc.detach() * msk, gf.detach() * msk,
+                                          mask, clip_scale)
+            hits0.append(h0)
+            x_c = x_c + float(mu_step) * gc
+            x_f = x_f + float(mu_step) * gf
+    D_c, D_f = (x_c - m_c).detach(), (x_f - m_f).detach()
+    diag = {"tfg_var_rescaled": hit_var,
+            "tfg_d0_rescaled": (torch.stack(hits0).mean(0) if hits0 else zeros_B),
+            "tfg_eps_bsz": K}
+    return G_c.detach(), G_f.detach(), D_c, D_f, diag
 
 
 def hutchinson_tr_HS_squared(f_net, post_fn, coords, feats, mask, m_c, m_f, k,
@@ -485,6 +627,250 @@ def sigma_mc_weighted_grad(f_net, post_fn, coords, feats, mask, m_c, m_f, k,
         out_c = out_c + b * cov_c
         out_f = out_f + b * cov_f
     return out_c, out_f, F
+
+
+def btvg2_weighted_grad(f_net, post_fn, coords, feats, mask, m_c, m_f, k,
+                        y, s, tau, n_mc, generator=None, cost=_NOCOST,
+                        gate=True, orth=True, cap=1.0, com_free=True):
+    """BTVG-2: lgd_mc's mean term plus BTVG's variance term, both read off the
+    SAME K smoothed draws. Returned in m-space; the caller pulls back with J^T.
+
+    WHY. The full run showed the binding constraint is chemistry per unit of
+    push, and lgd_mc's smoothed estimator is the only one that kept chemistry
+    at w = 4. BTVG's analytic variance term (a) needs an HVP and a symmetric-J
+    assumption, (b) goes non-positive on ~5% of steps, (c) drags the property
+    mean away from far targets, and (d) eats the clip budget. Each piece below
+    answers one of those.
+
+    Draws are made exactly as sigma_mc_weighted_grad makes them (same RNG
+    calls, same order), so at the first guided step the mean term is
+    bit-identical to lgd_mc's and `btvg2 - lgd_mc` isolates the variance term.
+
+        mean    M     = sum_i w_i (y - F_i)/s^2 g_i        lgd_mc, unchanged
+        moments mu    = mean_i F_i,  V = var_i F_i         unbiased, V >= 0
+        grad V  dV/dm = 2/(K-1) sum_i (F_i - mu) g_i       exact for fixed draws
+        coeff   b     = 1/2 (1/s^2) (1 - tau^2/V)_+        forward KL to
+                        N(y, tau^2), in plug units (x tau^2/s^2); never widens
+        gate    gamma = exp(-(y - mu)^2 / (2 V))           concentrate only when
+                        y is plausible under the current predictive law
+        orth    P v   = v - (v.gbar / gbar.gbar) gbar       gbar = mean_i g_i, so
+                        the variance step leaves mu_hat unchanged to first order
+        cap     |gamma b P dV| <= cap max(|y - mu|, sqrt V) |gbar| / s^2
+                        i.e. no larger than the mean step for the LARGER of
+                        the actual miss and a one-sd miss (the residual floor
+                        keeps the far-target protection; the sd floor keeps
+                        it alive on target). Not |M|: M -> 0 when the target is hit, and
+                        a |M| cap then crushed the variance step (measured 17x)
+                        in exactly the centred-but-wide regime it exists for.
+                        Near an extremum of f (gbar ~ 0) it binds hard, which
+                        is where flatness-seeking is least trustworthy.
+        field   M - gamma b P(dV/dm)
+
+    WHAT "DESCENDING V" MEANS HERE, stated plainly. The draws are isotropic
+    with a detached radius, so dV/dm measures how FLAT f is around m under
+    that probe -- not the generator's commitment (J), and not Sigma's shape.
+    It is "move to where the remaining noise can no longer change f". That can
+    also mean "where the predictor is flat but the data is not" (an
+    off-manifold / reward-hacking risk); the sweep's guide_eval_gap and
+    mol_stability are the measurements that would show it.
+    "Leaves mu unchanged" is exact for mu_hat, the K-draw isotropic estimate;
+    it says nothing about the true posterior mean of f (SMG's c term).
+
+    n_mc must be >= 2 (a variance needs two draws). It is refused rather than
+    bumped, because bumping would silently break the bit-identical mean term
+    against lgd_mc at the same n_mc.
+    """
+    if int(n_mc) < 2:
+        raise ValueError("btvg2 needs n_mc >= 2 (got %r)" % (n_mc,))
+    K = int(n_mc)
+    msk = mask.unsqueeze(-1)
+    iso_r2 = trace_scale(post_fn, coords, feats, mask, k, 1, generator, cost,
+                         com_free=com_free)
+    r = iso_r2.clamp(min=0.0).sqrt().view(-1, 1, 1)
+    fs, gcs, gfs = [], [], []
+    for _ in range(K):
+        z_c = torch.randn(m_c.shape, generator=generator, device=m_c.device,
+                          dtype=m_c.dtype) * msk
+        z_f = torch.randn(m_f.shape, generator=generator, device=m_f.device,
+                          dtype=m_f.dtype) * msk
+        mc = (m_c + r * z_c).detach().requires_grad_(True)
+        mf = (m_f + r * z_f).detach().requires_grad_(True)
+        val = f_net(mc, mf, mask)
+        gc, gf = torch.autograd.grad(val.sum(), (mc, mf))
+        cost.guide_fwd += 1
+        cost.guide_bwd += 1
+        fs.append(val.detach())
+        gcs.append(gc.detach())
+        gfs.append(gf.detach())
+    F = torch.stack(fs)                                   # [K, B]
+    GC = torch.stack(gcs)
+    GF = torch.stack(gfs)
+    B = F.shape[1]
+
+    # the mean term: lgd_mc exactly
+    lw = -((y - F) ** 2) / (2.0 * s ** 2)
+    wts = torch.softmax(lw, dim=0).view(K, -1, 1, 1)
+    coef = ((y - F) / s ** 2).view(K, -1, 1, 1)
+    M_c, M_f = (wts * coef * GC).sum(0), (wts * coef * GF).sum(0)
+
+    mu = F.mean(0)
+    V = F.var(0, unbiased=True)                           # >= 0 by construction
+    dF = (F - mu).view(K, -1, 1, 1)
+    dV_c = 2.0 * (dF * GC).sum(0) / (K - 1)
+    dV_f = 2.0 * (dF * GF).sum(0) / (K - 1)
+
+    tau2 = torch.as_tensor(tau, device=F.device, dtype=F.dtype) ** 2
+    V_safe = V.clamp(min=1e-12)
+    b = 0.5 / s ** 2 * (1.0 - tau2 / V_safe).clamp(min=0.0)
+    if gate == "band":
+        # concentrate only once the predicted property is INSIDE the band
+        # (width delta = 1.96 tau): hold what is already a hit, and leave
+        # everything else to the mean term. The plausibility gate below
+        # concentrated at |y - mu| ~ sqrt V, i.e. locked samples in just
+        # outside the band (pilot: -0.008 in_band vs lgd_mc, MAE slightly
+        # better, combined z ~ -2 over five comparisons).
+        band = 1.96 * torch.as_tensor(tau, device=F.device, dtype=F.dtype)
+        gamma = torch.exp(-((y - mu) ** 2) / (2.0 * band ** 2))
+    elif gate:
+        gamma = torch.exp(-((y - mu) ** 2) / (2.0 * V_safe))
+    else:
+        gamma = torch.ones_like(mu)
+
+    gb_c, gb_f = GC.mean(0), GF.mean(0)
+    if orth:
+        num = (dV_c * gb_c).sum(dim=(1, 2)) + (dV_f * gb_f).sum(dim=(1, 2))
+        den = (gb_c ** 2).sum(dim=(1, 2)) + (gb_f ** 2).sum(dim=(1, 2))
+        proj = torch.where(den > 0, num / den.clamp(min=1e-30),
+                           torch.zeros_like(num)).view(-1, 1, 1)
+        dV_c, dV_f = dV_c - proj * gb_c, dV_f - proj * gb_f
+
+    a = (gamma * b).view(-1, 1, 1)
+    S_c, S_f = -a * dV_c, -a * dV_f                       # the variance step
+    capped = torch.zeros(B, dtype=torch.bool, device=F.device)
+    nM = ((M_c ** 2).sum(dim=(1, 2)) + (M_f ** 2).sum(dim=(1, 2))).sqrt()
+    if cap is not None:
+        nS = ((S_c ** 2).sum(dim=(1, 2)) + (S_f ** 2).sum(dim=(1, 2))).sqrt()
+        ng = ((gb_c ** 2).sum(dim=(1, 2)) + (gb_f ** 2).sum(dim=(1, 2))).sqrt()
+        lim = cap * torch.maximum((y - mu).abs(), V.sqrt()) * ng / s ** 2
+        capped = nS > lim
+        sc = torch.where(capped, lim / nS.clamp(min=1e-30),
+                         torch.ones_like(nS)).view(-1, 1, 1)
+        S_c, S_f = S_c * sc, S_f * sc
+        nS = nS * sc.view(-1)
+    else:
+        nS = ((S_c ** 2).sum(dim=(1, 2)) + (S_f ** 2).sum(dim=(1, 2))).sqrt()
+    # the variance step's share of the field, in [0, 1] -- bounded, so its
+    # running mean is not dominated by on-target samples where |M| -> 0
+    share = torch.where(nS + nM > 0, nS / (nS + nM).clamp(min=1e-30),
+                        torch.zeros_like(nM))
+    diag = {"btvg2_gate": gamma.detach(),
+            "btvg2_V_over_tau2": (V / tau2).detach(),
+            "btvg2_capped": capped.to(F.dtype).detach(),
+            "btvg2_var_share": share.detach(),
+            "obs_mean": mu.detach(), "obs_var": V.detach()}
+    return M_c + S_c, M_f + S_f, diag
+
+
+# --------------------------------------------------------------------------
+# chemistry-safe guidance (CSG, 23 Sep, after the full run and the BTVG-2
+# pilot): remove from any arm's step the part that would break valence
+# --------------------------------------------------------------------------
+#
+# WHY. Every pre-registered comparison so far says the binding constraint is
+# chemistry per unit of push: a stronger push hits more targets and breaks
+# more molecules, and lgd_mc won by breaking fewer at w = 4. CSG attacks that
+# constraint directly. At each guided step it measures, on the predicted clean
+# molecule m, how far each atom is from its allowed valence -- a smooth
+# relaxation of the SAME distance rule the evaluator uses (Hoogeboom et al.;
+# evaluation.bond_order) -- and removes from the step only the component that
+# would increase that violation to first order.
+#
+# ONE-SIDED, BY DESIGN. The component that would REDUCE the violation is left
+# alone and nothing is ever added, so CSG can only stop the push from
+# damaging chemistry; it cannot push a molecule toward stability. Molecule
+# stability above unguided's would therefore be a red flag, not a result.
+# Because the relaxation mirrors the evaluator's own table, the pilot also
+# scores chemistry with an INDEPENDENT rule (RDKit rdDetermineBonds, covalent
+# radii), see proj1/scripts/independent_chem.py.
+#
+# FIXED BEFORE ANY RUN: kappa = 0.03 A (the sigmoid width, the size of the
+# table's own margins, 3-10 pm) and a type temperature of 0.1 on the one-hot
+# features. Neither was tuned.
+
+QM9_TYPES = ("H", "C", "N", "O", "F")
+CHEM_KAPPA = 0.03
+CHEM_TYPE_TEMP = 0.1
+
+
+def _bond_threshold_tables(device, dtype):
+    """t_k[a, b] in angstrom, k = single/double/triple, INCLUDING the margins,
+    so bond_order(a, b, d) == sum_k 1[d < t_k[a, b]] exactly (the tables are
+    nested: t3 < t2 < t1 wherever they exist). Missing entries -> -10 A, i.e.
+    that order is impossible for the pair."""
+    from evaluation import BONDS1, BONDS2, BONDS3, MARGIN1, MARGIN2, MARGIN3
+    n = len(QM9_TYPES)
+    out = []
+    for table, margin in ((BONDS1, MARGIN1), (BONDS2, MARGIN2), (BONDS3, MARGIN3)):
+        t = torch.full((n, n), -10.0, device=device, dtype=dtype)
+        for i, a in enumerate(QM9_TYPES):
+            for j, b in enumerate(QM9_TYPES):
+                if a in table and b in table[a]:
+                    t[i, j] = (table[a][b] + margin) / 100.0
+        out.append(t)
+    return torch.stack(out)                               # [3, n, n]
+
+
+def soft_valence_violation(m_c, m_f, mask, kappa=CHEM_KAPPA, temp=CHEM_TYPE_TEMP,
+                           per_atom=False):
+    """P = sum_i mask_i (v_i - A_i)^2, a smooth version of "atom i is unstable".
+
+      p_ia   = softmax(m_f / temp)                          soft element
+      b_ij   = sum_ab p_ia p_jb sum_k sigmoid((t_k[a,b] - d_ij) / kappa)
+      v_i    = sum_{j != i} b_ij                            soft valence
+      A_i    = sum_a p_ia allowed(a)                        soft allowed valence
+
+    In the limit kappa -> 0 with one-hot types this is EXACTLY the evaluator's
+    integer valence (gate C1), so P = 0 iff every atom is stable.
+    """
+    if m_f.shape[-1] != len(QM9_TYPES):
+        raise ValueError("soft_valence_violation assumes the QM9 types %s"
+                         % (QM9_TYPES,))
+    from evaluation import ALLOWED_VALENCE
+    T = _bond_threshold_tables(m_c.device, m_c.dtype)     # [3, 5, 5]
+    allowed = torch.tensor([ALLOWED_VALENCE[a] for a in QM9_TYPES],
+                           device=m_c.device, dtype=m_c.dtype)
+    msk = mask.to(m_c.dtype)
+    p = torch.softmax(m_f / temp, dim=-1) * msk.unsqueeze(-1)       # [B,N,5]
+    diff = m_c.unsqueeze(2) - m_c.unsqueeze(1)                      # [B,N,N,3]
+    d = torch.sqrt((diff ** 2).sum(-1) + 1e-12)                     # [B,N,N]
+    # S[b,i,j,a,c] = sum_k sigmoid((t_k[a,c] - d_ij)/kappa)
+    S = torch.sigmoid((T.view(3, 1, 1, 1, 5, 5)
+                       - d.unsqueeze(0).unsqueeze(-1).unsqueeze(-1)) / kappa).sum(0)
+    b = torch.einsum("bia,bjc,bijac->bij", p, p, S)
+    pair = msk.unsqueeze(2) * msk.unsqueeze(1)
+    eye = torch.eye(m_c.shape[1], device=m_c.device, dtype=m_c.dtype)
+    b = b * pair * (1.0 - eye)
+    v = b.sum(-1)
+    A = (p * allowed).sum(-1)
+    viol = ((v - A) ** 2) * msk
+    return viol if per_atom else viol.sum(-1)
+
+
+def chem_safe_project(G_c, G_f, a_c, a_f):
+    """One-sided projection: G' = G - max(0, <a,G>)/|a|^2 a, per sample.
+    a = J^T grad_m P is the direction in x_t that raises the violation, so
+    <a, G'> <= 0: the step can no longer increase P to first order. Samples
+    where <a, G> <= 0 (the step does not hurt) are returned untouched."""
+    num = (a_c * G_c).sum(dim=(1, 2)) + (a_f * G_f).sum(dim=(1, 2))
+    den = (a_c ** 2).sum(dim=(1, 2)) + (a_f ** 2).sum(dim=(1, 2))
+    active = (num > 0) & (den > 0)
+    coef = torch.where(active, num / den.clamp(min=1e-30),
+                       torch.zeros_like(num)).view(-1, 1, 1)
+    P_c, P_f = G_c - coef * a_c, G_f - coef * a_f
+    nG = ((G_c ** 2).sum(dim=(1, 2)) + (G_f ** 2).sum(dim=(1, 2))).sqrt()
+    nR = (((G_c - P_c) ** 2).sum(dim=(1, 2)) + ((G_f - P_f) ** 2).sum(dim=(1, 2))).sqrt()
+    removed = torch.where(nG > 0, nR / nG.clamp(min=1e-30), torch.zeros_like(nG))
+    return P_c, P_f, active, removed
 
 
 def tolerance_band_step(u_c, u_f, b_c, b_f, e, tau, eta=1.0, radius=None):
@@ -876,7 +1262,15 @@ _MODE_ALIASES = {"tmpd": "smg_var", "pigdm": "smg_var", "dps": "plug"}
 KNOWN_MODES = {"plug", "smg_mean", "smg_var", "smg", "smg2", "smg2_curv",
                "tfg_mc", "lgd_mc", "osc", "rch", "band",
                # v2 arms, see PROPOSALS_*.md and the selection memo
-               "spbc", "btvg", "btvg_mean", "btvg_var"}
+               "spbc", "btvg", "btvg_mean", "btvg_var",
+               # BTVG-2 (23 Sep, after the full run): see btvg2_weighted_grad
+               "btvg2", "btvg2_nogate", "btvg2_noorth", "btvg2_nocap",
+               "btvg2_band",
+               # chemistry-safe guidance: any base arm + the valence guard
+               "lgd_mc_chem", "plug_chem"}
+# the base arm each CSG mode wraps; the guard never changes the base field's
+# own computation, so `X_chem - X` isolates the guard exactly
+CHEM_BASE = {"lgd_mc_chem": "lgd_mc", "plug_chem": "plug"}
 
 # Arms that return a STATE DISPLACEMENT rather than a score. The sampler
 # must not apply the (1-t)/t score-to-velocity conversion to these.
@@ -902,6 +1296,11 @@ KNOWN_MODES = {"plug", "smg_mean", "smg_var", "smg", "smg2", "smg2_curv",
 # t_min=0.5, which is why the low-strength grid extension exists.
 DISPLACEMENT_MODES = {"spbc", "band"}
 
+# Arms that are not a field at all: the SAMPLER builds their step, because it
+# needs the time grid (schedules normalised over every step, the next time
+# point, the step size). guidance_field refuses them by name.
+SAMPLER_MODES = {"tfg"}
+
 
 def guidance_field(f_net, post_fn, coords, feats, mask, y, s,
                    mode="plug", n_probe=1, generator=None, cost=_NOCOST,
@@ -922,7 +1321,9 @@ def guidance_field(f_net, post_fn, coords, feats, mask, y, s,
                     ((r^2 - S)/S^2) Sigma H Sigma g -- a different direction,
                     not a rescaling
       "tfg_mc"      TFG's Monte Carlo smoothing: K isotropic perturbations at
-                    tuned sigma_mc (Ye et al. 2024)
+                    tuned sigma_mc (Ye et al. 2024) -- ONE ingredient of TFG,
+                    not TFG. The full method is the sampler-level `tfg` arm
+                    (SAMPLER_MODES), which guidance_field refuses.
       "lgd_mc"      likelihood marginalisation drawing from the model's own
                     Sigma instead of isotropic -- no tuned spread
       "osc"         observable-space closure: same guide budget as lgd_mc, but
@@ -947,9 +1348,42 @@ def guidance_field(f_net, post_fn, coords, feats, mask, y, s,
     # plausible field under the wrong name. Alias the published name, then
     # refuse anything unrecognised.
     mode = _MODE_ALIASES.get(mode, mode)
+    if mode in SAMPLER_MODES:
+        raise ValueError("mode %r is built by the sampler (FlowSampler/VPSampler "
+                         "`tfg` branch), not by guidance_field" % mode)
     if mode not in KNOWN_MODES:
         raise ValueError("unknown guidance mode %r; known: %s"
                          % (mode, ", ".join(sorted(KNOWN_MODES))))
+
+    if mode in CHEM_BASE:
+        # 1. the base arm's field, computed exactly as the base arm computes it
+        #    (same RNG calls, so at the first guided step it is bit-identical)
+        G_c, G_f, dg = guidance_field(
+            f_net, post_fn, coords, feats, mask, y, s, mode=CHEM_BASE[mode],
+            n_probe=n_probe, generator=generator, cost=cost, n_mc=n_mc,
+            sigma_mc=sigma_mc, want_kappa3=want_kappa3, rch=rch,
+            band_tau=band_tau, band_eta=band_eta, band_radius=band_radius,
+            t_scalar=t_scalar, tau=tau, spbc_eta=spbc_eta,
+            spbc_radius=spbc_radius)
+        # 2. the valence-violation gradient at the predicted clean molecule,
+        #    pulled back to x_t: the direction in x_t that raises P(m(x_t))
+        with torch.no_grad():
+            post = post_fn(coords, feats)
+        cost.gen_fwd += 1
+        mc = post.mean_coords.detach().requires_grad_(True)
+        mf = post.mean_feats.detach().requires_grad_(True)
+        P = soft_valence_violation(mc, mf, mask)
+        c_c, c_f = torch.autograd.grad(P.sum(), (mc, mf))
+        a_c, a_f = _pullback(post_fn, coords, feats, c_c.detach(), c_f.detach(),
+                             cost)
+        # 3. remove only the part of the step that would raise it
+        G_c, G_f, active, removed = chem_safe_project(G_c.detach(), G_f.detach(),
+                                                      a_c, a_f)
+        dg = dict(dg)
+        dg.update({"chem_active": active.to(G_c.dtype).detach(),
+                   "chem_removed": removed.detach(),
+                   "chem_P": P.detach()})
+        return G_c.detach(), G_f.detach(), dg
 
     with torch.no_grad():
         post = post_fn(coords, feats)
@@ -1065,6 +1499,20 @@ def guidance_field(f_net, post_fn, coords, feats, mask, y, s,
         return d_c.detach(), d_f.detach(), {"f": fval, "c": torch.zeros_like(fval),
                                             "v_f": torch.zeros_like(fval), "k": k,
                                             "band_e": e, "band_tau": tau}
+
+    if mode.startswith("btvg2"):
+        if tau is None:
+            raise ValueError("mode %r needs tau (target property sd)" % mode)
+        w_c, w_f, dg = btvg2_weighted_grad(
+            f_net, post_fn, coords, feats, mask, m_c, m_f, k, y, s, tau, n_mc,
+            generator, cost,
+            gate=("band" if mode == "btvg2_band" else mode != "btvg2_nogate"),
+            orth=(mode != "btvg2_noorth"),
+            cap=(None if mode == "btvg2_nocap" else 1.0))
+        G_c, G_f = _pullback(post_fn, coords, feats, w_c, w_f, cost)
+        dg.update({"f": fval, "c": torch.zeros_like(fval),
+                   "v_f": torch.zeros_like(fval), "k": k, "n_mc": n_mc})
+        return G_c, G_f, dg
 
     if mode in ("lgd_mc", "osc"):
         w_c, w_f, F = sigma_mc_weighted_grad(

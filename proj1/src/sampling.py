@@ -37,7 +37,7 @@ import torch
 
 from diffusion import alpha_sigma, beta
 from guidance import (Cost, DISPLACEMENT_MODES, fm_posterior,  # noqa: E501
-                      guidance_field, vp_posterior)
+                      guidance_field, tfg_components, vp_posterior)
 from guidance_update import GuidanceUpdater
 from models.egnn import zero_com
 
@@ -58,9 +58,25 @@ class _Base:
                  n_mc=4, sigma_mc=0.1, want_kappa3=False, rch=None,
                  band_tau=None, band_eta=1.0, band_radius=None,
                  tau=None, spbc_eta=1.0, spbc_radius=None, schedule=None,
-                 update_rule="euler", update_kw=None, log_velocity=False):
+                 update_rule="euler", update_kw=None, log_velocity=False,
+                 tfg=None):
         self.net, self.mask = net, mask
         self.f_net, self.y, self.s, self.mode, self.w = f_net, y, s, mode, w
+        # TFG's configuration (a dict, see guidance_sweep.tfg_config). The arm
+        # is built by the sampler, not by guidance_field, so it is validated
+        # here rather than failing on the first guided step of a long run.
+        self.tfg = tfg
+        if mode == "tfg" and f_net is not None:
+            need = {"rho", "mu", "gamma", "mad", "n_iter", "eps_bsz",
+                    "rho_schedule", "mu_schedule", "sigma_schedule", "clip_scale"}
+            miss = need - set(tfg or {})
+            if miss:
+                raise ValueError("mode='tfg' needs tfg={...} with %s" % sorted(miss))
+            if update_rule != "euler":
+                raise ValueError("mode='tfg' builds its own step; update_rule "
+                                 "must be 'euler', got %r" % update_rule)
+            if schedule is not None:
+                raise ValueError("mode='tfg' cannot be combined with an SHG schedule")
         self.n_probe, self.clip = n_probe, clip
         self.n_mc, self.sigma_mc = n_mc, sigma_mc
         # arms that need extra state: rch carries a fitted head, band carries
@@ -140,7 +156,15 @@ class _Base:
     # sweep cannot answer either question.
     DIAG_KEYS = ("btvg_V_over_tau2", "btvg_V_nonpositive", "btvg_V_raw",
                  "spbc_bias", "spbc_increment", "spbc_live_fraction",
-                 "spbc_mean_response", "c", "v_f")
+                 "spbc_mean_response", "c", "v_f",
+                 "btvg2_gate", "btvg2_V_over_tau2", "btvg2_capped",
+                 "btvg2_var_share", "chem_active", "chem_removed", "chem_P",
+                 # TFG: how often its own rescale_grad bound, what share of
+                 # the step is the clean-space (mean) piece -- the gate that
+                 # tfg has not collapsed into plug -- and how far the raw
+                 # correction sits above the shared velocity clip
+                 "tfg_var_rescaled", "tfg_d0_rescaled", "tfg_d0_frac",
+                 "tfg_corr_over_v")
 
     def _accumulate_diag(self, diag):
         """Running mean of each diagnostic over every guided step and batch."""
@@ -159,6 +183,105 @@ class _Base:
 
     def diag_summary(self):
         return {k: tot / n for k, (tot, n) in self.diag_acc.items() if n}
+
+    # ---- TFG (Ye et al., NeurIPS 2024), a sampler-level arm ----------------
+    #
+    # TFG's update at N_recur = 1 (methods/tfg.py:127-129), on its VP state:
+    #
+    #     x_prev = DDIM(x_t, m)  +  rho_t * G / sqrt(alpha_t)
+    #                            +  sqrt(abar_prev) * D0
+    #
+    # with G, D0 from guidance.tfg_components and alpha_t = abar_t/abar_prev.
+    # Both additions are DISPLACEMENTS per step, not velocities -- D0 in
+    # particular is an O(1) shift of the endpoint, which is what "mean
+    # guidance" means. Here the base step is this sampler's own ODE step and
+    # the two displacements are added to it, divided by h so `integrate`'s
+    # x + h * F lands exactly on them. Each family supplies its abar(t) and
+    # the geometry that maps TFG's VP displacements onto its state
+    # (_tfg_abar / _tfg_geometry). The shared velocity-relative clip then
+    # applies exactly as for every other arm.
+
+    def _tfg_schedule(self, i):
+        """(rho_i, mu_i, std_i, abar_i, abar_next, alpha_i) at grid step i.
+
+        TFG normalises each schedule over the WHOLE grid -- s * T / sum(s),
+        tfg.py:46-74 -- whether or not a step is guided, so the per-step
+        magnitudes are TFG's own even inside a guidance window.
+        """
+        cfg = self.tfg
+        ts = self._grid_ts.detach().to("cpu", torch.float64)
+        ab = self._tfg_abar(ts).to(torch.float64).reshape(-1)
+        cur, nxt = ab[:-1], ab[1:]
+        alpha = cur / nxt.clamp(min=1e-300)
+
+        def norm(kind):
+            if kind == "increase":
+                s = alpha
+            elif kind == "decrease":
+                s = 1.0 - alpha
+            elif kind == "constant":
+                s = torch.ones_like(alpha)
+            else:
+                raise ValueError("unknown TFG schedule %r" % kind)
+            return s * len(s) / s.sum()
+
+        rho_i = float(cfg["rho"]) * float(norm(cfg["rho_schedule"])[i])
+        mu_i = float(cfg["mu"]) * float(norm(cfg["mu_schedule"])[i])
+        sk = cfg["sigma_schedule"]
+        if sk == "decrease":
+            std_i = float(cfg["gamma"]) * float((1.0 - cur[i]).clamp(min=0.0).sqrt())
+        elif sk == "constant":
+            std_i = float(cfg["gamma"])
+        else:
+            raise ValueError("unknown TFG sigma schedule %r" % sk)
+        return rho_i, mu_i, std_i, float(cur[i]), float(nxt[i]), float(alpha[i])
+
+    def _tfg_step(self, coords, feats, t_scalar, post_fn, w, base_c, base_f):
+        """TFG's two displacements for this step, as a velocity for integrate.
+
+        `w` multiplies TFG's (rho_bar, mu_bar) -- so w = 1 is TFG's published
+        configuration and the shared strength grid brackets it. It does NOT
+        touch gamma (the smoothing width), n_iter or the schedules.
+        """
+        if not self._primary_stage:
+            raise NotImplementedError(
+                "tfg is defined per Euler step (TFG's DDIM update); a Heun "
+                "second stage has no TFG counterpart -- use solver='euler'")
+        ts = getattr(self, "_grid_ts", None)
+        i = getattr(self, "_grid_i", None)
+        if ts is None or i is None or float(ts[i]) != float(t_scalar):
+            raise RuntimeError("tfg needs the time grid: run it through "
+                               "sampling.integrate, which records it")
+        t1 = float(ts[i + 1])
+        h = t1 - float(t_scalar)
+        rho_i, mu_i, std_i, ab_cur, ab_nxt, alpha_i = self._tfg_schedule(i)
+        var_scale, k_var, k_0 = self._tfg_geometry(float(t_scalar), t1,
+                                                   ab_cur, ab_nxt, alpha_i)
+        cfg = self.tfg
+        a_var = float(w) * rho_i * k_var
+        G_c, G_f, D_c, D_f, dg = tfg_components(
+            self.f_net, post_fn, coords, feats, self.mask, self.y, cfg["mad"],
+            std_i, float(w) * mu_i, n_iter=cfg["n_iter"],
+            eps_bsz=cfg["eps_bsz"], want_var=(a_var != 0.0),
+            var_scale=var_scale, clip_scale=cfg["clip_scale"],
+            generator=self.probe_gen, cost=self.cost)
+        m3 = self.mask.unsqueeze(-1)
+        dv_c, dv_f = a_var * G_c, a_var * G_f          # displacements
+        d0_c, d0_f = k_0 * D_c, k_0 * D_f
+        C_c = zero_com((dv_c + d0_c) / h, self.mask)
+        C_f = (dv_f + d0_f) / h * m3
+
+        def nrm(a, b):
+            return torch.sqrt((a ** 2).sum((1, 2)) + (b ** 2).sum((1, 2)))
+        nv, n0 = nrm(dv_c, dv_f), nrm(d0_c, d0_f)
+        both = nv + n0
+        dg["tfg_d0_frac"] = torch.where(both > 0, n0 / both.clamp(min=1e-300),
+                                        torch.zeros_like(both))
+        dg["tfg_corr_over_v"] = nrm(C_c, C_f) / nrm(base_c, base_f).clamp(min=1e-12)
+        dg.update({"tfg_rho_i": rho_i, "tfg_mu_i": mu_i, "tfg_std_i": std_i})
+        self.last_diag = dg
+        self._accumulate_diag(dg)
+        return C_c, C_f
 
     def _log_velocity(self, t_scalar, v_c, v_f, Cd_c, Cd_f, mult):
         """Record how much the update rule changes the ACTUAL sampling step.
@@ -234,6 +357,29 @@ class FlowSampler(_Base):
         a, b = (0.0, 1.0) if span is None else span
         return torch.linspace(a, b, n_steps + 1)
 
+    @staticmethod
+    def _tfg_abar(ts):
+        """The flow path x_t = t x_1 + (1-t) eps is a VP path rescaled by
+        c_t = sqrt(t^2 + (1-t)^2): x_t / c_t has signal sqrt(abar) = t / c_t."""
+        return ts ** 2 / (ts ** 2 + (1.0 - ts) ** 2)
+
+    @staticmethod
+    def _tfg_geometry(t, t1, ab_cur, ab_nxt, alpha):
+        """(var_scale, k_var, k_0): TFG's VP displacements on this flow state.
+
+        With x_vp = x / c_t, TFG's gradient is c_t times ours (var_scale, so
+        rescale_grad sees TFG's numbers), and a VP displacement at the next
+        point maps back by x c_{t1}. Then
+          rho G_vp / sqrt(alpha)   ->  rho (t1 c_t / t) * G_vp
+          sqrt(abar_next) D0       ->  t1 * D0
+        (sqrt(alpha) = t c_{t1} / (t1 c_t)). Checked numerically against
+        TFG's own VP formula in test_tfg.py. At t = 0 alpha = 0 and TFG's
+        variance step is undefined; it is switched off there.
+        """
+        c_t = (t * t + (1.0 - t) ** 2) ** 0.5
+        k_var = t1 * c_t / t if t > 0.0 else 0.0
+        return c_t, k_var, t1
+
     def field(self, coords, feats, t_scalar):
         self.n_field += 1
         B = coords.shape[0]
@@ -249,16 +395,23 @@ class FlowSampler(_Base):
         self.n_guided += 1
         self.note_guided(mode)
         post_fn = lambda c, f: fm_posterior(self.net, c, f, self.mask, t)  # noqa: E731
-        G_c, G_f = self._guide(coords, feats, t, post_fn, mode,
-                               t_scalar=t_scalar)
-        if mode in DISPLACEMENT_MODES:
-            # Already a state displacement. Converting it again through the
-            # score-to-velocity factor (1-t)/t would apply that factor twice
-            # and make the edit scale wrongly in t.
-            mult = w
+        if mode == "tfg":
+            # TFG builds a velocity directly (its displacements over h); no
+            # score conversion, no update rule. The clip below still applies.
+            G_c, G_f = self._tfg_step(coords, feats, t_scalar, post_fn, w,
+                                      v_c, v_f)
+            mult = 1.0
         else:
-            mult = w * (1.0 - t_scalar) / t_scalar
-        G_c, G_f = mult * G_c, mult * G_f
+            G_c, G_f = self._guide(coords, feats, t, post_fn, mode,
+                                   t_scalar=t_scalar)
+            if mode in DISPLACEMENT_MODES:
+                # Already a state displacement. Converting it again through the
+                # score-to-velocity factor (1-t)/t would apply that factor twice
+                # and make the edit scale wrongly in t.
+                mult = w
+            else:
+                mult = w * (1.0 - t_scalar) / t_scalar
+            G_c, G_f = mult * G_c, mult * G_f
         if self.clip is not None:
             gn = torch.sqrt((G_c ** 2).sum((1, 2)) + (G_f ** 2).sum((1, 2)))
             vn = torch.sqrt((v_c ** 2).sum((1, 2)) + (v_f ** 2).sum((1, 2)))
@@ -337,6 +490,20 @@ class VPSampler(_Base):
         gb = float(sch.gamma_at(torch.tensor(float(b))).reshape(-1)[0])
         return sch.tau_of_gamma(torch.linspace(ga, gb, n_steps + 1))
 
+    def _tfg_abar(self, ts):
+        """abar = alpha(tau)^2 under THIS sampler's schedule (the borrowed
+        checkpoint's own, when one is passed)."""
+        # the dtype `field` builds its own tau with, so the schedule and the
+        # step read the same alpha
+        a, _ = self.alpha_sigma(ts.to(self.mask.device, torch.get_default_dtype()))
+        return (a.reshape(-1).double() ** 2).cpu()
+
+    @staticmethod
+    def _tfg_geometry(t, t1, ab_cur, ab_nxt, alpha):
+        """(var_scale, k_var, k_0): TFG's formula verbatim -- the VP state IS
+        TFG's state, so rho G / sqrt(alpha) and sqrt(abar_next) D0."""
+        return 1.0, 1.0 / max(alpha, 1e-300) ** 0.5, ab_nxt ** 0.5
+
     def field(self, coords, feats, tau_scalar):
         self.n_field += 1
         B = coords.shape[0]
@@ -359,16 +526,22 @@ class VPSampler(_Base):
             self.n_guided += 1
             self.note_guided(mode)
             post_fn = lambda c, f: vp_posterior(self.net, c, f, self.mask, tau, a, s)  # noqa: E731
-            G_c, G_f = self._guide(coords, feats, tau, post_fn, mode,
-                                   t_scalar=tau_scalar)
-            # Same units rule as the flow sampler: a displacement arm must not
-            # be pushed through the score-to-drift conversion. Without this,
-            # every SHG cell on a diffusion checkpoint would hand a schedule
-            # NAME into guidance_field and raise.
-            if mode in DISPLACEMENT_MODES:
-                G_c, G_f = w * G_c, w * G_f
+            if mode == "tfg":
+                # a velocity already (TFG's displacements over the negative
+                # step h); not a score, so no -1/2 beta conversion
+                G_c, G_f = self._tfg_step(coords, feats, tau_scalar, post_fn,
+                                          w, base_c, base_f)
             else:
-                G_c, G_f = -0.5 * b * w * G_c, -0.5 * b * w * G_f
+                G_c, G_f = self._guide(coords, feats, tau, post_fn, mode,
+                                       t_scalar=tau_scalar)
+                # Same units rule as the flow sampler: a displacement arm must
+                # not be pushed through the score-to-drift conversion. Without
+                # this, every SHG cell on a diffusion checkpoint would hand a
+                # schedule NAME into guidance_field and raise.
+                if mode in DISPLACEMENT_MODES:
+                    G_c, G_f = w * G_c, w * G_f
+                else:
+                    G_c, G_f = -0.5 * b * w * G_c, -0.5 * b * w * G_f
             if self.clip is not None:
                 gn = torch.sqrt((G_c ** 2).sum((1, 2)) + (G_f ** 2).sum((1, 2)))
                 vn = torch.sqrt((base_c ** 2).sum((1, 2)) + (base_f ** 2).sum((1, 2)))
@@ -398,9 +571,13 @@ def integrate(sampler, coords, feats, n_steps, solver="euler", span=None,
     needs a smooth field away from the endpoints and the guidance switch-on."""
     sampler.reset_counts()
     ts = sampler.time_grid(n_steps, span)
+    # The grid, for arms that need more than the current time: `tfg`
+    # normalises its schedules over every step and needs the next time point.
+    sampler._grid_ts = ts
     for i in range(n_steps):
         t0, t1 = float(ts[i]), float(ts[i + 1])
         h = t1 - t0
+        sampler._grid_i = i
         k1_c, k1_f = sampler.field(coords, feats, t0)
         if solver == "euler":
             coords = coords + h * k1_c
