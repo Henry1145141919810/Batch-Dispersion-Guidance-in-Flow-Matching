@@ -177,7 +177,7 @@ def main():
         for i in range(0, args.n, args.batch):
             m = mask_v[i:i + args.batch]
             c0, f0 = initial_noise(m, len(types), gen)
-            kw = dict(f_net=f_A, y=y_t[: m.shape[0]], s=s, mode=arm,
+            kw = dict(f_net=f_A, y=y_t[i:i + m.shape[0]], s=s, mode=arm,
                       w=w_applied, clip=args.clip, n_probe=args.n_probe,
                       n_mc=args.n_mc, sigma_mc=args.sigma_mc,
                       update_rule=rule,

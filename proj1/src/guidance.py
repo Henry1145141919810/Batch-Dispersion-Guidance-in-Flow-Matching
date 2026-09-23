@@ -817,6 +817,16 @@ def spbc_displacement(f_net, post_fn, coords, feats, mask, m_c, m_f, g_c, g_f,
     UNITS: this is a displacement in x_t, NOT a score. The sampler must add it
     without the (1-t)/t score-to-velocity conversion.
 
+    DEGENERATE UNDER PER-MOLECULE TARGETS. `d_common` centres the BATCH MEAN of
+    f(m) on the MEAN of y, so with the `dist` protocol -- where every molecule
+    has its own target -- SPBC ignores each molecule's target entirely and
+    corrects only the aggregate. Under `dist` the mean target ~ the data mean ~
+    the unguided generator's mean, so the correction is ~0 BY CONSTRUCTION, not
+    by measurement. Any `dist` result for spbc (or for the SHG schedules that
+    contain an spbc phase) is a null of the method's definition, not evidence
+    about it. Correcting this needs a per-molecule formulation, which is a
+    different arm.
+
     HONEST LIMITS. The forecast is the cheap one, f_A(m_t), not a rollout
     through the sampler suffix; it inherits the off-distribution error measured
     in FINDING_QUADRATIC_CLOSURE_VALIDITY.md -- and the 8-delta shape drift

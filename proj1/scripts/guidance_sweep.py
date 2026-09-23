@@ -111,6 +111,14 @@ TARGETS = {"mu":    {"q50": 2.4932, "q90": 4.6627},
            "alpha": {"q50": 75.54, "q90": 85.05},
            "gap":   {"q50": 0.2496, "q90": 0.3162}}
 
+# "dist" is NOT a fixed value and so is not in TARGETS: each molecule's target
+# is the real property of the held-out molecule whose size it takes, resolved
+# per cell in run_cell. This is the EDM/EEGSDE/TFG conditional protocol, and it
+# is the only target that involves no choice by us -- which is why FR6 makes it
+# the headline. Measured steering distance from the unguided generator's own
+# mean: dist 0.80-0.85 sd, against q50 0.05-0.27 and q90 1.1-1.6.
+DIST_TARGET = "dist"
+
 # every arm that can currently run end to end. `band` and `rch` need extra
 # state and are included only when that state exists.
 # The nine arms verified end to end. `band` and `rch` are implemented and
@@ -475,6 +483,37 @@ def plan_compare_cells(props):
     return cells
 
 
+def plan_target_cells(props, arms, targets, win=None, strengths=None):
+    """One target-protocol grid: every arm x every strength, at one window.
+
+    Exists so `dist` is schedulable at all (it was not), and so a target grid
+    can be run without touching the q50/q90 plans already on disk. Ordered so a
+    partial run is still a complete experiment: pass 1 is the whole arm set at
+    the default strength.
+    """
+    win = V2_WIN if win is None else win
+    strengths = STRENGTHS if strengths is None else strengths
+    seen, cells = set(), []
+
+    def add(prop, arm, tgt, w):
+        k = (prop, arm, tgt, w, win, "tgt")
+        if k not in seen:
+            seen.add(k)
+            cells.append(k)
+
+    for tgt in targets:
+        for prop in props:                   # pass 1: the arm comparison
+            for arm in arms:
+                add(prop, arm, tgt, DEFAULT_W)
+        for prop in props:                   # pass 2: strength
+            for arm in arms:
+                if arm == "unguided":
+                    continue
+                for w in strengths:
+                    add(prop, arm, tgt, w)
+    return cells
+
+
 def main():
     global OUT
     ap = argparse.ArgumentParser()
@@ -485,8 +524,12 @@ def main():
                          "uses the published weights without being told to.")
     ap.add_argument("--props", default="mu,alpha,gap")
     ap.add_argument("--arms", default="")
+    ap.add_argument("--targets", default="dist",
+                    help="comma-separated target protocols for --stage targets: "
+                         "'dist' (per-molecule, the published protocol), or any "
+                         "TARGETS key such as q50,q90")
     ap.add_argument("--stage", default="main",
-                    choices=["main", "v2", "all", "compare"],
+                    choices=["main", "v2", "all", "compare", "targets"],
                     help="main = the v1 grid (default arms); v2 = the new arms "
                          "against re-run references; all = both, v1 first")
     ap.add_argument("--n", type=int, default=512)
@@ -538,6 +581,8 @@ def main():
         arms = V1_MISSING + V2_ARMS + SHG_ARMS
     elif args.stage == "compare":
         arms = list(COMPARE_SET)
+    elif args.stage == "targets":
+        arms = list(COMPARE_SET)
     else:
         arms = list(ARMS)
 
@@ -557,6 +602,9 @@ def main():
         cells += plan_cells(props, list(ARMS) if args.stage == "all" else arms)
     if args.stage == "compare":
         cells += plan_compare_cells(props)
+    if args.stage == "targets":
+        cells += plan_target_cells(
+            props, arms, [t for t in args.targets.split(",") if t])
     if args.stage in ("v2", "all"):
         v2 = V1_MISSING + V2_ARMS + SHG_ARMS if args.stage == "all" else arms
         cells += plan_v2_cells(props, v2)
@@ -646,7 +694,24 @@ def main():
             extra["rch"] = load_rch(rp, dev, rch_target)
         if arm == "band":
             extra["band_tau"] = delta
-        target = TARGETS[prop][tgt]
+        if tgt == DIST_TARGET:
+            # The field's protocol: each molecule gets its OWN target, the real
+            # property of a held-out molecule.
+            #
+            # Drawn from TEST, not val. `val` already carries the generator's
+            # validation, BOTH predictors' model selection, delta (= 2 x f_B
+            # val MAE) and the molecule sizes sampled below. Taking targets
+            # from it as well would make the headline number rest on a split
+            # every component has already seen. `test` is untouched: verified
+            # zero index overlap with train_a, train_b and val.
+            te = d["split"]["test"][: args.n]
+            y_real = d["y"][te, d["props"].index(prop)].to(dev).float()
+            if y_real.shape[0] < args.n:      # pad by cycling, never silently short
+                reps = -(-args.n // y_real.shape[0])
+                y_real = y_real.repeat(reps)[: args.n]
+            target = float(y_real.mean())
+        else:
+            target = TARGETS[prop][tgt]
         s = f_A.y_std
         w_scale = strength_scale(arm, extra, s)
         w_applied = w * w_scale
@@ -655,7 +720,8 @@ def main():
             # 1.0 so the plug/smg/spbc phases are untouched
             extra["schedule"] = scale_schedule(extra["schedule"], s,
                                                extra.get("tau"))
-        y_t = torch.full((args.n,), target, device=dev)
+        y_t = (y_real if tgt == DIST_TARGET
+               else torch.full((args.n,), target, device=dev))
         gen = torch.Generator(device=dev).manual_seed(args.seed)
         cs, fs, calls = [], [], 0
         cost = {k: 0 for k in ("gen_fwd", "gen_vjp", "gen_jvp",
@@ -671,7 +737,7 @@ def main():
                 from dflow import dflow_optimise
                 cst = Cost()
                 c, f = dflow_optimise(
-                    net, f_A, m, c0, f0, y_t[: m.shape[0]],
+                    net, f_A, m, c0, f0, y_t[i:i + m.shape[0]],
                     n_steps=args.steps, n_iter=DFLOW_ITERS,
                     lr=DFLOW_LR * w, cost=cst, trust=None)
                 cs.append(c); fs.append(f)
@@ -680,7 +746,7 @@ def main():
                     cost[k] += getattr(cst, k)
                 continue
             kw = dict(f_net=(None if arm == "unguided" else f_A),
-                      y=y_t[: m.shape[0]], s=s, mode=arm, w=w_applied,
+                      y=y_t[i:i + m.shape[0]], s=s, mode=arm, w=w_applied,
                       clip=clip, n_probe=args.n_probe, n_mc=args.n_mc,
                       sigma_mc=args.sigma_mc,
                       want_kappa3=args.kappa3, **extra)

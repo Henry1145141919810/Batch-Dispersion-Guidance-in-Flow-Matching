@@ -629,6 +629,77 @@ base benchmark is.
 BTVG "beats" a competitor only at **≥ 3 σ**. Anything less is reported as a tie,
 with the σ shown.
 
+### PRE-REGISTRATION ADDENDUM — which target the full run uses (22 Sep, before data)
+
+**FR6 — the full run uses a per-molecule target, `dist`.** Each generated
+molecule gets **its own** target: the real property of a held-out **test**
+molecule. (Not `val` — `val` already carries generator validation, both
+predictors' model selection, `delta`, and the sampled molecule sizes.)
+
+**What the local evidence supports, exactly.** The vendored TFG evaluator
+consumes a per-sample target *vector* in physical units and reports per-molecule
+MAE (`audit/fa_fb_search/TFG/evaluations/molecule.py:60,76,100`). That
+establishes **per-sample scoring** and nothing more: `MoleculeSampler`, which
+produces those targets, is **not vendored**, and in TFG's own configs `target`
+names the *property* (`target: str`, `utils/configs.py:58`), so the file is
+consistent with either protocol.
+
+An earlier draft of this section claimed "no published QM9 guidance result uses
+a fixed quantile". **That is an overclaim and is withdrawn** — it is a universal
+negative over a literature that cannot be checked from this repo. Before the
+write-up, cite the EDM/EEGSDE sampler code or paper text for the conditioning
+protocol, or state the protocol as our choice rather than as the field's.
+
+**What is independently true, and is the real argument for `dist`:** it involves
+**no choice by us**, so it cannot be cherry-picked, and it is measurably harder
+than q50 (0.80-0.85 sd of steering against 0.05-0.27).
+
+**Why not "the q that best shows our work".** Choosing the target after seeing
+which one flatters BTVG is cherry-picking. Adopting the literature's own
+protocol means we do not choose the target at all, so there is nothing to pick,
+and the headline number is directly comparable to published ones.
+
+**FR7 — q50 and q90 are reported as two DIAGNOSTIC tasks, never pooled.**
+
+| task | what it tests | distance from the unguided generator's mean |
+|---|---|---|
+| q50 | **concentration** | 0.05–0.27 sd — almost no steering needed |
+| q90 | **steering** | 1.1–1.6 sd into the tail |
+
+They come from the n = 512 compare stage and say *where* BTVG helps. Every
+result reported before 22 Sep is a q50 result, i.e. a concentration result.
+
+**FR1 amended.** The go/no-go is evaluated on q50 and on q90 **separately**, and
+both verdicts are reported. BTVG proceeds to the full run if it passes on
+**q50**, whose strengths FR3 freezes. A q90 failure is reported, not hidden.
+
+**FR3 for `dist` — CORRECTED 22 Sep, before any dist cell ran.** The first
+version said each arm runs at its **q50** best strength, because "`dist`
+targets concentrate near the median". **That reasoning was backwards by 3-18x.**
+What matters is not where the targets sit but how far each is from the
+*generator's own* mean, and that is a mean-absolute-deviation, not ~0:
+
+| prop | dist | q50 | q90 |
+|---|---|---|---|
+| mu | **0.807 sd** | 0.271 | 1.142 |
+| alpha | **0.803 sd** | 0.045 | 1.197 |
+| gap | **0.854 sd** | 0.158 | 1.557 |
+
+23-33 % of `dist` targets sit beyond 1.1 sd, i.e. at or past the *entire* q90
+task. Compounding it, the q50 reference optimum is at **w = 4, the grid edge**,
+so it is not even bracketed.
+
+**So: `dist` freezes at the q90 best strength**, or screens `dist` at three
+strengths if compute allows. q50's strength is the wrong approximation.
+
+**Implementation note.** Enabling `dist` exposed a latent bug: the batch loop
+passed `y_t[: m.shape[0]]`, slicing from 0 for every batch. Harmless for every
+cell run before 22 Sep (q50/q90 targets are constant, every slice identical),
+but with per-molecule targets it would have guided 75 % of molecules toward
+another molecule's target while scoring them against their own. Fixed to
+`y_t[i : i + m.shape[0]]`, and gated: each of 4 batches verified to receive
+its own molecules' targets.
+
 ### What this means
 
 1. **BTVG is the contribution that survived.** Best MAE on alpha of any arm

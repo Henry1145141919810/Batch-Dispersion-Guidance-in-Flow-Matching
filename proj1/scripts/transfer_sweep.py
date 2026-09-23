@@ -445,7 +445,7 @@ def main():
                 net, m, tau_min=args.tau_min, noise_schedule=net.schedule,
                 tau_max_guide=args.tau_max_guide,
                 f_net=(None if arm == "unguided" else f_A),
-                y=y_t[: m.shape[0]], s=s, mode=arm, w=w_applied, clip=clip,
+                y=y_t[i:i + m.shape[0]], s=s, mode=arm, w=w_applied, clip=clip,
                 n_probe=args.n_probe, n_mc=args.n_mc, sigma_mc=args.sigma_mc,
                 **extra)
             c, f, nc = integrate(smp, c0, f0, args.steps, args.solver)
