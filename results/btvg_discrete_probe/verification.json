@@ -1,0 +1,108 @@
+{
+  "mu": {
+    "chemistry_only": {
+      "baseline_distinct_independent_connected_useful": 134,
+      "additional_distinct_useful": 54,
+      "overlap_with_baseline": 0,
+      "substitutions": {
+        "C->N": 339,
+        "N->O": 60,
+        "O->F": 46,
+        "H->O": 9,
+        "N->C": 39,
+        "O->N": 30,
+        "N->F": 2,
+        "O->H": 2,
+        "C->F": 1
+      },
+      "literal_evaluator_checked": 32
+    },
+    "property_aware": {
+      "baseline_distinct_independent_connected_useful": 134,
+      "additional_distinct_useful": 64,
+      "overlap_with_baseline": 0,
+      "substitutions": {
+        "C->N": 331,
+        "N->O": 61,
+        "O->F": 46,
+        "N->C": 39,
+        "H->O": 6,
+        "O->N": 39,
+        "N->F": 2,
+        "O->H": 3,
+        "C->F": 1
+      },
+      "literal_evaluator_checked": 32
+    }
+  },
+  "alpha": {
+    "chemistry_only": {
+      "baseline_distinct_independent_connected_useful": 98,
+      "additional_distinct_useful": 30,
+      "overlap_with_baseline": 0,
+      "substitutions": {
+        "O->N": 41,
+        "C->N": 289,
+        "O->F": 76,
+        "N->C": 57,
+        "N->O": 69,
+        "H->O": 9,
+        "N->F": 1
+      },
+      "literal_evaluator_checked": 32
+    },
+    "property_aware": {
+      "baseline_distinct_independent_connected_useful": 98,
+      "additional_distinct_useful": 41,
+      "overlap_with_baseline": 0,
+      "substitutions": {
+        "C->N": 279,
+        "O->F": 76,
+        "N->C": 54,
+        "O->N": 59,
+        "N->O": 58,
+        "H->O": 13,
+        "O->H": 2,
+        "N->F": 1
+      },
+      "literal_evaluator_checked": 32
+    }
+  },
+  "gap": {
+    "chemistry_only": {
+      "baseline_distinct_independent_connected_useful": 193,
+      "additional_distinct_useful": 98,
+      "overlap_with_baseline": 0,
+      "substitutions": {
+        "O->F": 41,
+        "N->O": 51,
+        "C->N": 325,
+        "O->N": 50,
+        "N->C": 56,
+        "N->F": 3,
+        "O->H": 2,
+        "H->O": 5,
+        "O->C": 1
+      },
+      "literal_evaluator_checked": 32
+    },
+    "property_aware": {
+      "baseline_distinct_independent_connected_useful": 193,
+      "additional_distinct_useful": 115,
+      "overlap_with_baseline": 0,
+      "substitutions": {
+        "O->H": 7,
+        "O->F": 38,
+        "C->N": 336,
+        "O->N": 52,
+        "N->C": 44,
+        "N->O": 51,
+        "N->F": 2,
+        "H->O": 2,
+        "N->H": 1,
+        "O->C": 1
+      },
+      "literal_evaluator_checked": 32
+    }
+  }
+}

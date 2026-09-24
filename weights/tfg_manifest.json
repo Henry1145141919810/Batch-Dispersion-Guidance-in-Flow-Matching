@@ -1,15 +1,5 @@
 [
  {
-  "path": "weights\\EDMsecond\\generative_model_ema.npy",
-  "md5": "6abbd010d766a3e44c06448e0aa94bd3",
-  "bytes": 21422826
- },
- {
-  "path": "weights\\EDMsecond\\args.pickle",
-  "md5": "28d7ffff0ecdd138017de5d74748e632",
-  "bytes": 1088
- },
- {
   "path": "audit\\fa_fb_search\\TFG\\tf_predict_mu\\model_ema_2000.npy",
   "md5": "fe4ba055e39f8afa4dd96041c652ab74",
   "bytes": 6724867

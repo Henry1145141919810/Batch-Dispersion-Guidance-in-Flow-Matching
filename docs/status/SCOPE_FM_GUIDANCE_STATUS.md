@@ -8,17 +8,35 @@ this document and are listed as not-started in §10.
 
 Status as of **2026-09-23**. Submission **29 Sep 08:30**, defence **30 Sep**.
 
-**Latest BTVG decision (23 Sep):** the registered full run is negative against
-LGD-MC; BTVG2 has no demonstrated incremental coverage benefit. A fresh audit
-also found that BTVG2's mean-orthogonal correction does not remain orthogonal
-after the generator pullback, confirmed on 32 validation trajectories. Property
-evaluation currently uses continuous atom features while chemistry uses decoded
-types; a separate 128-sample audit found band-membership changes on decoding.
-See [the failure audit and bounded redesign](../methods/BTVG_FAILURE_AUDIT_AND_REDESIGN.md)
-for proofs, measurements, novelty limits and the next experiments. Earlier
-screen-era claims and pending labels below are historical; the full-run and
-post-full-run sections take precedence. No improved production arm has yet
-been established by this audit.
+**Latest BTVG decision (23 Sep, after both chemistry guards):** the registered
+full run is negative against LGD-MC; BTVG2 has no demonstrated incremental
+coverage benefit, and the guards failed their preset useful-yield test.
+Decoded `_dec` scoring is now available alongside historical soft-feature
+metrics. The earlier [geometry audit](../methods/BTVG_FAILURE_AUDIT_AND_REDESIGN.md)
+still applies: BTVG2's mean-orthogonal correction need not remain orthogonal
+after the generator pullback.
+
+A new [failure decomposition and executed repair control](../methods/BTVG_EVOLUTION_AFTER_CHEM_GUARD.md)
+finds that about 88% of LGD-MC outputs failing both chemistry rules have odd
+required-valence sums, impossible to repair by coordinates alone under the
+current neutral QM9 rules. A one-atom endpoint repair adds 64/41/115 decoded
+useful outputs for mu/alpha/gap per 2048 attempts (+3.13/+2.00/+5.62 pp), losing
+no prior useful outputs under either protected rule. **Exploratory consumed
+pilot, not a new BTVG win:** ordinary target-blind repair explains 54/30/98 of
+those additions. The next research component must beat LGD-MC plus that repair,
+not claim the entire pipeline gain. No improved production guidance arm or
+novel algorithm has been established. Earlier screen-era claims and pending
+labels below are historical; the full-run and post-full-run sections take
+precedence.
+
+**Workshop claim audit (23 Sep):** [executed statistical and tolerance checks](../results/WORKSHOP_CLAIM_AUDIT.md)
+retain the negative comparison with LGD-MC, but correct two interpretations:
+failure to meet FR5 is not equivalence, and tau is not inactive throughout
+sampling. On 32 validation trajectories per property at w=4, its positive-V
+threshold stops the variance term on 9.5-14.5% of guided sample-steps and
+40.6-55.9% of steps at t>=0.9. This is a mechanism diagnostic, not evidence of
+better terminal coverage. The repaired BTVG2 projection passes five code gates;
+its molecular outcome comparison is still pending in the local results.
 
 | mark | meaning |
 |---|---|
@@ -62,7 +80,7 @@ the order they were built.
 | 10 | `final_benchmark.slurm` | full-scale numbers, survivors only, 3 seeds | ❌ NOT DONE |
 | 11 | robustness check (SchNet / TFG oracle) | independent scoring of the winner | ❌ NOT DONE |
 | 12 | `benchmark_transfer_base.py` | **TFG's released EDM run through OUR evaluator** — the apples-to-apples base-model row, and the hard gate before any transfer cell | ✅ GATE PASSED 23 Sep (n=2000, 1 seed, 100 steps): atom **0.964** / mol **0.673** at `--grid uniform`, 0.959 / 0.638 at `gamma`. The 10k × 3 table row is still to run. [../results/BASE_MODEL_BENCHMARK.md](../results/BASE_MODEL_BENCHMARK.md) §9.4 |
-| 13 | `transfer_sweep.py` | **every arm re-run on a BORROWED base model + borrowed guide/oracle (TFG's `EDMsecond` + `tf_predict_*` + `evaluate_*`)** | ⏳ READY, 0 cells — re-cut 23 Sep to the main sweep's compare → freeze → full protocol (6 arms, 216 compare cells + 18/prop-seed full), 74/74 gates. A **silent feature-scale defect** was found and fixed first (EDMsecond is one-hot/4, TFG's guides one-hot/8). See [../protocol/TRANSFER_EXPERIMENT_PLAN.md](../protocol/TRANSFER_EXPERIMENT_PLAN.md) §9 |
+| 13 | `transfer_sweep.py` | **every arm re-run on a BORROWED base model + borrowed guide/oracle (TFG's `EDMsecond` + `tf_predict_*` + `evaluate_*`)** | ⏳ **Switched to EquiFM (FM) on 23 Sep evening; EDMsecond dropped.** EquiFM backend built and gated (36/36); TFG guide + EDM classifier oracle + OC-Flow second oracle; 6 arms (tfg not ported). 0 real cells. See [../protocol/TRANSFER_EXPERIMENT_PLAN.md](../protocol/TRANSFER_EXPERIMENT_PLAN.md) §10 |
 
 ---
 
@@ -370,7 +388,7 @@ se — or it collapses chemistry everywhere *and wins nothing*. Divergent cells
 | item | status |
 |---|---|
 | **borrowed-base-model benchmark** | ⏳ built and gated, 0 runs. Turns one row of the published comparison column from *quoted* into *measured*, and is the hard gate for the line below |
-| **transfer experiment — nothing in it is ours except the guidance field** | ⏳ 0 cells; harness ready and gated (plan §9), run on Betty with `transfer_run.slurm`. The professor's ask: the innovation is the guidance, so the guidance is what must be portable |
+| **transfer experiment — nothing in it is ours except the guidance field** | ⏳ EDMsecond: compare stage DONE on Betty 23 Sep (216 cells, n = 512, no tfg; readout in [../results/FULL_RUN_RESULTS.md](../results/FULL_RUN_RESULTS.md) §4), full stage never run, backend superseded by EquiFM the same evening (plan §10). EquiFM: harness ready, 0 cells. The professor's ask: the innovation is the guidance, so the guidance is what must be portable |
 | stage-main sweep completion | 🟡 195 / 390 cells |
 | RCH heads for `alpha`, `gap` | ⏳ only `rch_mu.pt` exists; **hard dependency** of stage v2 |
 | **stage-v2 sweep — the three new arms have never been measured** | ⏳ 0 / 366 cells |
@@ -579,20 +597,29 @@ Every schedule is **≤ its best component** at best strength:
 `plug` +8.1 · `shg_three` +6.1 · `shg_smg_spbc` +4.0 vs `smg` +4.6.
 Handing off between arms buys nothing over running the better arm throughout.
 
-### τ is INERT — BTVG is not band-targeted at our operating point
+### τ has weak early sensitivity, but its threshold does engage late
 
-Measured `τ²/V_F` = **0.0011 (mu), 0.0024 (alpha), 0.0038 (gap)**. The variance
-coefficient `b = −½·w/s²·(1 − τ²/V)` is therefore τ-independent to **0.2 %**.
+The earlier screen reported `τ²/V_F` = **0.0011 (mu), 0.0024 (alpha),
+0.0038 (gap)**. That supported near-saturation of the normalized variance
+coefficient at those measurements, not inactivity throughout a trajectory.
 
-So BTVG is **DPS + monotone variance descent**, not band targeting. The real
-mechanism is the **sign clamp**: the likelihood's variance coefficient is
-`+½[(y−μ)²/S² − 1/S]`, *positive* when the target is far, so standard guidance
-**widens** the property distribution exactly when it should concentrate. BTVG's
-is always ≤ 0. That is the contribution, and it is what the ablation supports —
-the variance term cuts `plug`'s alpha overshoot from 3.23 δ to 1.12 δ.
+The 23 Sep on-policy diagnostic (`audit_btvg_tolerance.py`, 32 validation
+targets/property, w=4, 100 Euler steps) records every guided step. The
+positive-V threshold `0 < V <= τ²` stops the variance term on **9.50 / 14.50 /
+14.19%** of guided sample-steps (mu/alpha/gap), rising to **40.63 / 52.81 /
+55.94%** at t>=0.9. Nonpositive V is counted separately. Doubling tau on the
+same recorded states changes whether the coefficient is active on **9.50 /
+8.69 / 10.94%** of all guided steps. These are statewise diagnostics, not an
+outcome experiment with a different tau policy.
 
-Either rename the method, or re-sweep τ at ~20× larger values where `τ² ~ V_F`
-and band targeting could actually engage.
+The method remains unproven: local posterior V shrinks toward zero by
+construction, and threshold activation does not establish concentration of
+terminal decoded property errors. Also, widening a Gaussian with a distant
+mean can *increase* band probability; always shrinking is not inherently the
+correct design objective. See the [analytic counterexample](../methods/BTVG_FAILURE_AUDIT_AND_REDESIGN.md)
+and [new claim audit](../results/WORKSHOP_CLAIM_AUDIT.md). The old alpha bias
+reduction is a measured effect, not evidence that this mechanism improves
+coverage. The historical frozen tau setting is unchanged.
 
 ### The BTVG ablation ladder (all four measured)
 
@@ -974,7 +1001,8 @@ six properties. `tfg` = one gradient through the denoiser (TFG's "variance
 guidance" -- which, with smoothing off, is the plug direction; gated) plus
 4 clean-space gradient steps on the predicted molecule ("mean guidance"),
 applied as TFG applies them: an O(1) shift per step, not a velocity edit.
-**Collapse gate, fixed before any real-model tfg cell ran:** the
+**Collapse gate, fixed after a 2-cell CPU pilot (mu, n = 16, which showed
+0.84-0.90) and before any compare-stage or GPU cell:** the
 diagnostic `tfg_d0_frac` = |mean-guidance displacement| / (|variance
 displacement| + |mean-guidance displacement|), pre-clip, averaged over
 guided steps, must be **>= 0.10** in the frozen full-run cell of a property.
@@ -988,15 +1016,17 @@ one MC sample, rho/mu schedule "increase" (paper section 5.1; the public
 script's mu "decrease" would put ~90% of mu in the steps our window
 switches off), sigma "decrease", rescale_grad clip 100, TFG's energy
 -((f - y)/MAD)^2 with the MAD of f_A's own training split. The strength `w`
-multiplies (rho, mu): **w = 1 is TFG's published configuration** and the
-shared 7-point grid brackets it. Shared with every arm: the t_min = 0.5
+multiplies (rho, mu): **w = 1 reproduces TFG's published per-step (rho, mu)**
+and the shared 7-point grid brackets it. Per step, not in total: TFG
+normalises its schedules over all 100 steps, and our t >= 0.5 window applies
+only ~54% of that mass. Shared with every arm: the t_min = 0.5
 window and the velocity-relative clip (so this is "clipped TFG"; the clip's
 bite is logged as `tfg_corr_over_v` and `clipped_sample_steps`).
 
 **Port, not reproduction.** Our samplers are deterministic ODEs, where TFG
 used DDIM with eta = 1. The flow model gets TFG's VP update through the exact
 rescaling x_vp = x / sqrt(t^2 + (1-t)^2), verified to 4e-16 against TFG's
-formula (`proj1/tests/test_tfg.py`, 68 gates). The flow model's one-hot
+formula (`proj1/tests/test_tfg.py`, 71 gates). The flow model's one-hot
 features are unscaled where EDMsecond divides them by 4, so the clean-space
 step moves features about 16x less relative to coordinates than on EDM: that
 is each model's native space, as for every other ported arm. **Never quote
@@ -1022,6 +1052,21 @@ must survive on the decoded metric too. The existing arms' cells have no
 decoded view. Their soft/decoded gap is small where measured, but closing
 that properly needs a re-run (see the TFG handoff).
 
+**Pilots, disclosed.** Before the compare stage, and never read by any
+freeze (separate directories, `--stage targets` labels), tfg ran as local
+pilots: CPU cells at n = 16-64, and nine GPU cells at the compare settings
+(q90, w = 0.25 / 1 / 4, n = 512, `results/pilot_tfg/`). The configuration
+above was not changed after them. What they showed, paired with the
+existing compare cells:
+- **Target error falls sharply.** Mu MAE at w = 1 is 0.36 D soft / 0.61
+  decoded, against <= 1.63 D for any other arm at its FR3a strength.
+- **Chemistry collapses at q90.** mol_stability is 0.11-0.29 at every
+  w >= 0.25 on all three properties, below the 0.362 floor, so FR3a will
+  likely freeze tfg at w <= 0.05 -- the strength confound again.
+- **Numerically sound.** Nothing went non-finite, and the collapse gate is
+  above 0.10 everywhere (mu 0.74-0.92, alpha 0.30-0.45, gap 0.14-0.22).
+- **Cost.** 45 s per n = 512 cell on the RTX 5080.
+
 **Protocol.** The main protocol for one arm, via `proj1/cluster/tfg_run.slurm`.
 Compare stage: 42 cells, identical settings to the other 216 (seed 20260921,
 n 512, generator md5 a190ac83). Freeze: FR3a on its own q90 cells, written to
@@ -1032,6 +1077,66 @@ with tfg is printed as a post-hoc note and never stops the job. Full run:
 the same three seeds and the same 5000 test molecules, so every tfg
 comparison is paired. Read with
 `python proj1/scripts/full_run_table.py --frozen results/full/n5000/frozen_q90_tfg.json`.
+
+### TFG FULL-RUN RESULT (Betty, 23 Sep 17:59-19:31; POST HOC)
+
+**All tables, raw and normalised:**
+[../results/FULL_RUN_RESULTS.md](../results/FULL_RUN_RESULTS.md), generated by
+`python proj1/scripts/results_tables.py`. The pre-registered table with tfg is
+[../results/FULL_RUN_TABLE_WITH_TFG.md](../results/FULL_RUN_TABLE_WITH_TFG.md).
+
+**Integrity.**
+- All 42 compare cells, the freeze, and 12 full cells (9 primary + 3 secondary)
+  came back. Every full-run cell has a sidecar and saved coordinates; the
+  compare cells, like every other arm's, have neither.
+- The generator md5 is a190ac83, the same as every other cell.
+- The freeze reported `consistent with frozen_q90.json`, and a local re-freeze
+  reproduces `frozen_q90_tfg.json` exactly.
+- Betty's compare cells match the local pilot at w = 1 (mu q90 MAE 0.357 vs
+  0.358) and w = 0.25 (1.048 on both). At w = 4 they differ by up to ~5% (mu
+  0.349 local vs 0.367 Betty; in_band +-0.01), which does not touch the freeze.
+- Cost: 61-72 s per n = 512 cell (gap slowest) and ~10 min per n = 5000 cell
+  on a 2g slice.
+
+**Frozen strengths (FR3a):** w = 0.05 (mu), 0.05 (alpha), 0.01 (gap). Every
+w >= 0.25 failed the chemistry floor at q90, so tfg ran at 1-5% of its
+published step. The FR3-as-registered strengths are 2 / 4 / 2.
+
+**Headline (FR5, in_band at FR3a strengths):**
+- tfg's in_band gain over unguided is +0.013 / +0.005 / +0.008, i.e. 1.17x /
+  1.08x / 1.07x unguided.
+- Gap closure is 0.12 / 0.08 / 0.06. For comparison, lgd_mc's is 0.28 / 0.29 /
+  0.26 and btvg's is 0.02 / 0.18 / 0.02.
+- btvg vs tfg is a **tie** on all three properties (sigma_ind -2.1 / +0.7 / -1.5).
+- On MAE, tfg is better than btvg on mu and gap and worse on alpha. This does
+  not change the FR5 verdict.
+- **lgd_mc remains the best arm, and btvg still does not beat prior art.**
+
+**Unconstrained (FR3 as registered, seed 1):** tfg is by far the strongest arm
+at hitting targets, and by far the most destructive to chemistry.
+
+| tfg, FR3 strengths | mu | alpha | gap |
+|---|---|---|---|
+| in_band, continuous features | 0.482 | 0.487 | 0.359 |
+| in_band, decoded atom types | 0.360 | 0.186 | 0.323 |
+| best other arm, continuous | <= 0.134 | <= 0.083 | <= 0.179 |
+| mol_stab | 0.212 | 0.220 | 0.130 |
+| mol_stab, % of unguided | 54% | 56% | 33% |
+
+**Checks.**
+- The collapse gate passes at the frozen strengths: tfg_d0_frac is 0.94 / 0.50 /
+  0.29, so tfg is not plug in disguise.
+- Soft vs decoded scoring at the frozen strengths: on mu, decoding removes about
+  a quarter of tfg's gain (in_band gain +0.009 decoded vs +0.013 soft; MAE
+  1.358 vs 1.306 D). On alpha and gap the difference is negligible. At high w it
+  is large. Unguided has no decoded view, so this is not like-for-like.
+- Post-hoc FR1 with tfg among the competitors FAILS 3/3 on MAE. That is
+  report-only; the registered FR1 stands.
+
+**For the paper.** Always quote tfg's row with the strength confound: the
+floor held it near off, while lgd_mc kept w = 4. tfg's own story is the
+unconstrained Pareto point, not the FR5 row. The fair comparison, per-arm
+in_band against mol_stab at equal chemistry cost, has not been run.
 
 ### BTVG-2: the post-full-run revision (EXPLORATORY PILOT, 23 Sep, not pre-registered)
 
@@ -1053,12 +1158,38 @@ plug overshoots (+2.17 δ), and the drag offsets it (+1.21).
 
 **What.** `btvg2` (`guidance.py::btvg2_weighted_grad`) takes lgd_mc's mean
 term unchanged and adds BTVG's forward-KL variance term, both read off the
-same K = 4 smoothed draws, so `btvg2 − lgd_mc` isolates the variance term.
+same K = 4 smoothed draws, so `btvg2 − lgd_mc` measures the incremental effect
+of the implemented correction. It does not isolate an ideal mean-preserving
+variance intervention, because the m-space protections fail after pullback.
 The variance step is:
 - gated by exp(−(y−μ̂)²/2V̂);
 - made orthogonal to ∇μ̂ **in m-space**;
 - capped at max(|y−μ̂|, √V̂)·|ḡ|/s²;
 - never allowed to widen V̂ **in m-space**.
+
+**REPAIRED, 23 Sep: `btvg2_xproj`.** The invariants are now imposed in x_t,
+against a = QJᵗ∇μ̂ and b = QJᵗ∇V̂, giving a·S = 0 exactly and b·S ≤ 0. Gates:
+`proj1/tests/test_btvg2_xproj.py`, 5/5, including the audit's counterexample as
+a regression test (+4 / +3.5 before, ~0 / ≤0 after) and a non-vacuity check
+that the **unrepaired** arm fails. Cost: three pullbacks instead of one.
+
+**How large the defect was, measured on the real generator** (float64, 8 test
+molecules, frozen-draw surrogate, central differences). Relative rate at which
+each arm's variance step moves μ̂, which it is supposed to leave alone:
+
+| t | btvg2 | btvg2_xproj |
+|---|---|---|
+| 0.50 | 3.35 | 6.6e-09 |
+| 0.65 | 5.93 | 3.2e-07 |
+| 0.80 | 1.78 | 1.2e-05 |
+| 0.90 | 2.31 | 4.1e-06 |
+
+So btvg2's "variance step" was moving the property mean at **1.8 to 5.9 times
+its own magnitude**. `btvg2 − lgd_mc` therefore never isolated the variance
+term; it measured the variance term plus an uncontrolled mean push. **The BTVG-2
+pilot conclusion is confounded and is being re-tested** (`xproj_run.slurm`,
+12 cells). The registered full-run result is unaffected: the original `btvg`
+computes its variance gradient in x_t already, so it never had this defect.
 
 **Correction (23 Sep, from docs/methods/BTVG_FAILURE_AUDIT_AND_REDESIGN.md
 §3).** Those two protections are imposed BEFORE the J^T pullback, and the
@@ -1069,7 +1200,11 @@ the median |cos| to the mean direction is 0.45–0.51, where m-space gives
 ~1e-7. Gates G3 and G6 checked m-space only, so they could not catch this.
 BTVG-2's pilot numbers stand as measurements of the arm as implemented. Its
 "mean-preserving, never widens" description is withdrawn. The x-space repair
-(project a = QJ^Tg and b = QJ^Th) has not been run.
+(project a = QJ^Tg and b = QJ^Th) is implemented as `btvg2_xproj` and passes
+the five gates in `test_btvg2_xproj.py`. Its molecular outcome retest is
+prepared in `xproj_run.slurm`; no completed outcome cells were available
+locally at the claim audit. Its guarantee concerns frozen local draws/radius,
+and joint clipping can still reduce the baseline mean step.
 
 `btvg2_band` gates by the band instead (width δ). Its cost counters
 (generator and guide passes) are identical to lgd_mc's, and in the pilot its
@@ -1138,6 +1273,187 @@ never raised in_band. What the pilot supports is: the estimator is the lever;
 btvg2 reaches about parity with the strongest baseline; variance targeting is
 a measured negative.
 
+### Chemistry-safe guidance (CSG): EXPLORATORY PILOT, 23 Sep
+
+**What.** CSG is `lgd_mc_chem` in `guidance.py`: `chem_safe_project` +
+`soft_valence_violation`. It is a wrapper, so `X_chem − X` isolates it exactly.
+At each guided step it removes from the base arm's step the component that
+would raise a smooth relaxation of the evaluator's own valence rule. The
+relaxation is measured on the predicted clean molecule and pulled back to
+x_t, so the guarantee holds in the space actually updated. The CoM re-centring
+and the positive clip cannot flip it.
+
+**Gates.** `proj1/tests/test_chem_guard.py`, 7/7:
+- the sharp limit equals the evaluator's integer valence on 4,597/4,597 atoms of
+  real molecules and 4,597/4,597 of jittered ones;
+- the gradient matches finite differences to 3e-9;
+- the first-order change of violation is +165 along the raw step where the
+  guard is active, and ≤ 7e-8 along the guarded one.
+
+**Independent chemistry.** `proj1/scripts/independent_chem.py` re-scores the
+saved molecules with RDKit rdDetermineBonds (covalent radii), with no link to
+the evaluator's table. It is more tolerant of geometry (test[:2048], jitter seed 0): on real QM9 it
+gives **0.948** vs the table's 0.955, and at 0.1 Å jitter **0.850** vs 0.0005.
+So the table collapses under small geometric noise while RDKit barely moves,
+which is exactly why both are reported. (An earlier draft quoted 0.937 / 0.973
+/ 0.83 / 0.00 from a 300-molecule subset without saying so; the n = 2048
+figures above supersede them.)
+
+**Evaluation is decoded.** f_B is scored on one-hot(argmax) types, the molecule
+as it really is. *Footnote for anyone re-reading these cells:* the six cells run
+first ({mu, alpha, gap} × {lgd_mc, lgd_mc_chem} at w = 8) predate a peer
+session's addition of the stored `*_dec` fields, so their JSON has no
+`in_band_fraction_dec`. Every decoded number here was recomputed from the saved
+coordinates and types through the f_B checkpoint, which is why those cells are
+still correct; reading the stored aggregate instead would give NaN for them. **Useful yield** = decoded-in-band AND stable (or AND
+RDKit-valid). The run was local, on test[:2048] with seed 20261001, paired, and
+the cost is 1.26× lgd_mc wall time.
+
+| decoded, useful = stable ∧ in-band | mu | alpha | gap |
+|---|---|---|---|
+| unguided: stab / useful | 0.390 / 0.029 | 0.390 / 0.023 | 0.390 / 0.052 |
+| lgd_mc w=4 / 8 / 16: stab | 0.400 / 0.369 / 0.361 | 0.376 / 0.381 / 0.371 | 0.371 / 0.339 / 0.327 |
+| CSG w=4 / 8 / 16: stab | 0.415 / 0.417 / 0.403 | 0.392 / 0.375 / 0.386 | 0.385 / 0.372 / 0.353 |
+| lgd_mc: ib_dec | 0.098 / 0.111 / 0.126 | 0.079 / 0.095 / 0.106 | 0.159 / 0.178 / 0.186 |
+| CSG: ib_dec | 0.103 / 0.107 / 0.127 | 0.070 / 0.084 / 0.106 | 0.146 / 0.170 / 0.169 |
+| best useful, lgd_mc vs CSG | 0.047 vs **0.054** (z +1.1) | 0.040 vs 0.037 (z −0.6) | 0.067 vs 0.065 (z −0.4) |
+| floor rubric (best ib_dec, stab ≥ 0.351) | 0.126 vs 0.127 | 0.106 vs 0.106 | 0.159 vs **0.170** (z +1.3) |
+
+- **CSG reliably buys chemistry where the push damages it.** On mu and gap,
+  stability is +0.03–0.05 (z 3–4 at w=8) and RDKit validity +0.02–0.03. On
+  alpha, where lgd_mc's chemistry does not degrade with w, there is nothing to
+  save.
+- **It has not turned that into more useful molecules.** The extra stable
+  molecules are mostly not the in-band ones.
+  - Where the base step is not clip-bound, the projection shrinks it and costs
+    hits (gap at every w; alpha at w=8: useful −0.011, z −2.9).
+  - Where the step is clip-bound (mu and alpha at w=16), the clip restores its
+    length and the guard costs no targeting.
+- **Stability above unguided's (mu 0.417 vs 0.390) is legitimate, not a red flag.**
+  Each step is violation-non-increasing, so trajectories drift toward lower
+  violation. That is why the independent RDKit score is reported. An earlier
+  comment claiming the opposite was corrected.
+- **The grid edge bites again.** lgd_mc still passes the floor at w=16 on mu
+  and alpha.
+
+### PREDICTION, written 2026-09-23 18:55, before any w = 32 cell existed
+
+The w ≤ 16 pilot supports a sharper hypothesis than "the guard helps":
+
+> **CSG pays only where the chemistry floor binds.** It cannot add in-band
+> hits at a fixed strength (measured: same-strength Δin_band ≈ 0 on all three
+> properties at w = 8 and 16). What it does is keep stability above the floor
+> at a strength where the unguarded arm falls below it, so the guarded arm is
+> allowed to use a stronger push under the pre-registered rubric.
+
+Consistent with the pilot: on **gap**, plain lgd_mc drops below the floor
+(0.351) at w = 8 and 16, and there `lgd_mc_chemn` gains **+0.022 in_band**
+(z +2.0) under the floor rubric. On **mu** and **alpha**, plain lgd_mc still
+passes the floor at w = 16, so the guard has nothing to buy (+0.0005, +0.005).
+
+**The test, fixed now.** Run lgd_mc and lgd_mc_chemn at **w = 32** on mu and
+alpha, where the floor should start to bind.
+- **The prediction is supported** if, at w = 32, plain lgd_mc falls below the
+  floor on a property while the guarded arm stays above it, and the guarded
+  arm's best floor-passing in_band beats plain's by ≥ 1 pp on both mu and alpha.
+- **It is refuted** if the guarded arm also falls below the floor, or if its
+  floor-passing best does not improve.
+If refuted, the gap result is one property out of three and is written up as
+such: suggestive, not a method.
+
+**OUTCOME: the literal test FAILS on alpha; the mechanism behind it is
+supported on all three.** Decoded, paired, floor = 0.9 x unguided = 0.3507.
+
+| property | plain lgd_mc, stability by w (4 / 8 / 16 / 32) | does the floor bind? |
+|---|---|---|
+| mu | 0.400 / 0.369 / 0.361 / **0.331 FAIL** | yes, at w = 32 |
+| alpha | 0.377 / 0.381 / 0.371 / 0.364 | **no, never** |
+| gap | 0.371 / **0.339 FAIL** / **0.327 FAIL** / - | yes, from w = 8 |
+
+Guarded (`lgd_mc_chemn`) stays above the floor everywhere tested, including
+mu at w = 32 (0.377) and gap at w = 16 (0.359).
+
+| best in_band among floor-passing strengths | plain | guarded | gain |
+|---|---|---|---|
+| mu | 0.126 @ w=16 | **0.140 @ w=32** | **+1.37 pp** (z +1.43) |
+| alpha | 0.121 @ w=32 | 0.124 @ w=32 | +0.29 pp (z +0.34) |
+| gap | 0.159 @ w=4 | **0.181 @ w=16** | **+2.15 pp** (z +2.04) |
+
+On useful yield (decoded in-band AND stable) the same comparison gives
++1.03 pp (z +1.65), -0.15 pp, +0.54 pp.
+
+**Read it precisely.** The test as written demanded >= 1 pp on BOTH mu and
+alpha; alpha gives +0.29 pp, so **the literal prediction is not supported**.
+But alpha is a non-test of the mechanism: plain lgd_mc never falls below the
+floor there, even at w = 32, so by the hypothesis there was nothing for the
+guard to buy. The conditional claim - *CSG pays where, and only where, the
+chemistry floor binds* - is consistent with all three properties: it gains
+1.4-2.2 pp on the two where the floor binds and ~0 on the one where it does
+not. Combined with the same-strength result (in_band unchanged, stability up),
+the mechanism is: **the guard does not add hits, it buys the headroom to push
+harder without breaking the floor.**
+
+**Status: suggestive, not established.** One seed, n = 2048, consumed targets,
+strengths chosen on the same molecules, and only gap's in_band clears 2 sigma.
+**Multiplicity:** across these three sections roughly 20-50 (property x
+w-rule x metric x variant) comparisons were computed, so gap's z = +2.04 does
+not survive a family-wide correction (which would need about z = 3). Nothing
+here is significant after correction. It licenses the confirmation run below;
+it is not a result.
+
+**Independently checked (23 Sep).** A separate agent re-derived every number in
+these three sections from the raw cells with its own re-implementation of the
+scoring convention: the stability table, both floor-rubric tables, the
+decision-rule outcome, the same-strength deltas and the CSG table all
+reproduced exactly. It also confirmed, analytically and on the real checkpoint
+(960 cases, t in [0.55, 0.95], w in {4, 16, 32}), that the guard's
+non-increase guarantee survives the sampler: because the generator is
+translation-invariant, the pulled-back constraint direction is exactly
+zero-mean, so the CoM re-centring cannot change the dot product, and the
+strength and clip are non-negative scalars. Max observed <a, G'> = 2.6e-13.
+It re-ran the 7 gates and confirmed that four injected defects (sign flip,
+always-project, m-space gradient without the pullback, dropped norm rescale)
+are each caught. Its corrections to the prose are applied above.
+
+### DECISION RULE for the norm-preserving chemistry guard (written 2026-09-23 17:49, before any `lgd_mc_chemn` cell existed)
+
+`lgd_mc_chemn` is lgd_mc plus the x-space valence guard, with the step rescaled
+to its original length. It goes to a confirmatory run only if, in the local
+pilot (test[:2048], seed 20261001, w ∈ {4, 8, 16}, best strength per arm), its
+best **useful yield** (decoded in-band AND Hoogeboom-stable) meets both
+conditions:
+- it is at least lgd_mc's best **+0.5 pp on at least 2 of the 3 properties**;
+- it is **worse than lgd_mc's best by at most 0.5 pp on the third**.
+
+The RDKit-valid useful yield must not contradict this: same sign on the
+properties that pass. Otherwise the chemistry guard is written up as a tested
+component that buys chemistry but not useful molecules, with no confirmatory
+run. The pilot is exploratory (consumed targets, one seed, best-of-3 strengths
+chosen on the same molecules), so passing this rule licenses a confirmation.
+It is not a result.
+
+**OUTCOME (all w ∈ {4, 8, 16} cells in): the rule FAILS.** Best useful yield
+(decoded in-band ∧ stable), `lgd_mc_chemn` minus `lgd_mc`: mu **+0.29 pp**
+(z +0.51), gap **+0.24 pp** (z +0.49), alpha **−0.05 pp** (z −0.10). The rule
+required ≥ +0.5 pp on two properties; no property reaches it. The RDKit-valid
+version does not rescue it either, but it does **not** simply track the decoded
+one: mu +0.05 pp and gap +0.10 pp (same sign, smaller), while **alpha flips to
++0.54 pp** — positive, and the largest of the three, against −0.05 pp decoded.
+Two chemistry rules disagreeing in sign on one property at this size is a
+reason to distrust alpha's point estimate, not evidence for the guard.
+
+At a **fixed** strength the picture is consistent and flat: `chemn − lgd_mc`
+useful yield is +0.003 / +0.001 / +0.001 at w = 16 and +0.007 / −0.008 /
++0.002 at w = 8, every |z| ≤ 2.2. So **neither guard variant converts its
+chemistry gain into useful molecules at a fixed push.** What the guard does
+buy is stability (w = 16: +0.022 mu, +0.010 alpha, +0.032 gap; the shrinking
+variant is larger still, +0.042 / +0.016 / +0.026) with in_band unchanged.
+
+The one place it pays is the **floor rubric** — best in_band among strengths
+that clear 0.9 × unguided — because the guard can run a stronger push without
+breaking the floor: gap **+0.022** (z +2.04), alpha +0.005, mu +0.0005. That
+is the observation the w = 32 prediction above was written to test.
+
 ### PROPOSED: the equal-chemistry-cost comparison (not yet run)
 
 This removes the strength confound. It does not choose strengths on q90 (a
@@ -1162,14 +1478,65 @@ cap the grid at 4.
   btvg. It fixes the evaluation; on the pilot's evidence it will not make BTVG
   win.
 
+### DOES GUIDANCE WORK? What the pre-registered table does not show (24 Sep, existing cells)
+
+**Source:** [../results/FULL_RUN_RESULTS.md](../results/FULL_RUN_RESULTS.md)
+"Read this first" and sections 5-9, generated by `results_tables.py` +
+`results_evidence.py`. Sections 1-4 of that page are byte-identical to the
+independently checked version. New inputs: `results/dist_report_all.json`
+(every strength, no `--frozen`) and `results/force_share/` (20 runs, mu,
+n = 128, `force_share.py`). No other new sampling.
+
+**Why the question arises.** Read alone, the FR5 table makes guidance look
+inert: FR3a froze plug and btvg at w = 0.05 on mu, where the correction is
+0.5 % (plug) and 3.5 % (btvg) of the base velocity (measured on the q50
+target, n = 128). That is the chemistry floor doing its job, not guidance
+failing.
+
+**Answer: yes.** Tracking beyond atom count (partial correlation of output
+with its own target, within atom-count groups) is about zero unguided and
+0.31-0.62 for plug / tmpd / btvg at the FR3 strength (w = 4, seed 20261001
+only). On q90 those arms close 30-46 % of the gap to a tail target, monotone
+in w. Partial correlation is OUR continuous form of EDM's criterion, and a
+target-ignoring generator scores zero on it. On EDM's actual bar (#Atoms, on
+MAE) no arm passes at its FR3a strength; at FR3, 6 of 9 plug/tmpd/btvg cells
+pass, and the 2 that clear the floor do so only under the one-seed floor.
+
+**Limits that must travel with it.**
+- At w = 4 most arms fail the chemistry floor on mu and gap. These rows show
+  that guidance works, not which arm wins; an arm below the floor can neither
+  win nor be beaten.
+- Guidance narrows the output only partly. At floor-clearing strengths the
+  residual sd falls by 31-37 % depending on the floor convention, and never
+  below 5.56 δ. The 37 % (btvg FR3, alpha) is one seed, clears its own-seed
+  floor by 2 of 5,000 molecules and fails the pooled floor; the pooled-floor
+  maximum is 32 % (tmpd FR3, alpha) and the 3-seed maximum 31 % (lgd_mc, alpha);
+  in-band 0.50 needs ~1.48 δ. In-band is 0.99-1.15 times the Gaussian ceiling
+  for its own width (24 rows), so the limit is the remaining width, not the
+  aim. *(An earlier draft said "steers but does not concentrate"; the
+  independent check showed the ratio is scale-free and cannot support that.)*
+- Only tfg at FR3 gets the residual down to 2.5-3.1 δ, and all those rows are
+  far below the floor (stability 0.13-0.22) and partly on continuous features.
+- Equal w is not equal force: at w = 1, btvg pushes 10 times harder than tmpd.
+  Neither equal w nor floor-clearing best is a controlled comparison. The
+  equal-chemistry-cost comparison below is the fix.
+- `btvg_var` moves the property away from a tail target on mu and alpha
+  (−22 %, −24 % of the gap at w = 4).
+
 ### What this means
 
+0. **Guidance works; it steers, and narrows the spread only partly** (the
+   section just above). Any write-up of the full run must say so beside the
+   FR5 table, or a reader will take the frozen-strength rows as evidence that
+   guidance is inert.
 1. **BTVG does not beat prior art at full scale** (see FULL-RUN RESULT
    above): under the pre-registered test `lgd_mc` beats it on all three
    properties, and on in_band it ties unguided. Its one positive signal is
    **alpha MAE at w = 4**: best of any arm at equal strength (one seed), as it
    was on the q50 screen (8.70 δ vs `plug` 9.31) but not on q90 (13.44 vs
-   13.33). It clears the chemistry floor by 2 molecules. The variance term's
+   13.33). This excludes the post-hoc `tfg` (MAE 0.866 vs btvg 3.684, but
+   stability 0.220, far below the floor). It clears the chemistry floor by 2
+   molecules. The variance term's
    effect at w = 4 flips sign by property (helps alpha, hurts mu and gap).
    *(Screen-era wording, superseded: "the contribution that survived … tied
    for first on all three properties".)*

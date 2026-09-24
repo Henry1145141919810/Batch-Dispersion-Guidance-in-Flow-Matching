@@ -9,8 +9,11 @@ WHAT IT CHECKS BEFORE PRINTING ANYTHING, and refuses on:
   * each cell's own `seed` matches its directory, and its target is `dist`
   * every seed used the SAME strength for a given (property, arm) -- FR3 froze
     it once; a mismatch means something re-froze from a different grid
-  * one n, one generator (fm_md5) and one frozen-strength file (frozen_md5)
-    across every cell
+  * one n and one generator (fm_md5) across every cell of the reported arms,
+    and one frozen-strength file (frozen_md5) per arm group: tfg was frozen
+    after the run was read, into its own frozen_q90_tfg.json (which
+    check_fullrun_go --must-match proves agrees with frozen_q90.json on every
+    shared arm), so its cells carry that file's md5 and the rest the original's
 
 WHAT IT PRINTS, per property, arms pooled over seeds:
   in_band, MAE/delta, |bias|/delta, residual sd/delta, mol_stability,
@@ -107,12 +110,21 @@ def check(cells, props, want_seeds, W):
             if r.get("target_name") != "dist":
                 problems.append("%s/%s seed %s has target %r, not dist"
                                 % (p, a, seed, r.get("target_name")))
-    rows = [r for c in cells.values() for (r, _) in c.values()]
-    for key, what in (("n", "n"), ("fm_md5", "generator"), ("frozen_md5", "frozen file")):
+    # only the arms this table reports: cells of any other arm sharing the
+    # seed directories (tfg without its frozen file, later pilots) are not
+    # part of this readout and must not be able to block it
+    rows = [r for c in cells.values() for (r, _) in c.values() if r.get("arm") in ARMS]
+    for key, what in (("n", "n"), ("fm_md5", "generator")):
         vals = {(r.get(key) if key == "n" else (r.get("prov") or {}).get(key))
                 for r in rows}
         if len(vals) > 1:
             problems.append("mixed %s across cells: %s" % (what, sorted(map(str, vals))))
+    for label, in_grp in (("tfg", lambda a: a == "tfg"),
+                          ("the other arms", lambda a: a != "tfg")):
+        vals = {(r.get("prov") or {}).get("frozen_md5") for r in rows if in_grp(r["arm"])}
+        if len(vals) > 1:
+            problems.append("mixed frozen file across %s cells: %s"
+                            % (label, sorted(map(str, vals))))
     return problems
 
 
@@ -262,7 +274,10 @@ def main():
              "unguided, subject to the same floor measured here at full scale. "
              "Every se is conditional on these test molecules (see the "
              "docstring)." % FLOOR)
-    if "tfg" in ARMS:
+    # a transfer freeze fixes every arm, tfg included, before any of its cells
+    # ran and says so with tfg_post_hoc = False; the main run's file has no
+    # such key and keeps its label
+    if "tfg" in ARMS and fz.get("tfg_post_hoc", True):
         L.append("")
         L.append("**tfg is POST HOC**: it replaced dflow on 23 Sep, after this "
                  "run was read. Same seeds, targets and settings, strength "
@@ -369,6 +384,36 @@ def main():
                     a, r["w"], r["in_band_fraction"], r["prop_mae_eval"] / dl,
                     r["mol_stability"],
                     "ok" if r["mol_stability"] >= FLOOR * u["mol_stability"] - 1e-12 else "NO"))
+
+    # DECODED VIEW: property metrics on the argmax one-hot atom types, for
+    # every PRIMARY cell that carries them (evaluate_samples' *_dec fields,
+    # added 23 Sep -- so the original 64 cells do not). tfg's clean-space step
+    # writes on the continuous features the soft metrics read, and TFG's own
+    # pipeline scores decoded molecules, so a tfg number is never shown
+    # without this twin.
+    dec_rows = []
+    for p in props:
+        for a in ARMS:
+            rs = [cells[s][(p, a, float(W[a][p]))][0] for s in seeds
+                  if (p, a, float(W[a][p])) in cells.get(s, {})]
+            if rs and all("in_band_fraction_dec" in r for r in rs):
+                dl = rs[0]["delta"] if "delta" in rs[0] else rs[0]["mae_B"] * rs[0]["k_delta"]
+                m = lambda k: sum(r[k] for r in rs) / len(rs)  # noqa: E731
+                dec_rows.append("| %s | %s | %g | %.3f | %.3f | %.3f | %.3f |" % (
+                    p, a, W[a][p], m("in_band_fraction"), m("in_band_fraction_dec"),
+                    m("prop_mae_eval") / dl, m("prop_mae_eval_dec") / dl))
+    if dec_rows:
+        L.append("")
+        L.append("## DECODED VIEW -- property on the argmax one-hot atom types "
+                 "(cells that carry it; seed mean)")
+        L.append("")
+        L.append("The rubric above scores the continuous features every arm "
+                 "ends on. Where the two views differ, the decoded one is the "
+                 "molecule that exists; the soft one is an upper bound.")
+        L.append("")
+        L.append("| prop | arm | w | in_band soft | in_band decoded | MAE/d soft | MAE/d decoded |")
+        L.append("|---|---|---|---|---|---|---|")
+        L.extend(dec_rows)
 
     text = NL.join(L)
     print(text)

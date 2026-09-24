@@ -1,0 +1,1134 @@
+{
+  "analysis": "Post hoc supplementary paired target-cluster normal intervals; fixed checkpoint and three fixed seeds.",
+  "n_target_clusters": 5000,
+  "seeds": [
+    "20261001",
+    "20261002",
+    "20261003"
+  ],
+  "family_size": 36,
+  "scoring": "Historical continuous-feature f_B; most full-run sidecars have no coordinates, so decoded re-scoring cannot be recovered from them.",
+  "limits": "No equivalence test; no random-training-seed uncertainty; no change to FR5; TFG post hoc. The 36-contrast Bonferroni family covers comparisons in this supplementary analysis, not all historical exploration or adaptive method development.",
+  "script_sha256": "f7fbd8b6d62d0a4d5d9b838ac5b12c42897fcd42790df2ec3f5ade58f37d8b1a",
+  "frozen_sha256": "55c06a052d13bf6ccd7b9275144700223cabbd3f2780f02a1aa9ae82b7d36f59",
+  "rows": [
+    {
+      "property": "mu",
+      "control": "unguided",
+      "metric": "legacy_in_band",
+      "ours_w": 0.05,
+      "control_w": 1.0,
+      "difference": 0.005933333333333333,
+      "target_cluster_se": 0.002161919029447932,
+      "pointwise_95_ci": [
+        0.0016960498981235987,
+        0.010170616768543066
+      ],
+      "simultaneous_95_ci": [
+        -0.00097821420322345,
+        0.012844880869890116
+      ],
+      "family_size": 36,
+      "per_seed_difference": [
+        0.0114,
+        0.0028,
+        0.0036
+      ],
+      "pooled_pair_se_for_reference": 0.002173111204924577
+    },
+    {
+      "property": "mu",
+      "control": "unguided",
+      "metric": "legacy_stable_and_in_band",
+      "ours_w": 0.05,
+      "control_w": 1.0,
+      "difference": 0.0018,
+      "target_cluster_se": 0.0013181340118639015,
+      "pointwise_95_ci": [
+        -0.0007834951900505386,
+        0.004383495190050539
+      ],
+      "simultaneous_95_ci": [
+        -0.002414008831253998,
+        0.006014008831253997
+      ],
+      "family_size": 36,
+      "per_seed_difference": [
+        0.0026,
+        0.0018,
+        0.001
+      ],
+      "pooled_pair_se_for_reference": 0.0013148338835882087
+    },
+    {
+      "property": "mu",
+      "control": "plug",
+      "metric": "legacy_in_band",
+      "ours_w": 0.05,
+      "control_w": 0.05,
+      "difference": 0.002133333333333333,
+      "target_cluster_se": 0.0021602522497155105,
+      "pointwise_95_ci": [
+        -0.002100683273630694,
+        0.00636734994029736
+      ],
+      "simultaneous_95_ci": [
+        -0.0047728855913759735,
+        0.00903955225804264
+      ],
+      "family_size": 36,
+      "per_seed_difference": [
+        0.008,
+        -0.0016,
+        0.0
+      ],
+      "pooled_pair_se_for_reference": 0.0021499365021504777
+    },
+    {
+      "property": "mu",
+      "control": "plug",
+      "metric": "legacy_stable_and_in_band",
+      "ours_w": 0.05,
+      "control_w": 0.05,
+      "difference": 0.0010666666666666667,
+      "target_cluster_se": 0.0013064380839536757,
+      "pointwise_95_ci": [
+        -0.0014939049259140524,
+        0.003627238259247386
+      ],
+      "simultaneous_95_ci": [
+        -0.0031099508651748317,
+        0.005243284198508166
+      ],
+      "family_size": 36,
+      "per_seed_difference": [
+        0.0006,
+        0.0012,
+        0.0014
+      ],
+      "pooled_pair_se_for_reference": 0.0012927283817713584
+    },
+    {
+      "property": "mu",
+      "control": "tmpd",
+      "metric": "legacy_in_band",
+      "ours_w": 0.05,
+      "control_w": 0.5,
+      "difference": -0.0011999999999999997,
+      "target_cluster_se": 0.002201164571207331,
+      "pointwise_95_ci": [
+        -0.005514203283611918,
+        0.003114203283611919
+      ],
+      "simultaneous_95_ci": [
+        -0.008237013580276873,
+        0.005837013580276874
+      ],
+      "family_size": 36,
+      "per_seed_difference": [
+        0.0052,
+        -0.0056,
+        -0.0032
+      ],
+      "pooled_pair_se_for_reference": 0.0021970189938863294
+    },
+    {
+      "property": "mu",
+      "control": "tmpd",
+      "metric": "legacy_stable_and_in_band",
+      "ours_w": 0.05,
+      "control_w": 0.5,
+      "difference": -0.0009333333333333335,
+      "target_cluster_se": 0.00131324603378471,
+      "pointwise_95_ci": [
+        -0.003507248262391435,
+        0.0016405815957247682
+      ],
+      "simultaneous_95_ci": [
+        -0.005131715541947072,
+        0.003265048875280404
+      ],
+      "family_size": 36,
+      "per_seed_difference": [
+        -0.0006,
+        -0.0026,
+        0.0004
+      ],
+      "pooled_pair_se_for_reference": 0.001313202702223148
+    },
+    {
+      "property": "mu",
+      "control": "lgd_mc",
+      "metric": "legacy_in_band",
+      "ours_w": 0.05,
+      "control_w": 4.0,
+      "difference": -0.022866666666666667,
+      "target_cluster_se": 0.003091134405242053,
+      "pointwise_95_ci": [
+        -0.02892517877231373,
+        -0.016808154561019605
+      ],
+      "simultaneous_95_ci": [
+        -0.03274886951178075,
+        -0.012984463821552585
+      ],
+      "family_size": 36,
+      "per_seed_difference": [
+        -0.0146,
+        -0.0258,
+        -0.0282
+      ],
+      "pooled_pair_se_for_reference": 0.003130710784458856
+    },
+    {
+      "property": "mu",
+      "control": "lgd_mc",
+      "metric": "legacy_stable_and_in_band",
+      "ours_w": 0.05,
+      "control_w": 4.0,
+      "difference": -0.0074,
+      "target_cluster_se": 0.001971700610751405,
+      "pointwise_95_ci": [
+        -0.011264462185368381,
+        -0.003535537814631619
+      ],
+      "simultaneous_95_ci": [
+        -0.013703428719319937,
+        -0.0010965712806800644
+      ],
+      "family_size": 36,
+      "per_seed_difference": [
+        -0.0098,
+        -0.0026,
+        -0.0098
+      ],
+      "pooled_pair_se_for_reference": 0.001989123703428347
+    },
+    {
+      "property": "mu",
+      "control": "tfg",
+      "metric": "legacy_in_band",
+      "ours_w": 0.05,
+      "control_w": 0.05,
+      "difference": -0.006666666666666665,
+      "target_cluster_se": 0.002249175301234858,
+      "pointwise_95_ci": [
+        -0.011074969252004014,
+        -0.002258364081329317
+      ],
+      "simultaneous_95_ci": [
+        -0.013857168161305802,
+        0.00052383482797247
+      ],
+      "family_size": 36,
+      "per_seed_difference": [
+        -0.002,
+        -0.0072,
+        -0.0108
+      ],
+      "pooled_pair_se_for_reference": 0.0022404450225016713
+    },
+    {
+      "property": "mu",
+      "control": "tfg",
+      "metric": "legacy_stable_and_in_band",
+      "ours_w": 0.05,
+      "control_w": 0.05,
+      "difference": -0.0022666666666666664,
+      "target_cluster_se": 0.001362762505556831,
+      "pointwise_95_ci": [
+        -0.00493763209703962,
+        0.000404298763706287
+      ],
+      "simultaneous_95_ci": [
+        -0.0066233505710580586,
+        0.0020900172377247253
+      ],
+      "family_size": 36,
+      "per_seed_difference": [
+        -0.0022,
+        -0.002,
+        -0.0026
+      ],
+      "pooled_pair_se_for_reference": 0.0013465183581843252
+    },
+    {
+      "property": "mu",
+      "control": "btvg_var",
+      "metric": "legacy_in_band",
+      "ours_w": 0.05,
+      "control_w": 0.01,
+      "difference": 0.004133333333333333,
+      "target_cluster_se": 0.002047676063765724,
+      "pointwise_95_ci": [
+        0.0001199619963477708,
+        0.008146704670318895
+      ],
+      "simultaneous_95_ci": [
+        -0.002412985127909082,
+        0.010679651794575747
+      ],
+      "family_size": 36,
+      "per_seed_difference": [
+        0.0094,
+        0.0002,
+        0.0028
+      ],
+      "pooled_pair_se_for_reference": 0.0020675351442472362
+    },
+    {
+      "property": "mu",
+      "control": "btvg_var",
+      "metric": "legacy_stable_and_in_band",
+      "ours_w": 0.05,
+      "control_w": 0.01,
+      "difference": 0.0002666666666666666,
+      "target_cluster_se": 0.0012473381673925078,
+      "pointwise_95_ci": [
+        -0.0021780712179648412,
+        0.002711404551298175
+      ],
+      "simultaneous_95_ci": [
+        -0.0037210113733829684,
+        0.004254344706716302
+      ],
+      "family_size": 36,
+      "per_seed_difference": [
+        0.0014,
+        -0.0004,
+        -0.0002
+      ],
+      "pooled_pair_se_for_reference": 0.0012508173354401036
+    },
+    {
+      "property": "alpha",
+      "control": "unguided",
+      "metric": "legacy_in_band",
+      "ours_w": 1.0,
+      "control_w": 1.0,
+      "difference": 0.006466666666666666,
+      "target_cluster_se": 0.0021095744317465638,
+      "pointwise_95_ci": [
+        0.002331976757736851,
+        0.01060135657559648
+      ],
+      "simultaneous_95_ci": [
+        -0.00027753779627494486,
+        0.013210871129608276
+      ],
+      "family_size": 36,
+      "per_seed_difference": [
+        0.0066,
+        0.0012,
+        0.0116
+      ],
+      "pooled_pair_se_for_reference": 0.002123352027851608
+    },
+    {
+      "property": "alpha",
+      "control": "unguided",
+      "metric": "legacy_stable_and_in_band",
+      "ours_w": 1.0,
+      "control_w": 1.0,
+      "difference": 0.0010666666666666665,
+      "target_cluster_se": 0.001285860204326579,
+      "pointwise_95_ci": [
+        -0.001453573022966743,
+        0.003586906356300076
+      ],
+      "simultaneous_95_ci": [
+        -0.0030441644081859506,
+        0.005177497741519283
+      ],
+      "family_size": 36,
+      "per_seed_difference": [
+        0.0016,
+        -0.0004,
+        0.002
+      ],
+      "pooled_pair_se_for_reference": 0.0012823721084280586
+    },
+    {
+      "property": "alpha",
+      "control": "plug",
+      "metric": "legacy_in_band",
+      "ours_w": 1.0,
+      "control_w": 0.5,
+      "difference": 0.0021333333333333334,
+      "target_cluster_se": 0.0020784498474900673,
+      "pointwise_95_ci": [
+        -0.001940353511419966,
+        0.006207020178086633
+      ],
+      "simultaneous_95_ci": [
+        -0.004511367382837856,
+        0.008778034049504523
+      ],
+      "family_size": 36,
+      "per_seed_difference": [
+        0.001,
+        -0.0054,
+        0.0108
+      ],
+      "pooled_pair_se_for_reference": 0.0020526350901496054
+    },
+    {
+      "property": "alpha",
+      "control": "plug",
+      "metric": "legacy_stable_and_in_band",
+      "ours_w": 1.0,
+      "control_w": 0.5,
+      "difference": -0.0013999999999999998,
+      "target_cluster_se": 0.0012382439109197827,
+      "pointwise_95_ci": [
+        -0.0038269134694787965,
+        0.001026913469478797
+      ],
+      "simultaneous_95_ci": [
+        -0.0053586041547353785,
+        0.0025586041547353785
+      ],
+      "family_size": 36,
+      "per_seed_difference": [
+        -0.0024,
+        -0.0032,
+        0.0014
+      ],
+      "pooled_pair_se_for_reference": 0.0012238247263838499
+    },
+    {
+      "property": "alpha",
+      "control": "tmpd",
+      "metric": "legacy_in_band",
+      "ours_w": 1.0,
+      "control_w": 1.0,
+      "difference": 0.0007333333333333332,
+      "target_cluster_se": 0.0020560653180357663,
+      "pointwise_95_ci": [
+        -0.0032964806398786597,
+        0.004763147306545326
+      ],
+      "simultaneous_95_ci": [
+        -0.005839805156269933,
+        0.007306471822936599
+      ],
+      "family_size": 36,
+      "per_seed_difference": [
+        -0.0004,
+        -0.0052,
+        0.0078
+      ],
+      "pooled_pair_se_for_reference": 0.0020385771402674038
+    },
+    {
+      "property": "alpha",
+      "control": "tmpd",
+      "metric": "legacy_stable_and_in_band",
+      "ours_w": 1.0,
+      "control_w": 1.0,
+      "difference": -0.0022666666666666664,
+      "target_cluster_se": 0.0012325892664242963,
+      "pointwise_95_ci": [
+        -0.0046824972365889315,
+        0.00014916390325559912
+      ],
+      "simultaneous_95_ci": [
+        -0.006207193204386544,
+        0.0016738598710532115
+      ],
+      "family_size": 36,
+      "per_seed_difference": [
+        -0.0026,
+        -0.004,
+        -0.0002
+      ],
+      "pooled_pair_se_for_reference": 0.0012146239710831412
+    },
+    {
+      "property": "alpha",
+      "control": "lgd_mc",
+      "metric": "legacy_in_band",
+      "ours_w": 1.0,
+      "control_w": 4.0,
+      "difference": -0.015733333333333332,
+      "target_cluster_se": 0.002667650681952394,
+      "pointwise_95_ci": [
+        -0.020961832593293737,
+        -0.010504834073372927
+      ],
+      "simultaneous_95_ci": [
+        -0.024261679792243182,
+        -0.007204986874423482
+      ],
+      "family_size": 36,
+      "per_seed_difference": [
+        -0.0178,
+        -0.0228,
+        -0.0066
+      ],
+      "pooled_pair_se_for_reference": 0.0026553030317512743
+    },
+    {
+      "property": "alpha",
+      "control": "lgd_mc",
+      "metric": "legacy_stable_and_in_band",
+      "ours_w": 1.0,
+      "control_w": 4.0,
+      "difference": -0.005533333333333333,
+      "target_cluster_se": 0.001646199864779171,
+      "pointwise_95_ci": [
+        -0.008759825779655214,
+        -0.0023068408870114514
+      ],
+      "simultaneous_95_ci": [
+        -0.010796152368234942,
+        -0.0002705142984317241
+      ],
+      "family_size": 36,
+      "per_seed_difference": [
+        -0.0062,
+        -0.0056,
+        -0.0048
+      ],
+      "pooled_pair_se_for_reference": 0.0016310605121402826
+    },
+    {
+      "property": "alpha",
+      "control": "tfg",
+      "metric": "legacy_in_band",
+      "ours_w": 1.0,
+      "control_w": 0.05,
+      "difference": 0.0018666666666666664,
+      "target_cluster_se": 0.002108230652194424,
+      "pointwise_95_ci": [
+        -0.002265389482737792,
+        0.005998722816071125
+      ],
+      "simultaneous_95_ci": [
+        -0.004873241799927828,
+        0.00860657513326116
+      ],
+      "family_size": 36,
+      "per_seed_difference": [
+        0.0026,
+        -0.0076,
+        0.0106
+      ],
+      "pooled_pair_se_for_reference": 0.002093390092186467
+    },
+    {
+      "property": "alpha",
+      "control": "tfg",
+      "metric": "legacy_stable_and_in_band",
+      "ours_w": 1.0,
+      "control_w": 0.05,
+      "difference": 0.0002,
+      "target_cluster_se": 0.0012491213154902777,
+      "pointwise_95_ci": [
+        -0.002248232790682238,
+        0.0026482327906822384
+      ],
+      "simultaneous_95_ci": [
+        -0.003793378675769376,
+        0.0041933786757693756
+      ],
+      "family_size": 36,
+      "per_seed_difference": [
+        0.0,
+        -0.0014,
+        0.002
+      ],
+      "pooled_pair_se_for_reference": 0.0012347240234179368
+    },
+    {
+      "property": "alpha",
+      "control": "btvg_var",
+      "metric": "legacy_in_band",
+      "ours_w": 1.0,
+      "control_w": 0.01,
+      "difference": 0.006133333333333333,
+      "target_cluster_se": 0.0021150345431382857,
+      "pointwise_95_ci": [
+        0.0019879418027241667,
+        0.010278724863942499
+      ],
+      "simultaneous_95_ci": [
+        -0.0006283268339731252,
+        0.01289499350063979
+      ],
+      "family_size": 36,
+      "per_seed_difference": [
+        0.0064,
+        0.0,
+        0.012
+      ],
+      "pooled_pair_se_for_reference": 0.0021244643074455134
+    },
+    {
+      "property": "alpha",
+      "control": "btvg_var",
+      "metric": "legacy_stable_and_in_band",
+      "ours_w": 1.0,
+      "control_w": 0.01,
+      "difference": 0.0012666666666666662,
+      "target_cluster_se": 0.0012875513374534643,
+      "pointwise_95_ci": [
+        -0.001256887582988501,
+        0.003790220916321833
+      ],
+      "simultaneous_95_ci": [
+        -0.002849570876623439,
+        0.005382904209956771
+      ],
+      "family_size": 36,
+      "per_seed_difference": [
+        0.0022,
+        0.0,
+        0.0016
+      ],
+      "pooled_pair_se_for_reference": 0.0012840918394139086
+    },
+    {
+      "property": "gap",
+      "control": "unguided",
+      "metric": "legacy_in_band",
+      "ours_w": 0.05,
+      "control_w": 1.0,
+      "difference": 0.002133333333333333,
+      "target_cluster_se": 0.002487366849343515,
+      "pointwise_95_ci": [
+        -0.0027418161077188224,
+        0.007008482774385488
+      ],
+      "simultaneous_95_ci": [
+        -0.0058186546856089025,
+        0.010085321352275568
+      ],
+      "family_size": 36,
+      "per_seed_difference": [
+        -0.0016,
+        0.005,
+        0.003
+      ],
+      "pooled_pair_se_for_reference": 0.002492678109089959
+    },
+    {
+      "property": "gap",
+      "control": "unguided",
+      "metric": "legacy_stable_and_in_band",
+      "ours_w": 0.05,
+      "control_w": 1.0,
+      "difference": -0.0032666666666666664,
+      "target_cluster_se": 0.0014766597796449133,
+      "pointwise_95_ci": [
+        -0.006160866652189548,
+        -0.0003724666811437847
+      ],
+      "simultaneous_95_ci": [
+        -0.007987474487551377,
+        0.001454141154218045
+      ],
+      "family_size": 36,
+      "per_seed_difference": [
+        -0.003,
+        -0.0044,
+        -0.0024
+      ],
+      "pooled_pair_se_for_reference": 0.0014740307924342678
+    },
+    {
+      "property": "gap",
+      "control": "plug",
+      "metric": "legacy_in_band",
+      "ours_w": 0.05,
+      "control_w": 0.25,
+      "difference": -0.008733333333333333,
+      "target_cluster_se": 0.0026177820766910016,
+      "pointwise_95_ci": [
+        -0.013864091923022164,
+        -0.003602574743644501
+      ],
+      "simultaneous_95_ci": [
+        -0.017102252343226317,
+        -0.0003644143234403478
+      ],
+      "family_size": 36,
+      "per_seed_difference": [
+        -0.0078,
+        -0.0084,
+        -0.01
+      ],
+      "pooled_pair_se_for_reference": 0.0026313999631120072
+    },
+    {
+      "property": "gap",
+      "control": "plug",
+      "metric": "legacy_stable_and_in_band",
+      "ours_w": 0.05,
+      "control_w": 0.25,
+      "difference": -0.0077333333333333325,
+      "target_cluster_se": 0.0015512247253440076,
+      "pointwise_95_ci": [
+        -0.010773677926935624,
+        -0.004692988739731041
+      ],
+      "simultaneous_95_ci": [
+        -0.012692521574455922,
+        -0.002774145092210742
+      ],
+      "family_size": 36,
+      "per_seed_difference": [
+        -0.0054,
+        -0.0106,
+        -0.0072
+      ],
+      "pooled_pair_se_for_reference": 0.0015479576163090392
+    },
+    {
+      "property": "gap",
+      "control": "tmpd",
+      "metric": "legacy_in_band",
+      "ours_w": 0.05,
+      "control_w": 1.0,
+      "difference": -0.0098,
+      "target_cluster_se": 0.002705556095248199,
+      "pointwise_95_ci": [
+        -0.015102792504839289,
+        -0.004497207495160711
+      ],
+      "simultaneous_95_ci": [
+        -0.01844952817863119,
+        -0.00115047182136881
+      ],
+      "family_size": 36,
+      "per_seed_difference": [
+        -0.0058,
+        -0.0112,
+        -0.0124
+      ],
+      "pooled_pair_se_for_reference": 0.002717572591700883
+    },
+    {
+      "property": "gap",
+      "control": "tmpd",
+      "metric": "legacy_stable_and_in_band",
+      "ours_w": 0.05,
+      "control_w": 1.0,
+      "difference": -0.0074,
+      "target_cluster_se": 0.001584155898256859,
+      "pointwise_95_ci": [
+        -0.010504888506480141,
+        -0.004295111493519859
+      ],
+      "simultaneous_95_ci": [
+        -0.012464467561911892,
+        -0.0023355324380881087
+      ],
+      "family_size": 36,
+      "per_seed_difference": [
+        -0.0042,
+        -0.0096,
+        -0.0084
+      ],
+      "pooled_pair_se_for_reference": 0.0015947368264710787
+    },
+    {
+      "property": "gap",
+      "control": "lgd_mc",
+      "metric": "legacy_in_band",
+      "ours_w": 0.05,
+      "control_w": 4.0,
+      "difference": -0.036,
+      "target_cluster_se": 0.003201486618741465,
+      "pointwise_95_ci": [
+        -0.04227479846972018,
+        -0.029725201530279813
+      ],
+      "simultaneous_95_ci": [
+        -0.04623499337934617,
+        -0.025765006620653827
+      ],
+      "family_size": 36,
+      "per_seed_difference": [
+        -0.043,
+        -0.0366,
+        -0.0284
+      ],
+      "pooled_pair_se_for_reference": 0.003218498877858987
+    },
+    {
+      "property": "gap",
+      "control": "lgd_mc",
+      "metric": "legacy_stable_and_in_band",
+      "ours_w": 0.05,
+      "control_w": 4.0,
+      "difference": -0.013466666666666665,
+      "target_cluster_se": 0.001995571100301572,
+      "pointwise_95_ci": [
+        -0.017377914151846714,
+        -0.009555419181486616
+      ],
+      "simultaneous_95_ci": [
+        -0.019846408153023482,
+        -0.007086925180309847
+      ],
+      "family_size": 36,
+      "per_seed_difference": [
+        -0.013,
+        -0.017,
+        -0.0104
+      ],
+      "pooled_pair_se_for_reference": 0.0019925854664909356
+    },
+    {
+      "property": "gap",
+      "control": "tfg",
+      "metric": "legacy_in_band",
+      "ours_w": 0.05,
+      "control_w": 0.01,
+      "difference": -0.0057333333333333325,
+      "target_cluster_se": 0.0025393008330749788,
+      "pointwise_95_ci": [
+        -0.010710271512072846,
+        -0.0007563951545938195
+      ],
+      "simultaneous_95_ci": [
+        -0.01385135171346557,
+        0.0023846850467989034
+      ],
+      "family_size": 36,
+      "per_seed_difference": [
+        -0.0086,
+        -0.0038,
+        -0.0048
+      ],
+      "pooled_pair_se_for_reference": 0.002543491889857319
+    },
+    {
+      "property": "gap",
+      "control": "tfg",
+      "metric": "legacy_stable_and_in_band",
+      "ours_w": 0.05,
+      "control_w": 0.01,
+      "difference": -0.004866666666666667,
+      "target_cluster_se": 0.0014757780719054055,
+      "pointwise_95_ci": [
+        -0.007759138536775224,
+        -0.00197419479655811
+      ],
+      "simultaneous_95_ci": [
+        -0.009584655711791533,
+        -0.00014867762154180137
+      ],
+      "family_size": 36,
+      "per_seed_difference": [
+        -0.004,
+        -0.0062,
+        -0.0044
+      ],
+      "pooled_pair_se_for_reference": 0.0014767493508273284
+    },
+    {
+      "property": "gap",
+      "control": "btvg_var",
+      "metric": "legacy_in_band",
+      "ours_w": 0.05,
+      "control_w": 0.05,
+      "difference": 0.0012666666666666664,
+      "target_cluster_se": 0.0017398135440360783,
+      "pointwise_95_ci": [
+        -0.0021433052194590376,
+        0.00467663855279237
+      ],
+      "simultaneous_95_ci": [
+        -0.004295430641585132,
+        0.006828763974918465
+      ],
+      "family_size": 36,
+      "per_seed_difference": [
+        -0.001,
+        -0.0022,
+        0.007
+      ],
+      "pooled_pair_se_for_reference": 0.0017550209049834228
+    },
+    {
+      "property": "gap",
+      "control": "btvg_var",
+      "metric": "legacy_stable_and_in_band",
+      "ours_w": 0.05,
+      "control_w": 0.05,
+      "difference": 0.0007333333333333336,
+      "target_cluster_se": 0.0009498921652965693,
+      "pointwise_95_ci": [
+        -0.0011284210998447099,
+        0.0025950877665113768
+      ],
+      "simultaneous_95_ci": [
+        -0.002303424642161516,
+        0.0037700913088281832
+      ],
+      "family_size": 36,
+      "per_seed_difference": [
+        0.0032,
+        -0.0012,
+        0.0002
+      ],
+      "pooled_pair_se_for_reference": 0.0009498665801776476
+    }
+  ],
+  "sources": [
+    {
+      "path": "results\\full\\n5000\\seed20261001\\mu__btvg__dist__w0.05__tmin0.5__full.permol.pt",
+      "sha256": "20777428187be083d8384ee6303ce4437f3b0261337f1aff596654ed6b64409d"
+    },
+    {
+      "path": "results\\full\\n5000\\seed20261002\\mu__btvg__dist__w0.05__tmin0.5__full.permol.pt",
+      "sha256": "02305c5e11aa35d2c230a23695423f559c75a56abe8fe54617e3d5378f138dba"
+    },
+    {
+      "path": "results\\full\\n5000\\seed20261003\\mu__btvg__dist__w0.05__tmin0.5__full.permol.pt",
+      "sha256": "90197eb61e34dd413db6b00df6908b11054d4e4f5f3b94cc3a9a6fbe79b48bcd"
+    },
+    {
+      "path": "results\\full\\n5000\\seed20261001\\mu__unguided__dist__w1__tmin0.5__full.permol.pt",
+      "sha256": "0f8522a07834f0e6f9411e5865278c2bf3c95ec0e09167bb6b84623999e742fe"
+    },
+    {
+      "path": "results\\full\\n5000\\seed20261002\\mu__unguided__dist__w1__tmin0.5__full.permol.pt",
+      "sha256": "dbe7041bf29ac1848f2f13e69791d77725cf6e8037876ec7cef23604cb4cdf29"
+    },
+    {
+      "path": "results\\full\\n5000\\seed20261003\\mu__unguided__dist__w1__tmin0.5__full.permol.pt",
+      "sha256": "abd914d64361744d2c32f4e6dac1c358e0dc794774ada98f4b2fe9bb43e79b49"
+    },
+    {
+      "path": "results\\full\\n5000\\seed20261001\\mu__plug__dist__w0.05__tmin0.5__full.permol.pt",
+      "sha256": "bd8fb509c13a991b5cc9b9dad3215f46b9d6f9b758c88d6e37a7ca69968c6d66"
+    },
+    {
+      "path": "results\\full\\n5000\\seed20261002\\mu__plug__dist__w0.05__tmin0.5__full.permol.pt",
+      "sha256": "eb4f9d724abab910d3f6150cd3249388346aa283f7a50e122e55ebd56c5466fc"
+    },
+    {
+      "path": "results\\full\\n5000\\seed20261003\\mu__plug__dist__w0.05__tmin0.5__full.permol.pt",
+      "sha256": "db3520d7efd83a08289d3ab9fbfde095d63db3f9cba911d4ebf020cbf629fc45"
+    },
+    {
+      "path": "results\\full\\n5000\\seed20261001\\mu__tmpd__dist__w0.5__tmin0.5__full.permol.pt",
+      "sha256": "8436eb74396ef950647a9bdf50140416c6711444e59a02765e338e07d553824c"
+    },
+    {
+      "path": "results\\full\\n5000\\seed20261002\\mu__tmpd__dist__w0.5__tmin0.5__full.permol.pt",
+      "sha256": "44bf730463e1bc7ad30c9b5e6c135be3878b168fc3a8669a62f455f1730126d5"
+    },
+    {
+      "path": "results\\full\\n5000\\seed20261003\\mu__tmpd__dist__w0.5__tmin0.5__full.permol.pt",
+      "sha256": "8e16b91a54f4e64be764eac33b82dfdaca2dc3da945d143cda475be5ba911a6c"
+    },
+    {
+      "path": "results\\full\\n5000\\seed20261001\\mu__lgd_mc__dist__w4__tmin0.5__full.permol.pt",
+      "sha256": "f5acb08571ca097ea3ab6edb5fac4834222bcfa6ef6b744a3c3d97ef716e9894"
+    },
+    {
+      "path": "results\\full\\n5000\\seed20261002\\mu__lgd_mc__dist__w4__tmin0.5__full.permol.pt",
+      "sha256": "c62011c62b015cd5312b1842f275b8811369b7e10098df9e5bc4e9b8159f978a"
+    },
+    {
+      "path": "results\\full\\n5000\\seed20261003\\mu__lgd_mc__dist__w4__tmin0.5__full.permol.pt",
+      "sha256": "b820f554ba2c270d208c7c3fd1f819f2823470a6b04319edf811706c59baad65"
+    },
+    {
+      "path": "results\\full\\n5000\\seed20261001\\mu__tfg__dist__w0.05__tmin0.5__full.permol.pt",
+      "sha256": "c470389722e007a18ee319a3632e3e43631c4980009df18d0016484476518d74"
+    },
+    {
+      "path": "results\\full\\n5000\\seed20261002\\mu__tfg__dist__w0.05__tmin0.5__full.permol.pt",
+      "sha256": "d8504b41c323005f970a86a084071a1df705105d2956beaef98501e8df2eba8a"
+    },
+    {
+      "path": "results\\full\\n5000\\seed20261003\\mu__tfg__dist__w0.05__tmin0.5__full.permol.pt",
+      "sha256": "0e39175edc36b77c2785d4ea20b368c3dbf286b6d879d3e62160dab7f450470c"
+    },
+    {
+      "path": "results\\full\\n5000\\seed20261001\\mu__btvg_var__dist__w0.01__tmin0.5__full.permol.pt",
+      "sha256": "6d342bcbfcdbe9b83a0dfa9ab72dad0e6b4a8f0316a99ba0b7bbfd3744b15bb5"
+    },
+    {
+      "path": "results\\full\\n5000\\seed20261002\\mu__btvg_var__dist__w0.01__tmin0.5__full.permol.pt",
+      "sha256": "af0883fdeee4c9a3ed193609aab526dea445b06c6324e5339b0002fa07d860de"
+    },
+    {
+      "path": "results\\full\\n5000\\seed20261003\\mu__btvg_var__dist__w0.01__tmin0.5__full.permol.pt",
+      "sha256": "b0b37af65ef88a0af775221733d8440032c03c67c523602f6ac762a0fac50d86"
+    },
+    {
+      "path": "results\\full\\n5000\\seed20261001\\alpha__btvg__dist__w1__tmin0.5__full.permol.pt",
+      "sha256": "ae7f77667fcf26eb3add5669cb68093438702db1cd4c56fcf4a591b3433d5a34"
+    },
+    {
+      "path": "results\\full\\n5000\\seed20261002\\alpha__btvg__dist__w1__tmin0.5__full.permol.pt",
+      "sha256": "94d144972915c79d24a081801ece226ab1a3d5395630a1d634840a30c4fc3d54"
+    },
+    {
+      "path": "results\\full\\n5000\\seed20261003\\alpha__btvg__dist__w1__tmin0.5__full.permol.pt",
+      "sha256": "e6ac0a9e249bdcf73e10d6af86d46ebf3ad7a841966fabf2acf028f35c261c15"
+    },
+    {
+      "path": "results\\full\\n5000\\seed20261001\\alpha__unguided__dist__w1__tmin0.5__full.permol.pt",
+      "sha256": "86cf4f1709ec43bafe0a5a72a0c93c8c7ff81c8ecf8c22222ef754ef4a0f5896"
+    },
+    {
+      "path": "results\\full\\n5000\\seed20261002\\alpha__unguided__dist__w1__tmin0.5__full.permol.pt",
+      "sha256": "6d5416249ae5ca125ad095b61b966ad3560edb64add6252ea04bbeb91143668f"
+    },
+    {
+      "path": "results\\full\\n5000\\seed20261003\\alpha__unguided__dist__w1__tmin0.5__full.permol.pt",
+      "sha256": "5ffc12415894f1f4ae24d79d5b64660c6e2a1597b3afa7edc588f70a09d83f05"
+    },
+    {
+      "path": "results\\full\\n5000\\seed20261001\\alpha__plug__dist__w0.5__tmin0.5__full.permol.pt",
+      "sha256": "18f37f3af0bd9600c27d82fdde13ae14f1c1d43489d72eefebc7c18ec0654e56"
+    },
+    {
+      "path": "results\\full\\n5000\\seed20261002\\alpha__plug__dist__w0.5__tmin0.5__full.permol.pt",
+      "sha256": "c7d68c336a6cbbb48b40da7b895096ecd5a733f9298884b8d891630011a6acdb"
+    },
+    {
+      "path": "results\\full\\n5000\\seed20261003\\alpha__plug__dist__w0.5__tmin0.5__full.permol.pt",
+      "sha256": "44e9f0d612d6bcb3b18f786c291e2566ccbcacddca08429275c2c00e6bc19884"
+    },
+    {
+      "path": "results\\full\\n5000\\seed20261001\\alpha__tmpd__dist__w1__tmin0.5__full.permol.pt",
+      "sha256": "b66b55001a04085e2e2f571dc39dd15d77ea4092b18061370a377a1968dfeb6f"
+    },
+    {
+      "path": "results\\full\\n5000\\seed20261002\\alpha__tmpd__dist__w1__tmin0.5__full.permol.pt",
+      "sha256": "d037e384572480ac87f0202633e6cf6f06e4b96a8bb28360a0cf812e2370dc3d"
+    },
+    {
+      "path": "results\\full\\n5000\\seed20261003\\alpha__tmpd__dist__w1__tmin0.5__full.permol.pt",
+      "sha256": "58b552a2e50f15bda2345a542dd325ce12935459a2b81eb8ffd2def81674e286"
+    },
+    {
+      "path": "results\\full\\n5000\\seed20261001\\alpha__lgd_mc__dist__w4__tmin0.5__full.permol.pt",
+      "sha256": "46e47d5f11aafd71c9626ab402a37c7e503ca1af2b7994b1b87dad364e0d5c3c"
+    },
+    {
+      "path": "results\\full\\n5000\\seed20261002\\alpha__lgd_mc__dist__w4__tmin0.5__full.permol.pt",
+      "sha256": "987803098cdcd42e0ba1569b1e2c169fc5aaa56b10a43a1ee1e6dc7c3566b917"
+    },
+    {
+      "path": "results\\full\\n5000\\seed20261003\\alpha__lgd_mc__dist__w4__tmin0.5__full.permol.pt",
+      "sha256": "b068b34c8adb9e922f3d4462137f7e7f51bd867887a2a1f456a617a481ab1729"
+    },
+    {
+      "path": "results\\full\\n5000\\seed20261001\\alpha__tfg__dist__w0.05__tmin0.5__full.permol.pt",
+      "sha256": "14774533c46206f6b1eeb1ff80410ccc1d846549d58793aed3de68b9a3e40b82"
+    },
+    {
+      "path": "results\\full\\n5000\\seed20261002\\alpha__tfg__dist__w0.05__tmin0.5__full.permol.pt",
+      "sha256": "67f6a081cf1a8f7d142f1d5fd059fffcd38fa91927a7a65ee7cf56b23e024b0d"
+    },
+    {
+      "path": "results\\full\\n5000\\seed20261003\\alpha__tfg__dist__w0.05__tmin0.5__full.permol.pt",
+      "sha256": "420ba589897b4920fe34ea14cdfa5820c7ed639a9aafb3b2d4d2948ec216aa2e"
+    },
+    {
+      "path": "results\\full\\n5000\\seed20261001\\alpha__btvg_var__dist__w0.01__tmin0.5__full.permol.pt",
+      "sha256": "ba5d2aec8a53649e5cca533062bf81ff4a9479e096abf99eb7aee77640560b99"
+    },
+    {
+      "path": "results\\full\\n5000\\seed20261002\\alpha__btvg_var__dist__w0.01__tmin0.5__full.permol.pt",
+      "sha256": "7eff089c1bfde68916def345b6aeef7577ced1bb7a170ec4cff4f9fe5c39a21b"
+    },
+    {
+      "path": "results\\full\\n5000\\seed20261003\\alpha__btvg_var__dist__w0.01__tmin0.5__full.permol.pt",
+      "sha256": "4b66fce0c7e98715bc9441509164fe04c61e7216310dfbef09063db5b3136ec6"
+    },
+    {
+      "path": "results\\full\\n5000\\seed20261001\\gap__btvg__dist__w0.05__tmin0.5__full.permol.pt",
+      "sha256": "fe52ec23f99230af6d20ac1a911e8c2dcb1c4058fe503601162fa98f32b8f5b2"
+    },
+    {
+      "path": "results\\full\\n5000\\seed20261002\\gap__btvg__dist__w0.05__tmin0.5__full.permol.pt",
+      "sha256": "5cc520c60612211a1f844b9fd4050250ce19314d600f9b18f6161c4bd968f4b9"
+    },
+    {
+      "path": "results\\full\\n5000\\seed20261003\\gap__btvg__dist__w0.05__tmin0.5__full.permol.pt",
+      "sha256": "87691117f2b66ecf49a7930db4f950b2a66d05670ccb4629674b6a0309f9ae0a"
+    },
+    {
+      "path": "results\\full\\n5000\\seed20261001\\gap__unguided__dist__w1__tmin0.5__full.permol.pt",
+      "sha256": "5b748f038e2976bbc291794d5675a189b87cc3d50469ea0d598c54a71877c9cf"
+    },
+    {
+      "path": "results\\full\\n5000\\seed20261002\\gap__unguided__dist__w1__tmin0.5__full.permol.pt",
+      "sha256": "c078043d357f3bda5f0f30ea04f4cb3391253a61d05364a23c9a6f92dbb1c66c"
+    },
+    {
+      "path": "results\\full\\n5000\\seed20261003\\gap__unguided__dist__w1__tmin0.5__full.permol.pt",
+      "sha256": "f565ced883abfe936395f23c3677290ad55d93590fe095cc5f465c3b132dab43"
+    },
+    {
+      "path": "results\\full\\n5000\\seed20261001\\gap__plug__dist__w0.25__tmin0.5__full.permol.pt",
+      "sha256": "c4a2dbeb94a207e0aceee2924f12d5328c60fa037292c68e3645b03467d4aca8"
+    },
+    {
+      "path": "results\\full\\n5000\\seed20261002\\gap__plug__dist__w0.25__tmin0.5__full.permol.pt",
+      "sha256": "6dbe9bb7ca96f8e881b8b06b36419c4b9d686885fe958cb813c77d89e6381677"
+    },
+    {
+      "path": "results\\full\\n5000\\seed20261003\\gap__plug__dist__w0.25__tmin0.5__full.permol.pt",
+      "sha256": "97eb1a3c2759c5d5cf1630107398e6ef741de52362235e8436d3b0c170228579"
+    },
+    {
+      "path": "results\\full\\n5000\\seed20261001\\gap__tmpd__dist__w1__tmin0.5__full.permol.pt",
+      "sha256": "fb77512ae374dbc409430d61a6da3a6611dcb3acff5c4cce235c4840d0d9e5fc"
+    },
+    {
+      "path": "results\\full\\n5000\\seed20261002\\gap__tmpd__dist__w1__tmin0.5__full.permol.pt",
+      "sha256": "54ee559958d4fc6e41e03bb216c3897f27ab4253e8dcec01a6c0dfa1d441fd29"
+    },
+    {
+      "path": "results\\full\\n5000\\seed20261003\\gap__tmpd__dist__w1__tmin0.5__full.permol.pt",
+      "sha256": "919ba2394959891139718ad0778f377466871b7460bfd3638fcdcdf367ceeec4"
+    },
+    {
+      "path": "results\\full\\n5000\\seed20261001\\gap__lgd_mc__dist__w4__tmin0.5__full.permol.pt",
+      "sha256": "69b5fbd4bdfe8eaa9e0205f611620ce7d0587ca715c58ff5f4c27669dd2dee46"
+    },
+    {
+      "path": "results\\full\\n5000\\seed20261002\\gap__lgd_mc__dist__w4__tmin0.5__full.permol.pt",
+      "sha256": "fec35807e0faf209f7a84c961d675cf442e9e702555bc069c3629961c1eb5ec2"
+    },
+    {
+      "path": "results\\full\\n5000\\seed20261003\\gap__lgd_mc__dist__w4__tmin0.5__full.permol.pt",
+      "sha256": "4984cb517de6d052fc6fbd098adf8f610a269d7950b993f7f0ebc6682857e4db"
+    },
+    {
+      "path": "results\\full\\n5000\\seed20261001\\gap__tfg__dist__w0.01__tmin0.5__full.permol.pt",
+      "sha256": "f22d5c249a237f23d294c51b4871c55e5508e299fd70bc526130a767f46322cb"
+    },
+    {
+      "path": "results\\full\\n5000\\seed20261002\\gap__tfg__dist__w0.01__tmin0.5__full.permol.pt",
+      "sha256": "78eb3bbc4f862a13d14162f223b137bda19e763cf02fb1a37afc96bc72553513"
+    },
+    {
+      "path": "results\\full\\n5000\\seed20261003\\gap__tfg__dist__w0.01__tmin0.5__full.permol.pt",
+      "sha256": "529111f68aaa6bb36bd09e9ae4919b69d17561fee4991d885b34c3f3964190ce"
+    },
+    {
+      "path": "results\\full\\n5000\\seed20261001\\gap__btvg_var__dist__w0.05__tmin0.5__full.permol.pt",
+      "sha256": "fc897676eec0cf9d6903fd02640fb8f48e0808d28229ffd06ec2ad5973f09024"
+    },
+    {
+      "path": "results\\full\\n5000\\seed20261002\\gap__btvg_var__dist__w0.05__tmin0.5__full.permol.pt",
+      "sha256": "ac3fd71058c277a87f5089c51fafe9f503d36d75f8ca2176290c4633e7ee3b55"
+    },
+    {
+      "path": "results\\full\\n5000\\seed20261003\\gap__btvg_var__dist__w0.05__tmin0.5__full.permol.pt",
+      "sha256": "e4b241492e3cab498fb16d2ce720456806bebe2c4efdff1aef6db78fa523b193"
+    }
+  ]
+}

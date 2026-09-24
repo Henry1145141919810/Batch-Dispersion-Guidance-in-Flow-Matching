@@ -1,0 +1,88 @@
+{
+ "fr1_pass": false,
+ "beaten_on": 3,
+ "frozen_w": {
+  "unguided": {
+   "mu": 1.0,
+   "alpha": 1.0,
+   "gap": 1.0
+  },
+  "plug": {
+   "mu": 0.05,
+   "alpha": 0.5,
+   "gap": 0.25
+  },
+  "tmpd": {
+   "mu": 0.5,
+   "alpha": 1.0,
+   "gap": 1.0
+  },
+  "lgd_mc": {
+   "mu": 4.0,
+   "alpha": 4.0,
+   "gap": 4.0
+  },
+  "tfg": {
+   "mu": 0.05,
+   "alpha": 0.05,
+   "gap": 0.01
+  },
+  "btvg": {
+   "mu": 0.05,
+   "alpha": 1.0,
+   "gap": 0.05
+  },
+  "btvg_var": {
+   "mu": 0.01,
+   "alpha": 0.01,
+   "gap": 0.05
+  }
+ },
+ "frozen_w_mae": {
+  "unguided": {
+   "mu": 1.0,
+   "alpha": 1.0,
+   "gap": 1.0
+  },
+  "plug": {
+   "mu": 4.0,
+   "alpha": 4.0,
+   "gap": 4.0
+  },
+  "tmpd": {
+   "mu": 4.0,
+   "alpha": 4.0,
+   "gap": 4.0
+  },
+  "lgd_mc": {
+   "mu": 4.0,
+   "alpha": 4.0,
+   "gap": 4.0
+  },
+  "tfg": {
+   "mu": 2.0,
+   "alpha": 4.0,
+   "gap": 2.0
+  },
+  "btvg": {
+   "mu": 4.0,
+   "alpha": 4.0,
+   "gap": 4.0
+  },
+  "btvg_var": {
+   "mu": 0.01,
+   "alpha": 0.01,
+   "gap": 4.0
+  }
+ },
+ "rule": "frozen_w = FR3a: best MAE among strengths with mol_stability >= 0.9 x unguided; frozen_w_mae = FR3 as registered",
+ "floor": {
+  "mu": 0.362109375,
+  "alpha": 0.362109375,
+  "gap": 0.362109375
+ },
+ "fell_back": [],
+ "source_stage": "compare",
+ "target": "q90",
+ "source_seed": 20260921
+}

@@ -631,7 +631,8 @@ def sigma_mc_weighted_grad(f_net, post_fn, coords, feats, mask, m_c, m_f, k,
 
 def btvg2_weighted_grad(f_net, post_fn, coords, feats, mask, m_c, m_f, k,
                         y, s, tau, n_mc, generator=None, cost=_NOCOST,
-                        gate=True, orth=True, cap=1.0, com_free=True):
+                        gate=True, orth=True, cap=1.0, com_free=True,
+                        parts_only=False):
     """BTVG-2: lgd_mc's mean term plus BTVG's variance term, both read off the
     SAME K smoothed draws. Returned in m-space; the caller pulls back with J^T.
 
@@ -745,6 +746,15 @@ def btvg2_weighted_grad(f_net, post_fn, coords, feats, mask, m_c, m_f, k,
         gamma = torch.ones_like(mu)
 
     gb_c, gb_f = GC.mean(0), GF.mean(0)
+    if parts_only:
+        # For the x-space repair (guidance_field's `btvg2_xproj`). Hands back
+        # the three raw directions so the caller can pull EACH ONE back with
+        # J^T and impose the invariants in x_t, the space the sampler updates.
+        # Nothing is projected or capped here. Same code path above, so the
+        # draws are identical to this arm's at the same seed.
+        return {"M_c": M_c, "M_f": M_f, "dV_c": dV_c, "dV_f": dV_f,
+                "gb_c": gb_c, "gb_f": gb_f, "mu": mu.detach(),
+                "V": V.detach(), "gamma": gamma.detach(), "b": b.detach()}
     if orth:
         num = (dV_c * gb_c).sum(dim=(1, 2)) + (dV_f * gb_f).sum(dim=(1, 2))
         den = (gb_c ** 2).sum(dim=(1, 2)) + (gb_f ** 2).sum(dim=(1, 2))
@@ -1276,12 +1286,19 @@ KNOWN_MODES = {"plug", "smg_mean", "smg_var", "smg", "smg2", "smg2_curv",
                "spbc", "btvg", "btvg_mean", "btvg_var",
                # BTVG-2 (23 Sep, after the full run): see btvg2_weighted_grad
                "btvg2", "btvg2_nogate", "btvg2_noorth", "btvg2_nocap",
-               "btvg2_band",
+               "btvg2_band", "btvg2_xproj",
                # chemistry-safe guidance: any base arm + the valence guard
-               "lgd_mc_chem", "plug_chem"}
+               "lgd_mc_chem", "plug_chem", "lgd_mc_chemn"}
 # the base arm each CSG mode wraps; the guard never changes the base field's
-# own computation, so `X_chem - X` isolates the guard exactly
-CHEM_BASE = {"lgd_mc_chem": "lgd_mc", "plug_chem": "plug"}
+# own computation, so `X_chem - X` isolates the guard exactly.
+# `_chemn` = NORM-PRESERVING: after the projection the step is rescaled back
+# to the base step's length, so the guard changes only the DIRECTION and w
+# alone sets the size. Motivated by the pilot: where the base step is
+# clip-bound (mu, w = 16) the sampler's clip already restores the length and
+# the guard cost no targeting; where it is not (gap, alpha) the guard shrank
+# the step and lost hits. A positive rescale keeps <a, G'> <= 0 exactly.
+CHEM_BASE = {"lgd_mc_chem": "lgd_mc", "plug_chem": "plug",
+             "lgd_mc_chemn": "lgd_mc"}
 
 # Arms that return a STATE DISPLACEMENT rather than a score. The sampler
 # must not apply the (1-t)/t score-to-velocity conversion to these.
@@ -1388,8 +1405,14 @@ def guidance_field(f_net, post_fn, coords, feats, mask, y, s,
         a_c, a_f = _pullback(post_fn, coords, feats, c_c.detach(), c_f.detach(),
                              cost)
         # 3. remove only the part of the step that would raise it
+        nG0 = ((G_c ** 2).sum(dim=(1, 2)) + (G_f ** 2).sum(dim=(1, 2))).sqrt()
         G_c, G_f, active, removed = chem_safe_project(G_c.detach(), G_f.detach(),
                                                       a_c, a_f)
+        if mode.endswith("_chemn"):
+            nG1 = ((G_c ** 2).sum(dim=(1, 2)) + (G_f ** 2).sum(dim=(1, 2))).sqrt()
+            sc = torch.where(nG1 > 0, nG0 / nG1.clamp(min=1e-30),
+                             torch.ones_like(nG1)).view(-1, 1, 1)
+            G_c, G_f = G_c * sc, G_f * sc
         dg = dict(dg)
         dg.update({"chem_active": active.to(G_c.dtype).detach(),
                    "chem_removed": removed.detach(),
@@ -1510,6 +1533,99 @@ def guidance_field(f_net, post_fn, coords, feats, mask, y, s,
         return d_c.detach(), d_f.detach(), {"f": fval, "c": torch.zeros_like(fval),
                                             "v_f": torch.zeros_like(fval), "k": k,
                                             "band_e": e, "band_tau": tau}
+
+    if mode == "btvg2_xproj":
+        # BTVG-2 with its two invariants imposed in x_t SPACE -- the space the
+        # sampler actually updates -- instead of in m-space.
+        #
+        # WHY THIS EXISTS. docs/methods/BTVG_FAILURE_AUDIT_AND_REDESIGN.md
+        # section 3: btvg2 makes S_m orthogonal to g and V-decreasing in
+        # m-space, then applies J^T. Neither property survives. The mean then
+        # moves at rate g^T J J^T S_m, which is not 0 in general (exact
+        # counterexample with J = diag(3,1), g = (1,1), h = (1,2): mean
+        # derivative +4, variance derivative +3.5), and on the real network
+        # the median |cos| to the mean direction is 0.45-0.51 at t = 0.8
+        # against ~1e-7 before the pullback. So `btvg2 - lgd_mc` does NOT
+        # isolate the variance term: it also contains an uncontrolled push on
+        # the mean. This arm exists to re-test that comparison cleanly.
+        #
+        # THE REPAIR (audit section 3, "project in the state space"): pull each
+        # direction back separately and project there,
+        #     a = Q J^T gbar,  b = Q J^T (dV/dm),
+        #     S = -coef [ b - a (a.b)/(a.a) ]
+        # giving a.S = 0 exactly and b.S = -coef ||P_a b||^2 <= 0. Q is the
+        # mask; the zero-CoM part needs no explicit handling because BOTH the
+        # generator AND f_net re-centre their own coordinate input, so every
+        # pulled-back direction is already zero-mean over atoms and the
+        # sampler's re-centring cannot change any of these dot products. f_net
+        # matters too: m_c = c_in + (1-t) v_c(c_in) carries an identity term,
+        # so a weight vector that is not already zero-mean would pass through
+        # it unprojected. Every predictor here does re-centre (models/egnn.py
+        # EGNNScalar, models/predictors.py RidgeDescriptor and
+        # InvariantTransformer); a future one that does not would need Q
+        # applied explicitly.
+        # Downstream, w (1-t)/t and the velocity clip are non-negative
+        # per-sample scalars, so they cannot flip a sign either.
+        #
+        # COST: two extra VJPs (three pullbacks instead of one), because J^T
+        # does not commute with the projection. The audit says so explicitly:
+        # this repair is not free. It protects only the frozen-draw,
+        # frozen-radius surrogate -- r is detached, exactly as in btvg2.
+        if tau is None:
+            raise ValueError("mode %r needs tau (target property sd)" % mode)
+        P = btvg2_weighted_grad(
+            f_net, post_fn, coords, feats, mask, m_c, m_f, k, y, s, tau, n_mc,
+            generator, cost, parts_only=True)
+        msk = mask.unsqueeze(-1).to(coords.dtype)
+
+        def _pb(wc, wf):
+            gc, gf = _pullback(post_fn, coords, feats, wc, wf, cost)
+            return gc * msk, gf * msk
+
+        M_c, M_f = _pb(P["M_c"], P["M_f"])        # the mean step, in x_t
+        a_c, a_f = _pb(P["gb_c"], P["gb_f"])      # raises mu_hat, in x_t
+        b_c, b_f = _pb(P["dV_c"], P["dV_f"])      # raises V_hat, in x_t
+
+        def _dot(x1, y1, x2, y2):
+            return (x1 * x2).sum(dim=(1, 2)) + (y1 * y2).sum(dim=(1, 2))
+
+        num = _dot(a_c, a_f, b_c, b_f)
+        den = _dot(a_c, a_f, a_c, a_f)
+        proj = torch.where(den > 0, num / den.clamp(min=1e-30),
+                           torch.zeros_like(num)).view(-1, 1, 1)
+        Pb_c, Pb_f = b_c - proj * a_c, b_f - proj * a_f
+        coef = (P["gamma"] * P["b"]).view(-1, 1, 1)
+        S_c, S_f = -coef * Pb_c, -coef * Pb_f
+        # the same cap rule as btvg2, with |gbar| replaced by its x-space norm
+        nM = _dot(M_c, M_f, M_c, M_f).sqrt()
+        nS = _dot(S_c, S_f, S_c, S_f).sqrt()
+        na = den.clamp(min=0.0).sqrt()
+        # NOTE the cap is a safety rail here, not an active mechanism: with
+        # real-scale quantities |S| runs orders of magnitude below this limit
+        # (measured ~1e-5 of it on the toy fixture), so it is expected never to
+        # bind. `btvg2_cap_lim` is returned so a gate can check the limit's
+        # CONSTRUCTION without needing it to fire -- otherwise the branch is
+        # untested and, e.g., building it from the m-space |gbar| instead of
+        # the x-space |a| would pass silently.
+        lim = torch.maximum((y - P["mu"]).abs(), P["V"].sqrt()) * na / s ** 2
+        capped = nS > lim
+        sc = torch.where(capped, lim / nS.clamp(min=1e-30),
+                         torch.ones_like(nS)).view(-1, 1, 1)
+        S_c, S_f = S_c * sc, S_f * sc
+        nS = nS * sc.view(-1)
+        share = torch.where(nS + nM > 0, nS / (nS + nM).clamp(min=1e-30),
+                            torch.zeros_like(nM))
+        nb = _dot(b_c, b_f, b_c, b_f).clamp(min=1e-30).sqrt()
+        leak = (num.abs() / (na.clamp(min=1e-30) * nb))
+        return (M_c + S_c).detach(), (M_f + S_f).detach(), {
+            "f": fval, "c": torch.zeros_like(fval),
+            "v_f": torch.zeros_like(fval), "k": k, "n_mc": n_mc,
+            "btvg2_gate": P["gamma"], "btvg2_var_share": share.detach(),
+            "btvg2_capped": capped.to(coords.dtype).detach(),
+            "btvg2_V_over_tau2": (P["V"] / torch.as_tensor(
+                tau, device=coords.device, dtype=coords.dtype) ** 2).detach(),
+            "btvg2_xleak": leak.detach(),
+            "btvg2_cap_lim": lim.detach(), "btvg2_step_norm": nS.detach()}
 
     if mode.startswith("btvg2"):
         if tau is None:

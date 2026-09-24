@@ -1,0 +1,1860 @@
+{
+  "note": "Exploratory consumed test[:2048], one seed; w16 chosen for mechanism audit, no strength selection or new independent evidence.",
+  "quadrant_order": [
+    "neither",
+    "chemistry_only",
+    "hit_only",
+    "both"
+  ],
+  "independent_rule": "RDKit DetermineBonds(charge=0), sanitize; connectedness reported separately. Not a physical chemistry assay.",
+  "script_sha256": "cd95802199c92297f193da56f2ffe7b23c66576f2fc0e23e5f327d46ded2a774",
+  "rows": [
+    {
+      "property": "mu",
+      "arm": "lgd_mc",
+      "w": 16,
+      "n": 2048,
+      "source_sha256": "19dc89ab174a334134f85e987ef905500419a2189af70e61a75d193be5097510",
+      "decoded_A_hits": 258,
+      "decoded_B_hits": 258,
+      "decoded_AB_hits": 152,
+      "chemistry": {
+        "table_stable": {
+          "quadrants_neither_chem_only_hit_only_both": [
+            1145,
+            645,
+            163,
+            95
+          ],
+          "A_hit_chem_failure": 163,
+          "AB_hit_chem_failure": 81,
+          "A_hit_chem_failure_B_precision": 0.49693251533742333
+        },
+        "table_rdkit_valid": {
+          "quadrants_neither_chem_only_hit_only_both": [
+            534,
+            1256,
+            72,
+            186
+          ],
+          "A_hit_chem_failure": 70,
+          "AB_hit_chem_failure": 32,
+          "A_hit_chem_failure_B_precision": 0.45714285714285713
+        },
+        "independent_valid": {
+          "quadrants_neither_chem_only_hit_only_both": [
+            867,
+            923,
+            121,
+            137
+          ],
+          "A_hit_chem_failure": 126,
+          "AB_hit_chem_failure": 65,
+          "A_hit_chem_failure_B_precision": 0.5158730158730159
+        },
+        "independent_connected_valid": {
+          "quadrants_neither_chem_only_hit_only_both": [
+            891,
+            899,
+            124,
+            134
+          ],
+          "A_hit_chem_failure": 126,
+          "AB_hit_chem_failure": 65,
+          "A_hit_chem_failure_B_precision": 0.5158730158730159
+        }
+      },
+      "composition": {
+        "odd_allowed_valence_sum": 848,
+        "fail_both_rules": 967,
+        "fail_both_rules_and_odd": 848,
+        "B_hit_fail_both": 118,
+        "B_hit_fail_both_and_odd": 98,
+        "A_hit_fail_both": 124,
+        "AB_hit_fail_both_even": 12,
+        "AB_hit_fail_both_odd": 51
+      },
+      "B_hit_table_fail_but_independent_valid": 45
+    },
+    {
+      "property": "mu",
+      "arm": "lgd_mc_chem",
+      "w": 16,
+      "n": 2048,
+      "source_sha256": "bebe32c450aade5fbbff2c372344b29b7d04d20e91f5da93f914443f7963ad07",
+      "decoded_A_hits": 281,
+      "decoded_B_hits": 260,
+      "decoded_AB_hits": 154,
+      "chemistry": {
+        "table_stable": {
+          "quadrants_neither_chem_only_hit_only_both": [
+            1073,
+            715,
+            150,
+            110
+          ],
+          "A_hit_chem_failure": 162,
+          "AB_hit_chem_failure": 74,
+          "A_hit_chem_failure_B_precision": 0.4567901234567901
+        },
+        "table_rdkit_valid": {
+          "quadrants_neither_chem_only_hit_only_both": [
+            477,
+            1311,
+            55,
+            205
+          ],
+          "A_hit_chem_failure": 56,
+          "AB_hit_chem_failure": 25,
+          "A_hit_chem_failure_B_precision": 0.44642857142857145
+        },
+        "independent_valid": {
+          "quadrants_neither_chem_only_hit_only_both": [
+            806,
+            982,
+            115,
+            145
+          ],
+          "A_hit_chem_failure": 132,
+          "AB_hit_chem_failure": 65,
+          "A_hit_chem_failure_B_precision": 0.49242424242424243
+        },
+        "independent_connected_valid": {
+          "quadrants_neither_chem_only_hit_only_both": [
+            828,
+            960,
+            120,
+            140
+          ],
+          "A_hit_chem_failure": 134,
+          "AB_hit_chem_failure": 67,
+          "A_hit_chem_failure_B_precision": 0.5
+        }
+      },
+      "composition": {
+        "odd_allowed_valence_sum": 814,
+        "fail_both_rules": 901,
+        "fail_both_rules_and_odd": 814,
+        "B_hit_fail_both": 114,
+        "B_hit_fail_both_and_odd": 102,
+        "A_hit_fail_both": 129,
+        "AB_hit_fail_both_even": 7,
+        "AB_hit_fail_both_odd": 57
+      },
+      "B_hit_table_fail_but_independent_valid": 36
+    },
+    {
+      "property": "mu",
+      "arm": "lgd_mc_chemn",
+      "w": 16,
+      "n": 2048,
+      "source_sha256": "571df6a6713d5620c4b89816930b9f49f09f37031c826d3cca2e5f0cc1122bbe",
+      "decoded_A_hits": 271,
+      "decoded_B_hits": 259,
+      "decoded_AB_hits": 146,
+      "chemistry": {
+        "table_stable": {
+          "quadrants_neither_chem_only_hit_only_both": [
+            1105,
+            684,
+            157,
+            102
+          ],
+          "A_hit_chem_failure": 164,
+          "AB_hit_chem_failure": 76,
+          "A_hit_chem_failure_B_precision": 0.4634146341463415
+        },
+        "table_rdkit_valid": {
+          "quadrants_neither_chem_only_hit_only_both": [
+            505,
+            1284,
+            55,
+            204
+          ],
+          "A_hit_chem_failure": 58,
+          "AB_hit_chem_failure": 24,
+          "A_hit_chem_failure_B_precision": 0.41379310344827586
+        },
+        "independent_valid": {
+          "quadrants_neither_chem_only_hit_only_both": [
+            840,
+            949,
+            121,
+            138
+          ],
+          "A_hit_chem_failure": 134,
+          "AB_hit_chem_failure": 66,
+          "A_hit_chem_failure_B_precision": 0.4925373134328358
+        },
+        "independent_connected_valid": {
+          "quadrants_neither_chem_only_hit_only_both": [
+            863,
+            926,
+            123,
+            136
+          ],
+          "A_hit_chem_failure": 136,
+          "AB_hit_chem_failure": 67,
+          "A_hit_chem_failure_B_precision": 0.49264705882352944
+        }
+      },
+      "composition": {
+        "odd_allowed_valence_sum": 838,
+        "fail_both_rules": 934,
+        "fail_both_rules_and_odd": 838,
+        "B_hit_fail_both": 120,
+        "B_hit_fail_both_and_odd": 109,
+        "A_hit_fail_both": 132,
+        "AB_hit_fail_both_even": 6,
+        "AB_hit_fail_both_odd": 59
+      },
+      "B_hit_table_fail_but_independent_valid": 37
+    },
+    {
+      "property": "alpha",
+      "arm": "lgd_mc",
+      "w": 16,
+      "n": 2048,
+      "source_sha256": "5d388664c6be9e62c1649e2eb4de065ff75ce90a726312c6c345fea07574177c",
+      "decoded_A_hits": 204,
+      "decoded_B_hits": 217,
+      "decoded_AB_hits": 150,
+      "chemistry": {
+        "table_stable": {
+          "quadrants_neither_chem_only_hit_only_both": [
+            1151,
+            680,
+            138,
+            79
+          ],
+          "A_hit_chem_failure": 129,
+          "AB_hit_chem_failure": 89,
+          "A_hit_chem_failure_B_precision": 0.689922480620155
+        },
+        "table_rdkit_valid": {
+          "quadrants_neither_chem_only_hit_only_both": [
+            506,
+            1325,
+            63,
+            154
+          ],
+          "A_hit_chem_failure": 57,
+          "AB_hit_chem_failure": 35,
+          "A_hit_chem_failure_B_precision": 0.6140350877192983
+        },
+        "independent_valid": {
+          "quadrants_neither_chem_only_hit_only_both": [
+            909,
+            922,
+            117,
+            100
+          ],
+          "A_hit_chem_failure": 105,
+          "AB_hit_chem_failure": 74,
+          "A_hit_chem_failure_B_precision": 0.7047619047619048
+        },
+        "independent_connected_valid": {
+          "quadrants_neither_chem_only_hit_only_both": [
+            928,
+            903,
+            119,
+            98
+          ],
+          "A_hit_chem_failure": 106,
+          "AB_hit_chem_failure": 75,
+          "A_hit_chem_failure_B_precision": 0.7075471698113207
+        }
+      },
+      "composition": {
+        "odd_allowed_valence_sum": 875,
+        "fail_both_rules": 989,
+        "fail_both_rules_and_odd": 875,
+        "B_hit_fail_both": 110,
+        "B_hit_fail_both_and_odd": 95,
+        "A_hit_fail_both": 99,
+        "AB_hit_fail_both_even": 13,
+        "AB_hit_fail_both_odd": 56
+      },
+      "B_hit_table_fail_but_independent_valid": 28
+    },
+    {
+      "property": "alpha",
+      "arm": "lgd_mc_chem",
+      "w": 16,
+      "n": 2048,
+      "source_sha256": "f5fe0bbb7eca3fb6b82162860a53013b87ca8477f21235db8933bc06f254830f",
+      "decoded_A_hits": 226,
+      "decoded_B_hits": 218,
+      "decoded_AB_hits": 160,
+      "chemistry": {
+        "table_stable": {
+          "quadrants_neither_chem_only_hit_only_both": [
+            1114,
+            716,
+            143,
+            75
+          ],
+          "A_hit_chem_failure": 144,
+          "AB_hit_chem_failure": 101,
+          "A_hit_chem_failure_B_precision": 0.7013888888888888
+        },
+        "table_rdkit_valid": {
+          "quadrants_neither_chem_only_hit_only_both": [
+            478,
+            1352,
+            58,
+            160
+          ],
+          "A_hit_chem_failure": 61,
+          "AB_hit_chem_failure": 36,
+          "A_hit_chem_failure_B_precision": 0.5901639344262295
+        },
+        "independent_valid": {
+          "quadrants_neither_chem_only_hit_only_both": [
+            875,
+            955,
+            120,
+            98
+          ],
+          "A_hit_chem_failure": 119,
+          "AB_hit_chem_failure": 84,
+          "A_hit_chem_failure_B_precision": 0.7058823529411765
+        },
+        "independent_connected_valid": {
+          "quadrants_neither_chem_only_hit_only_both": [
+            890,
+            940,
+            121,
+            97
+          ],
+          "A_hit_chem_failure": 121,
+          "AB_hit_chem_failure": 85,
+          "A_hit_chem_failure_B_precision": 0.7024793388429752
+        }
+      },
+      "composition": {
+        "odd_allowed_valence_sum": 862,
+        "fail_both_rules": 957,
+        "fail_both_rules_and_odd": 862,
+        "B_hit_fail_both": 112,
+        "B_hit_fail_both_and_odd": 101,
+        "A_hit_fail_both": 110,
+        "AB_hit_fail_both_even": 8,
+        "AB_hit_fail_both_odd": 69
+      },
+      "B_hit_table_fail_but_independent_valid": 31
+    },
+    {
+      "property": "alpha",
+      "arm": "lgd_mc_chemn",
+      "w": 16,
+      "n": 2048,
+      "source_sha256": "432cdca04d4bf17341cf3cab30a11b96ebcb7569c8b5152f2e74b25ee47181ae",
+      "decoded_A_hits": 233,
+      "decoded_B_hits": 227,
+      "decoded_AB_hits": 167,
+      "chemistry": {
+        "table_stable": {
+          "quadrants_neither_chem_only_hit_only_both": [
+            1121,
+            700,
+            147,
+            80
+          ],
+          "A_hit_chem_failure": 151,
+          "AB_hit_chem_failure": 105,
+          "A_hit_chem_failure_B_precision": 0.695364238410596
+        },
+        "table_rdkit_valid": {
+          "quadrants_neither_chem_only_hit_only_both": [
+            470,
+            1351,
+            57,
+            170
+          ],
+          "A_hit_chem_failure": 62,
+          "AB_hit_chem_failure": 36,
+          "A_hit_chem_failure_B_precision": 0.5806451612903226
+        },
+        "independent_valid": {
+          "quadrants_neither_chem_only_hit_only_both": [
+            882,
+            939,
+            116,
+            111
+          ],
+          "A_hit_chem_failure": 117,
+          "AB_hit_chem_failure": 84,
+          "A_hit_chem_failure_B_precision": 0.717948717948718
+        },
+        "independent_connected_valid": {
+          "quadrants_neither_chem_only_hit_only_both": [
+            900,
+            921,
+            117,
+            110
+          ],
+          "A_hit_chem_failure": 118,
+          "AB_hit_chem_failure": 84,
+          "A_hit_chem_failure_B_precision": 0.711864406779661
+        }
+      },
+      "composition": {
+        "odd_allowed_valence_sum": 850,
+        "fail_both_rules": 960,
+        "fail_both_rules_and_odd": 850,
+        "B_hit_fail_both": 107,
+        "B_hit_fail_both_and_odd": 92,
+        "A_hit_fail_both": 108,
+        "AB_hit_fail_both_even": 12,
+        "AB_hit_fail_both_odd": 64
+      },
+      "B_hit_table_fail_but_independent_valid": 40
+    },
+    {
+      "property": "gap",
+      "arm": "lgd_mc",
+      "w": 16,
+      "n": 2048,
+      "source_sha256": "c31fe852798d861be8299b5ba0d01e4b23544e0410a0d2d26d1ddd7f0183ad9c",
+      "decoded_A_hits": 393,
+      "decoded_B_hits": 381,
+      "decoded_AB_hits": 223,
+      "chemistry": {
+        "table_stable": {
+          "quadrants_neither_chem_only_hit_only_both": [
+            1132,
+            535,
+            246,
+            135
+          ],
+          "A_hit_chem_failure": 275,
+          "AB_hit_chem_failure": 136,
+          "A_hit_chem_failure_B_precision": 0.49454545454545457
+        },
+        "table_rdkit_valid": {
+          "quadrants_neither_chem_only_hit_only_both": [
+            530,
+            1137,
+            96,
+            285
+          ],
+          "A_hit_chem_failure": 110,
+          "AB_hit_chem_failure": 49,
+          "A_hit_chem_failure_B_precision": 0.44545454545454544
+        },
+        "independent_valid": {
+          "quadrants_neither_chem_only_hit_only_both": [
+            849,
+            818,
+            182,
+            199
+          ],
+          "A_hit_chem_failure": 200,
+          "AB_hit_chem_failure": 95,
+          "A_hit_chem_failure_B_precision": 0.475
+        },
+        "independent_connected_valid": {
+          "quadrants_neither_chem_only_hit_only_both": [
+            863,
+            804,
+            188,
+            193
+          ],
+          "A_hit_chem_failure": 206,
+          "AB_hit_chem_failure": 99,
+          "A_hit_chem_failure_B_precision": 0.48058252427184467
+        }
+      },
+      "composition": {
+        "odd_allowed_valence_sum": 884,
+        "fail_both_rules": 1007,
+        "fail_both_rules_and_odd": 884,
+        "B_hit_fail_both": 179,
+        "B_hit_fail_both_and_odd": 165,
+        "A_hit_fail_both": 197,
+        "AB_hit_fail_both_even": 8,
+        "AB_hit_fail_both_odd": 85
+      },
+      "B_hit_table_fail_but_independent_valid": 67
+    },
+    {
+      "property": "gap",
+      "arm": "lgd_mc_chem",
+      "w": 16,
+      "n": 2048,
+      "source_sha256": "3c9d441532669a9acead6bf3e3ec12d053de9a494839229e022e43afbd3fe94b",
+      "decoded_A_hits": 377,
+      "decoded_B_hits": 346,
+      "decoded_AB_hits": 198,
+      "chemistry": {
+        "table_stable": {
+          "quadrants_neither_chem_only_hit_only_both": [
+            1108,
+            594,
+            217,
+            129
+          ],
+          "A_hit_chem_failure": 252,
+          "AB_hit_chem_failure": 114,
+          "A_hit_chem_failure_B_precision": 0.4523809523809524
+        },
+        "table_rdkit_valid": {
+          "quadrants_neither_chem_only_hit_only_both": [
+            448,
+            1254,
+            78,
+            268
+          ],
+          "A_hit_chem_failure": 96,
+          "AB_hit_chem_failure": 39,
+          "A_hit_chem_failure_B_precision": 0.40625
+        },
+        "independent_valid": {
+          "quadrants_neither_chem_only_hit_only_both": [
+            836,
+            866,
+            164,
+            182
+          ],
+          "A_hit_chem_failure": 188,
+          "AB_hit_chem_failure": 81,
+          "A_hit_chem_failure_B_precision": 0.4308510638297872
+        },
+        "independent_connected_valid": {
+          "quadrants_neither_chem_only_hit_only_both": [
+            856,
+            846,
+            169,
+            177
+          ],
+          "A_hit_chem_failure": 193,
+          "AB_hit_chem_failure": 85,
+          "A_hit_chem_failure_B_precision": 0.44041450777202074
+        }
+      },
+      "composition": {
+        "odd_allowed_valence_sum": 880,
+        "fail_both_rules": 978,
+        "fail_both_rules_and_odd": 880,
+        "B_hit_fail_both": 162,
+        "B_hit_fail_both_and_odd": 143,
+        "A_hit_fail_both": 186,
+        "AB_hit_fail_both_even": 8,
+        "AB_hit_fail_both_odd": 72
+      },
+      "B_hit_table_fail_but_independent_valid": 55
+    },
+    {
+      "property": "gap",
+      "arm": "lgd_mc_chemn",
+      "w": 16,
+      "n": 2048,
+      "source_sha256": "5ea0d68b95cfcfe22ffdd0aafaeee569b9ca9b0660a8eda22d96f917a45df9c3",
+      "decoded_A_hits": 375,
+      "decoded_B_hits": 370,
+      "decoded_AB_hits": 212,
+      "chemistry": {
+        "table_stable": {
+          "quadrants_neither_chem_only_hit_only_both": [
+            1079,
+            599,
+            233,
+            137
+          ],
+          "A_hit_chem_failure": 245,
+          "AB_hit_chem_failure": 120,
+          "A_hit_chem_failure_B_precision": 0.4897959183673469
+        },
+        "table_rdkit_valid": {
+          "quadrants_neither_chem_only_hit_only_both": [
+            449,
+            1229,
+            100,
+            270
+          ],
+          "A_hit_chem_failure": 99,
+          "AB_hit_chem_failure": 53,
+          "A_hit_chem_failure_B_precision": 0.5353535353535354
+        },
+        "independent_valid": {
+          "quadrants_neither_chem_only_hit_only_both": [
+            837,
+            841,
+            175,
+            195
+          ],
+          "A_hit_chem_failure": 191,
+          "AB_hit_chem_failure": 92,
+          "A_hit_chem_failure_B_precision": 0.4816753926701571
+        },
+        "independent_connected_valid": {
+          "quadrants_neither_chem_only_hit_only_both": [
+            855,
+            823,
+            179,
+            191
+          ],
+          "A_hit_chem_failure": 194,
+          "AB_hit_chem_failure": 94,
+          "A_hit_chem_failure_B_precision": 0.4845360824742268
+        }
+      },
+      "composition": {
+        "odd_allowed_valence_sum": 874,
+        "fail_both_rules": 989,
+        "fail_both_rules_and_odd": 874,
+        "B_hit_fail_both": 170,
+        "B_hit_fail_both_and_odd": 147,
+        "A_hit_fail_both": 189,
+        "AB_hit_fail_both_even": 11,
+        "AB_hit_fail_both_odd": 79
+      },
+      "B_hit_table_fail_but_independent_valid": 63
+    }
+  ],
+  "paired_vs_lgd_mc": [
+    {
+      "property": "mu",
+      "w": 16,
+      "arm": "lgd_mc_chem",
+      "hits": {
+        "rescued": 183,
+        "lost": 181,
+        "retained": 77,
+        "net_count": 2,
+        "difference": 0.0009765625,
+        "paired_se": 0.00931806271616875
+      },
+      "chemistry": {
+        "table_stable": {
+          "useful": {
+            "rescued": 80,
+            "lost": 65,
+            "retained": 30,
+            "net_count": 15,
+            "difference": 0.00732421875,
+            "paired_se": 0.0058788924292153336
+          },
+          "chemistry": {
+            "rescued": 371,
+            "lost": 286,
+            "retained": 454,
+            "net_count": 85,
+            "difference": 0.04150390625,
+            "paired_se": 0.012485031722266646
+          },
+          "transition_rows_base_cols_new": [
+            [
+              746,
+              280,
+              72,
+              47
+            ],
+            [
+              220,
+              361,
+              34,
+              30
+            ],
+            [
+              81,
+              41,
+              38,
+              3
+            ],
+            [
+              26,
+              33,
+              6,
+              30
+            ]
+          ],
+          "new_chem_passes": 371,
+          "new_chem_passes_that_hit": 50,
+          "repair_existing_hit": 3,
+          "lose_existing_useful": 65
+        },
+        "table_rdkit_valid": {
+          "useful": {
+            "rescued": 147,
+            "lost": 128,
+            "retained": 58,
+            "net_count": 19,
+            "difference": 0.00927734375,
+            "paired_se": 0.008096609947646632
+          },
+          "chemistry": {
+            "rescued": 342,
+            "lost": 268,
+            "retained": 1174,
+            "net_count": 74,
+            "difference": 0.0361328125,
+            "paired_se": 0.012036136405040549
+          },
+          "transition_rows_base_cols_new": [
+            [
+              217,
+              269,
+              17,
+              31
+            ],
+            [
+              211,
+              910,
+              28,
+              107
+            ],
+            [
+              22,
+              33,
+              8,
+              9
+            ],
+            [
+              27,
+              99,
+              2,
+              58
+            ]
+          ],
+          "new_chem_passes": 342,
+          "new_chem_passes_that_hit": 40,
+          "repair_existing_hit": 9,
+          "lose_existing_useful": 128
+        },
+        "independent_valid": {
+          "useful": {
+            "rescued": 110,
+            "lost": 102,
+            "retained": 35,
+            "net_count": 8,
+            "difference": 0.00390625,
+            "paired_se": 0.007110694526844579
+          },
+          "chemistry": {
+            "rescued": 389,
+            "lost": 322,
+            "retained": 738,
+            "net_count": 67,
+            "difference": 0.03271484375,
+            "paired_se": 0.013002906513391555
+          },
+          "transition_rows_base_cols_new": [
+            [
+              480,
+              296,
+              42,
+              49
+            ],
+            [
+              243,
+              588,
+              36,
+              56
+            ],
+            [
+              44,
+              39,
+              33,
+              5
+            ],
+            [
+              39,
+              59,
+              4,
+              35
+            ]
+          ],
+          "new_chem_passes": 389,
+          "new_chem_passes_that_hit": 54,
+          "repair_existing_hit": 5,
+          "lose_existing_useful": 102
+        },
+        "independent_connected_valid": {
+          "useful": {
+            "rescued": 105,
+            "lost": 99,
+            "retained": 35,
+            "net_count": 6,
+            "difference": 0.0029296875,
+            "paired_se": 0.006975453925383298
+          },
+          "chemistry": {
+            "rescued": 386,
+            "lost": 319,
+            "retained": 714,
+            "net_count": 67,
+            "difference": 0.03271484375,
+            "paired_se": 0.012947755306933824
+          },
+          "transition_rows_base_cols_new": [
+            [
+              501,
+              297,
+              46,
+              47
+            ],
+            [
+              242,
+              567,
+              36,
+              54
+            ],
+            [
+              48,
+              38,
+              34,
+              4
+            ],
+            [
+              37,
+              58,
+              4,
+              35
+            ]
+          ],
+          "new_chem_passes": 386,
+          "new_chem_passes_that_hit": 51,
+          "repair_existing_hit": 4,
+          "lose_existing_useful": 99
+        }
+      }
+    },
+    {
+      "property": "mu",
+      "w": 16,
+      "arm": "lgd_mc_chemn",
+      "hits": {
+        "rescued": 178,
+        "lost": 177,
+        "retained": 81,
+        "net_count": 1,
+        "difference": 0.00048828125,
+        "paired_se": 0.009202164242034693
+      },
+      "chemistry": {
+        "table_stable": {
+          "useful": {
+            "rescued": 74,
+            "lost": 67,
+            "retained": 28,
+            "net_count": 7,
+            "difference": 0.00341796875,
+            "paired_se": 0.005798942584219789
+          },
+          "chemistry": {
+            "rescued": 353,
+            "lost": 307,
+            "retained": 433,
+            "net_count": 46,
+            "difference": 0.0224609375,
+            "paired_se": 0.012537411163952529
+          },
+          "transition_rows_base_cols_new": [
+            [
+              760,
+              267,
+              77,
+              41
+            ],
+            [
+              232,
+              353,
+              31,
+              29
+            ],
+            [
+              79,
+              41,
+              39,
+              4
+            ],
+            [
+              34,
+              23,
+              10,
+              28
+            ]
+          ],
+          "new_chem_passes": 353,
+          "new_chem_passes_that_hit": 45,
+          "repair_existing_hit": 4,
+          "lose_existing_useful": 67
+        },
+        "table_rdkit_valid": {
+          "useful": {
+            "rescued": 143,
+            "lost": 125,
+            "retained": 61,
+            "net_count": 18,
+            "difference": 0.0087890625,
+            "paired_se": 0.007993100572144073
+          },
+          "chemistry": {
+            "rescued": 330,
+            "lost": 284,
+            "retained": 1158,
+            "net_count": 46,
+            "difference": 0.0224609375,
+            "paired_se": 0.012091900856955905
+          },
+          "transition_rows_base_cols_new": [
+            [
+              224,
+              262,
+              20,
+              28
+            ],
+            [
+              225,
+              901,
+              24,
+              106
+            ],
+            [
+              23,
+              31,
+              9,
+              9
+            ],
+            [
+              33,
+              90,
+              2,
+              61
+            ]
+          ],
+          "new_chem_passes": 330,
+          "new_chem_passes_that_hit": 37,
+          "repair_existing_hit": 9,
+          "lose_existing_useful": 125
+        },
+        "independent_valid": {
+          "useful": {
+            "rescued": 102,
+            "lost": 101,
+            "retained": 36,
+            "net_count": 1,
+            "difference": 0.00048828125,
+            "paired_se": 0.006958627662162001
+          },
+          "chemistry": {
+            "rescued": 370,
+            "lost": 343,
+            "retained": 717,
+            "net_count": 27,
+            "difference": 0.01318359375,
+            "paired_se": 0.01303804369314376
+          },
+          "transition_rows_base_cols_new": [
+            [
+              499,
+              277,
+              44,
+              47
+            ],
+            [
+              259,
+              577,
+              38,
+              49
+            ],
+            [
+              43,
+              40,
+              32,
+              6
+            ],
+            [
+              39,
+              55,
+              7,
+              36
+            ]
+          ],
+          "new_chem_passes": 370,
+          "new_chem_passes_that_hit": 53,
+          "repair_existing_hit": 6,
+          "lose_existing_useful": 101
+        },
+        "independent_connected_valid": {
+          "useful": {
+            "rescued": 101,
+            "lost": 99,
+            "retained": 35,
+            "net_count": 2,
+            "difference": 0.0009765625,
+            "paired_se": 0.006906992425806142
+          },
+          "chemistry": {
+            "rescued": 375,
+            "lost": 346,
+            "retained": 687,
+            "net_count": 29,
+            "difference": 0.01416015625,
+            "paired_se": 0.013110523211110406
+          },
+          "transition_rows_base_cols_new": [
+            [
+              516,
+              281,
+              46,
+              48
+            ],
+            [
+              264,
+              551,
+              37,
+              47
+            ],
+            [
+              45,
+              40,
+              33,
+              6
+            ],
+            [
+              38,
+              54,
+              7,
+              35
+            ]
+          ],
+          "new_chem_passes": 375,
+          "new_chem_passes_that_hit": 54,
+          "repair_existing_hit": 6,
+          "lose_existing_useful": 99
+        }
+      }
+    },
+    {
+      "property": "alpha",
+      "w": 16,
+      "arm": "lgd_mc_chem",
+      "hits": {
+        "rescued": 106,
+        "lost": 105,
+        "retained": 112,
+        "net_count": 1,
+        "difference": 0.00048828125,
+        "paired_se": 0.007094418887475056
+      },
+      "chemistry": {
+        "table_stable": {
+          "useful": {
+            "rescued": 31,
+            "lost": 35,
+            "retained": 44,
+            "net_count": -4,
+            "difference": -0.001953125,
+            "paired_se": 0.0039675496002386495
+          },
+          "chemistry": {
+            "rescued": 248,
+            "lost": 216,
+            "retained": 543,
+            "net_count": 32,
+            "difference": 0.015625,
+            "paired_se": 0.010514798917479909
+          },
+          "transition_rows_base_cols_new": [
+            [
+              877,
+              197,
+              59,
+              18
+            ],
+            [
+              167,
+              484,
+              21,
+              8
+            ],
+            [
+              44,
+              28,
+              61,
+              5
+            ],
+            [
+              26,
+              7,
+              2,
+              44
+            ]
+          ],
+          "new_chem_passes": 248,
+          "new_chem_passes_that_hit": 23,
+          "repair_existing_hit": 5,
+          "lose_existing_useful": 35
+        },
+        "table_rdkit_valid": {
+          "useful": {
+            "rescued": 79,
+            "lost": 73,
+            "retained": 81,
+            "net_count": 6,
+            "difference": 0.0029296875,
+            "paired_se": 0.006021057614558029
+          },
+          "chemistry": {
+            "rescued": 260,
+            "lost": 227,
+            "retained": 1252,
+            "net_count": 33,
+            "difference": 0.01611328125,
+            "paired_se": 0.010772173957111254
+          },
+          "transition_rows_base_cols_new": [
+            [
+              270,
+              199,
+              12,
+              25
+            ],
+            [
+              180,
+              1076,
+              25,
+              44
+            ],
+            [
+              11,
+              26,
+              16,
+              10
+            ],
+            [
+              17,
+              51,
+              5,
+              81
+            ]
+          ],
+          "new_chem_passes": 260,
+          "new_chem_passes_that_hit": 35,
+          "repair_existing_hit": 10,
+          "lose_existing_useful": 73
+        },
+        "independent_valid": {
+          "useful": {
+            "rescued": 45,
+            "lost": 47,
+            "retained": 53,
+            "net_count": -2,
+            "difference": -0.0009765625,
+            "paired_se": 0.004684523330108312
+          },
+          "chemistry": {
+            "rescued": 282,
+            "lost": 251,
+            "retained": 771,
+            "net_count": 31,
+            "difference": 0.01513671875,
+            "paired_se": 0.011270636741662931
+          },
+          "transition_rows_base_cols_new": [
+            [
+              624,
+              224,
+              42,
+              19
+            ],
+            [
+              198,
+              679,
+              23,
+              22
+            ],
+            [
+              26,
+              35,
+              52,
+              4
+            ],
+            [
+              27,
+              17,
+              3,
+              53
+            ]
+          ],
+          "new_chem_passes": 282,
+          "new_chem_passes_that_hit": 23,
+          "repair_existing_hit": 4,
+          "lose_existing_useful": 47
+        },
+        "independent_connected_valid": {
+          "useful": {
+            "rescued": 44,
+            "lost": 45,
+            "retained": 53,
+            "net_count": -1,
+            "difference": -0.00048828125,
+            "paired_se": 0.004607548490577649
+          },
+          "chemistry": {
+            "rescued": 281,
+            "lost": 245,
+            "retained": 756,
+            "net_count": 36,
+            "difference": 0.017578125,
+            "paired_se": 0.011194574088316193
+          },
+          "transition_rows_base_cols_new": [
+            [
+              642,
+              223,
+              44,
+              19
+            ],
+            [
+              195,
+              665,
+              22,
+              21
+            ],
+            [
+              28,
+              35,
+              52,
+              4
+            ],
+            [
+              25,
+              17,
+              3,
+              53
+            ]
+          ],
+          "new_chem_passes": 281,
+          "new_chem_passes_that_hit": 23,
+          "repair_existing_hit": 4,
+          "lose_existing_useful": 45
+        }
+      }
+    },
+    {
+      "property": "alpha",
+      "w": 16,
+      "arm": "lgd_mc_chemn",
+      "hits": {
+        "rescued": 112,
+        "lost": 102,
+        "retained": 115,
+        "net_count": 10,
+        "difference": 0.0048828125,
+        "paired_se": 0.007143868262904774
+      },
+      "chemistry": {
+        "table_stable": {
+          "useful": {
+            "rescued": 37,
+            "lost": 36,
+            "retained": 43,
+            "net_count": 1,
+            "difference": 0.00048828125,
+            "paired_se": 0.0041728817707084795
+          },
+          "chemistry": {
+            "rescued": 233,
+            "lost": 212,
+            "retained": 547,
+            "net_count": 21,
+            "difference": 0.01025390625,
+            "paired_se": 0.010300326868064303
+          },
+          "transition_rows_base_cols_new": [
+            [
+              885,
+              191,
+              57,
+              18
+            ],
+            [
+              165,
+              478,
+              23,
+              14
+            ],
+            [
+              49,
+              19,
+              65,
+              5
+            ],
+            [
+              22,
+              12,
+              2,
+              43
+            ]
+          ],
+          "new_chem_passes": 233,
+          "new_chem_passes_that_hit": 23,
+          "repair_existing_hit": 5,
+          "lose_existing_useful": 36
+        },
+        "table_rdkit_valid": {
+          "useful": {
+            "rescued": 91,
+            "lost": 75,
+            "retained": 79,
+            "net_count": 16,
+            "difference": 0.0078125,
+            "paired_se": 0.006290230650261406
+          },
+          "chemistry": {
+            "rescued": 261,
+            "lost": 219,
+            "retained": 1260,
+            "net_count": 42,
+            "difference": 0.0205078125,
+            "paired_se": 0.010690714086202044
+          },
+          "transition_rows_base_cols_new": [
+            [
+              266,
+              201,
+              15,
+              24
+            ],
+            [
+              174,
+              1078,
+              21,
+              52
+            ],
+            [
+              13,
+              21,
+              14,
+              15
+            ],
+            [
+              17,
+              51,
+              7,
+              79
+            ]
+          ],
+          "new_chem_passes": 261,
+          "new_chem_passes_that_hit": 39,
+          "repair_existing_hit": 15,
+          "lose_existing_useful": 75
+        },
+        "independent_valid": {
+          "useful": {
+            "rescued": 59,
+            "lost": 48,
+            "retained": 52,
+            "net_count": 11,
+            "difference": 0.00537109375,
+            "paired_se": 0.0050506591008664375
+          },
+          "chemistry": {
+            "rescued": 267,
+            "lost": 239,
+            "retained": 783,
+            "net_count": 28,
+            "difference": 0.013671875,
+            "paired_se": 0.010982141036962349
+          },
+          "transition_rows_base_cols_new": [
+            [
+              642,
+              210,
+              36,
+              21
+            ],
+            [
+              190,
+              677,
+              24,
+              31
+            ],
+            [
+              29,
+              29,
+              52,
+              7
+            ],
+            [
+              21,
+              23,
+              4,
+              52
+            ]
+          ],
+          "new_chem_passes": 267,
+          "new_chem_passes_that_hit": 28,
+          "repair_existing_hit": 7,
+          "lose_existing_useful": 48
+        },
+        "independent_connected_valid": {
+          "useful": {
+            "rescued": 58,
+            "lost": 46,
+            "retained": 52,
+            "net_count": 12,
+            "difference": 0.005859375,
+            "paired_se": 0.004979043416043076
+          },
+          "chemistry": {
+            "rescued": 269,
+            "lost": 239,
+            "retained": 762,
+            "net_count": 30,
+            "difference": 0.0146484375,
+            "paired_se": 0.011003225939874718
+          },
+          "transition_rows_base_cols_new": [
+            [
+              657,
+              212,
+              38,
+              21
+            ],
+            [
+              193,
+              657,
+              23,
+              30
+            ],
+            [
+              31,
+              29,
+              52,
+              7
+            ],
+            [
+              19,
+              23,
+              4,
+              52
+            ]
+          ],
+          "new_chem_passes": 269,
+          "new_chem_passes_that_hit": 28,
+          "repair_existing_hit": 7,
+          "lose_existing_useful": 46
+        }
+      }
+    },
+    {
+      "property": "gap",
+      "w": 16,
+      "arm": "lgd_mc_chem",
+      "hits": {
+        "rescued": 181,
+        "lost": 216,
+        "retained": 165,
+        "net_count": -35,
+        "difference": -0.01708984375,
+        "paired_se": 0.009723977423230884
+      },
+      "chemistry": {
+        "table_stable": {
+          "useful": {
+            "rescued": 67,
+            "lost": 73,
+            "retained": 62,
+            "net_count": -6,
+            "difference": -0.0029296875,
+            "paired_se": 0.005778469882442263
+          },
+          "chemistry": {
+            "rescued": 323,
+            "lost": 270,
+            "retained": 400,
+            "net_count": 53,
+            "difference": 0.02587890625,
+            "paired_se": 0.011879567122900794
+          },
+          "transition_rows_base_cols_new": [
+            [
+              772,
+              231,
+              96,
+              33
+            ],
+            [
+              191,
+              292,
+              31,
+              21
+            ],
+            [
+              107,
+              46,
+              80,
+              13
+            ],
+            [
+              38,
+              25,
+              10,
+              62
+            ]
+          ],
+          "new_chem_passes": 323,
+          "new_chem_passes_that_hit": 46,
+          "repair_existing_hit": 13,
+          "lose_existing_useful": 73
+        },
+        "table_rdkit_valid": {
+          "useful": {
+            "rescued": 152,
+            "lost": 169,
+            "retained": 116,
+            "net_count": -17,
+            "difference": -0.00830078125,
+            "paired_se": 0.008748490784231188
+          },
+          "chemistry": {
+            "rescued": 351,
+            "lost": 251,
+            "retained": 1171,
+            "net_count": 100,
+            "difference": 0.048828125,
+            "paired_se": 0.011934545611341317
+          },
+          "transition_rows_base_cols_new": [
+            [
+              207,
+              253,
+              20,
+              50
+            ],
+            [
+              184,
+              842,
+              22,
+              89
+            ],
+            [
+              23,
+              35,
+              25,
+              13
+            ],
+            [
+              34,
+              124,
+              11,
+              116
+            ]
+          ],
+          "new_chem_passes": 351,
+          "new_chem_passes_that_hit": 63,
+          "repair_existing_hit": 13,
+          "lose_existing_useful": 169
+        },
+        "independent_valid": {
+          "useful": {
+            "rescued": 95,
+            "lost": 112,
+            "retained": 87,
+            "net_count": -17,
+            "difference": -0.00830078125,
+            "paired_se": 0.007024464047469829
+          },
+          "chemistry": {
+            "rescued": 328,
+            "lost": 297,
+            "retained": 720,
+            "net_count": 31,
+            "difference": 0.01513671875,
+            "paired_se": 0.01220542818919613
+          },
+          "transition_rows_base_cols_new": [
+            [
+              531,
+              224,
+              56,
+              38
+            ],
+            [
+              200,
+              531,
+              43,
+              44
+            ],
+            [
+              62,
+              53,
+              54,
+              13
+            ],
+            [
+              43,
+              58,
+              11,
+              87
+            ]
+          ],
+          "new_chem_passes": 328,
+          "new_chem_passes_that_hit": 51,
+          "repair_existing_hit": 13,
+          "lose_existing_useful": 112
+        },
+        "independent_connected_valid": {
+          "useful": {
+            "rescued": 94,
+            "lost": 110,
+            "retained": 83,
+            "net_count": -16,
+            "difference": -0.0078125,
+            "paired_se": 0.00697361696558407
+          },
+          "chemistry": {
+            "rescued": 327,
+            "lost": 301,
+            "retained": 696,
+            "net_count": 26,
+            "difference": 0.0126953125,
+            "paired_se": 0.012236064604705083
+          },
+          "transition_rows_base_cols_new": [
+            [
+              543,
+              223,
+              59,
+              38
+            ],
+            [
+              203,
+              517,
+              42,
+              42
+            ],
+            [
+              66,
+              52,
+              56,
+              14
+            ],
+            [
+              44,
+              54,
+              12,
+              83
+            ]
+          ],
+          "new_chem_passes": 327,
+          "new_chem_passes_that_hit": 52,
+          "repair_existing_hit": 14,
+          "lose_existing_useful": 110
+        }
+      }
+    },
+    {
+      "property": "gap",
+      "w": 16,
+      "arm": "lgd_mc_chemn",
+      "hits": {
+        "rescued": 202,
+        "lost": 213,
+        "retained": 168,
+        "net_count": -11,
+        "difference": -0.00537109375,
+        "paired_se": 0.009948766413575847
+      },
+      "chemistry": {
+        "table_stable": {
+          "useful": {
+            "rescued": 78,
+            "lost": 76,
+            "retained": 59,
+            "net_count": 2,
+            "difference": 0.0009765625,
+            "paired_se": 0.006060852416169928
+          },
+          "chemistry": {
+            "rescued": 334,
+            "lost": 268,
+            "retained": 402,
+            "net_count": 66,
+            "difference": 0.0322265625,
+            "paired_se": 0.011962054506085588
+          },
+          "transition_rows_base_cols_new": [
+            [
+              754,
+              229,
+              105,
+              44
+            ],
+            [
+              181,
+              301,
+              33,
+              20
+            ],
+            [
+              105,
+              47,
+              80,
+              14
+            ],
+            [
+              39,
+              22,
+              15,
+              59
+            ]
+          ],
+          "new_chem_passes": 334,
+          "new_chem_passes_that_hit": 58,
+          "repair_existing_hit": 14,
+          "lose_existing_useful": 76
+        },
+        "table_rdkit_valid": {
+          "useful": {
+            "rescued": 157,
+            "lost": 172,
+            "retained": 113,
+            "net_count": -15,
+            "difference": -0.00732421875,
+            "paired_se": 0.00885730351927084
+          },
+          "chemistry": {
+            "rescued": 338,
+            "lost": 261,
+            "retained": 1161,
+            "net_count": 77,
+            "difference": 0.03759765625,
+            "paired_se": 0.011924425860101874
+          },
+          "transition_rows_base_cols_new": [
+            [
+              205,
+              252,
+              29,
+              44
+            ],
+            [
+              180,
+              828,
+              31,
+              98
+            ],
+            [
+              31,
+              27,
+              23,
+              15
+            ],
+            [
+              33,
+              122,
+              17,
+              113
+            ]
+          ],
+          "new_chem_passes": 338,
+          "new_chem_passes_that_hit": 59,
+          "repair_existing_hit": 15,
+          "lose_existing_useful": 172
+        },
+        "independent_valid": {
+          "useful": {
+            "rescued": 108,
+            "lost": 112,
+            "retained": 87,
+            "net_count": -4,
+            "difference": -0.001953125,
+            "paired_se": 0.007244021516376023
+          },
+          "chemistry": {
+            "rescued": 330,
+            "lost": 311,
+            "retained": 706,
+            "net_count": 19,
+            "difference": 0.00927734375,
+            "paired_se": 0.012363612797970736
+          },
+          "transition_rows_base_cols_new": [
+            [
+              513,
+              223,
+              65,
+              48
+            ],
+            [
+              216,
+              513,
+              39,
+              50
+            ],
+            [
+              66,
+              49,
+              57,
+              10
+            ],
+            [
+              42,
+              56,
+              14,
+              87
+            ]
+          ],
+          "new_chem_passes": 330,
+          "new_chem_passes_that_hit": 58,
+          "repair_existing_hit": 10,
+          "lose_existing_useful": 112
+        },
+        "independent_connected_valid": {
+          "useful": {
+            "rescued": 108,
+            "lost": 110,
+            "retained": 83,
+            "net_count": -2,
+            "difference": -0.0009765625,
+            "paired_se": 0.0072111147053313335
+          },
+          "chemistry": {
+            "rescued": 332,
+            "lost": 315,
+            "retained": 682,
+            "net_count": 17,
+            "difference": 0.00830078125,
+            "paired_se": 0.012421695444817919
+          },
+          "transition_rows_base_cols_new": [
+            [
+              526,
+              222,
+              67,
+              48
+            ],
+            [
+              221,
+              496,
+              38,
+              49
+            ],
+            [
+              66,
+              51,
+              60,
+              11
+            ],
+            [
+              42,
+              54,
+              14,
+              83
+            ]
+          ],
+          "new_chem_passes": 332,
+          "new_chem_passes_that_hit": 59,
+          "repair_existing_hit": 11,
+          "lose_existing_useful": 110
+        }
+      }
+    }
+  ]
+}

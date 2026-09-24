@@ -3,6 +3,17 @@
 **23 September 2026.** Evidence audit and research decision, not a claim that a new
 method has won. BVTG in discussion refers to the repository's `btvg` / BTVG.
 
+**Later update:** [Evolving after BTVG2 and the chemistry guard](BTVG_EVOLUTION_AFTER_CHEM_GUARD.md)
+incorporates the completed guard failures, corrected decoded scoring, new
+discrete-feasibility measurements and an executed one-atom repair control.
+It supersedes the next-step priority below; the historical audit remains valid.
+
+**Subsequent claim audit:** [new statistical and trajectory checks](../results/WORKSHOP_CLAIM_AUDIT.md)
+retain the LGD-MC deficit, distinguish a registered "tie" from equivalence, and
+show that tau's threshold does engage late in sampling. The actual-state
+projection is now implemented and gated; molecular outcome testing remains
+pending. Use that audit for current paper wording and completion requirements.
+
 ## Decision
 
 Keep the frozen generator, split protocol, independent evaluator, LGD-MC draws,

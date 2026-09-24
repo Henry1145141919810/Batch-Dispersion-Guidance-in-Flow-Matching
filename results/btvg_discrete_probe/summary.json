@@ -1,0 +1,317 @@
+{
+  "protocol": "docs/methods/BTVG_EVOLUTION_AFTER_CHEM_GUARD.md: locked one-edit diagnostic",
+  "script_sha256": "8c1bfd81fe82aafb507653b7967824dfb7c113b75c4c2181a1393cd802f15dac",
+  "real_data_parity": {
+    "n": 133885,
+    "odd_allowed_valence_sum": 0
+  },
+  "rows": [
+    {
+      "property": "mu",
+      "n": 2048,
+      "eligible": 967,
+      "enumerated_even_parity_candidates": 40332,
+      "table_passed_candidates": 780,
+      "all_checks_passed_candidates": 728,
+      "endpoints_with_candidate": 528,
+      "endpoints_with_multiple_candidates": 179,
+      "max_candidates": 4,
+      "search_seconds": 1.3164258999750018,
+      "f_A_candidate_evaluations": 728,
+      "note": "Runtime includes guide load/reproduction check; excludes independent baseline audit and final evaluator scoring. No end-to-end throughput claim.",
+      "source_sha256": "19dc89ab174a334134f85e987ef905500419a2189af70e61a75d193be5097510",
+      "guide_sha256": "4d24317c46be835814c880dfa2724a84a0828cc940970cb7b0611c6f6fc283ee",
+      "arms": {
+        "chemistry_only": {
+          "changed": 528,
+          "A_hits_among_repairs": 64,
+          "B_hits_among_repairs": 54,
+          "table_useful": {
+            "rescued": 54,
+            "lost": 0,
+            "retained": 95,
+            "net_count": 54,
+            "difference": 0.0263671875,
+            "paired_se": 0.0035413641234806176
+          },
+          "independent_useful": {
+            "rescued": 54,
+            "lost": 0,
+            "retained": 137,
+            "net_count": 54,
+            "difference": 0.0263671875,
+            "paired_se": 0.0035413641234806176
+          },
+          "independent_connected_useful": {
+            "rescued": 54,
+            "lost": 0,
+            "retained": 134,
+            "net_count": 54,
+            "difference": 0.0263671875,
+            "paired_se": 0.0035413641234806176
+          },
+          "property_hits": {
+            "rescued": 41,
+            "lost": 52,
+            "retained": 206,
+            "net_count": -11,
+            "difference": -0.00537109375,
+            "paired_se": 0.00470846754635103
+          },
+          "distinct_successful_repair_smiles": 54
+        },
+        "property_aware": {
+          "changed": 528,
+          "A_hits_among_repairs": 84,
+          "B_hits_among_repairs": 64,
+          "table_useful": {
+            "rescued": 64,
+            "lost": 0,
+            "retained": 95,
+            "net_count": 64,
+            "difference": 0.03125,
+            "paired_se": 0.003845669406002523
+          },
+          "independent_useful": {
+            "rescued": 64,
+            "lost": 0,
+            "retained": 137,
+            "net_count": 64,
+            "difference": 0.03125,
+            "paired_se": 0.003845669406002523
+          },
+          "independent_connected_useful": {
+            "rescued": 64,
+            "lost": 0,
+            "retained": 134,
+            "net_count": 64,
+            "difference": 0.03125,
+            "paired_se": 0.003845669406002523
+          },
+          "property_hits": {
+            "rescued": 47,
+            "lost": 48,
+            "retained": 210,
+            "net_count": -1,
+            "difference": -0.00048828125,
+            "paired_se": 0.004760327026664433
+          },
+          "distinct_successful_repair_smiles": 64
+        }
+      },
+      "target_choice_vs_chemistry_choice": {
+        "rescued": 14,
+        "lost": 4,
+        "retained": 145,
+        "net_count": 10,
+        "difference": 0.0048828125,
+        "paired_se": 0.002069295460779079
+      }
+    },
+    {
+      "property": "alpha",
+      "n": 2048,
+      "eligible": 989,
+      "enumerated_even_parity_candidates": 41191,
+      "table_passed_candidates": 833,
+      "all_checks_passed_candidates": 760,
+      "endpoints_with_candidate": 542,
+      "endpoints_with_multiple_candidates": 192,
+      "max_candidates": 4,
+      "search_seconds": 1.272472699987702,
+      "f_A_candidate_evaluations": 760,
+      "note": "Runtime includes guide load/reproduction check; excludes independent baseline audit and final evaluator scoring. No end-to-end throughput claim.",
+      "source_sha256": "5d388664c6be9e62c1649e2eb4de065ff75ce90a726312c6c345fea07574177c",
+      "guide_sha256": "77d4189568fa6358d2f942018ff6a7c222a1f83e49baa825fd823c3dd84d9222",
+      "arms": {
+        "chemistry_only": {
+          "changed": 542,
+          "A_hits_among_repairs": 35,
+          "B_hits_among_repairs": 30,
+          "table_useful": {
+            "rescued": 30,
+            "lost": 0,
+            "retained": 79,
+            "net_count": 30,
+            "difference": 0.0146484375,
+            "paired_se": 0.002655414575000274
+          },
+          "independent_useful": {
+            "rescued": 30,
+            "lost": 0,
+            "retained": 100,
+            "net_count": 30,
+            "difference": 0.0146484375,
+            "paired_se": 0.002655414575000274
+          },
+          "independent_connected_useful": {
+            "rescued": 30,
+            "lost": 0,
+            "retained": 98,
+            "net_count": 30,
+            "difference": 0.0146484375,
+            "paired_se": 0.002655414575000274
+          },
+          "property_hits": {
+            "rescued": 27,
+            "lost": 51,
+            "retained": 166,
+            "net_count": -24,
+            "difference": -0.01171875,
+            "paired_se": 0.004305652798101635
+          },
+          "distinct_successful_repair_smiles": 30
+        },
+        "property_aware": {
+          "changed": 542,
+          "A_hits_among_repairs": 47,
+          "B_hits_among_repairs": 41,
+          "table_useful": {
+            "rescued": 41,
+            "lost": 0,
+            "retained": 79,
+            "net_count": 41,
+            "difference": 0.02001953125,
+            "paired_se": 0.003095827409049086
+          },
+          "independent_useful": {
+            "rescued": 41,
+            "lost": 0,
+            "retained": 100,
+            "net_count": 41,
+            "difference": 0.02001953125,
+            "paired_se": 0.003095827409049086
+          },
+          "independent_connected_useful": {
+            "rescued": 41,
+            "lost": 0,
+            "retained": 98,
+            "net_count": 41,
+            "difference": 0.02001953125,
+            "paired_se": 0.003095827409049086
+          },
+          "property_hits": {
+            "rescued": 38,
+            "lost": 51,
+            "retained": 166,
+            "net_count": -13,
+            "difference": -0.00634765625,
+            "paired_se": 0.004605424601988167
+          },
+          "distinct_successful_repair_smiles": 41
+        }
+      },
+      "target_choice_vs_chemistry_choice": {
+        "rescued": 12,
+        "lost": 1,
+        "retained": 108,
+        "net_count": 11,
+        "difference": 0.00537109375,
+        "paired_se": 0.0017569469347349963
+      }
+    },
+    {
+      "property": "gap",
+      "n": 2048,
+      "eligible": 1007,
+      "enumerated_even_parity_candidates": 41875,
+      "table_passed_candidates": 810,
+      "all_checks_passed_candidates": 748,
+      "endpoints_with_candidate": 534,
+      "endpoints_with_multiple_candidates": 195,
+      "max_candidates": 3,
+      "search_seconds": 1.3499537000316195,
+      "f_A_candidate_evaluations": 748,
+      "note": "Runtime includes guide load/reproduction check; excludes independent baseline audit and final evaluator scoring. No end-to-end throughput claim.",
+      "source_sha256": "c31fe852798d861be8299b5ba0d01e4b23544e0410a0d2d26d1ddd7f0183ad9c",
+      "guide_sha256": "697d819631b98d317a093202accbbcabc81af33e1d41b9c41c97d229b14b4055",
+      "arms": {
+        "chemistry_only": {
+          "changed": 534,
+          "A_hits_among_repairs": 93,
+          "B_hits_among_repairs": 98,
+          "table_useful": {
+            "rescued": 98,
+            "lost": 0,
+            "retained": 135,
+            "net_count": 98,
+            "difference": 0.0478515625,
+            "paired_se": 0.004717821116273189
+          },
+          "independent_useful": {
+            "rescued": 98,
+            "lost": 0,
+            "retained": 199,
+            "net_count": 98,
+            "difference": 0.0478515625,
+            "paired_se": 0.004717821116273189
+          },
+          "independent_connected_useful": {
+            "rescued": 98,
+            "lost": 0,
+            "retained": 193,
+            "net_count": 98,
+            "difference": 0.0478515625,
+            "paired_se": 0.004717821116273189
+          },
+          "property_hits": {
+            "rescued": 62,
+            "lost": 72,
+            "retained": 309,
+            "net_count": -10,
+            "difference": -0.0048828125,
+            "paired_se": 0.005652614408764486
+          },
+          "distinct_successful_repair_smiles": 98
+        },
+        "property_aware": {
+          "changed": 534,
+          "A_hits_among_repairs": 118,
+          "B_hits_among_repairs": 115,
+          "table_useful": {
+            "rescued": 115,
+            "lost": 0,
+            "retained": 135,
+            "net_count": 115,
+            "difference": 0.05615234375,
+            "paired_se": 0.005088338249984364
+          },
+          "independent_useful": {
+            "rescued": 115,
+            "lost": 0,
+            "retained": 199,
+            "net_count": 115,
+            "difference": 0.05615234375,
+            "paired_se": 0.005088338249984364
+          },
+          "independent_connected_useful": {
+            "rescued": 115,
+            "lost": 0,
+            "retained": 193,
+            "net_count": 115,
+            "difference": 0.05615234375,
+            "paired_se": 0.005088338249984364
+          },
+          "property_hits": {
+            "rescued": 77,
+            "lost": 70,
+            "retained": 311,
+            "net_count": 7,
+            "difference": 0.00341796875,
+            "paired_se": 0.005921059483136877
+          },
+          "distinct_successful_repair_smiles": 115
+        }
+      },
+      "target_choice_vs_chemistry_choice": {
+        "rescued": 21,
+        "lost": 4,
+        "retained": 229,
+        "net_count": 17,
+        "difference": 0.00830078125,
+        "paired_se": 0.0024351007820176806
+      }
+    }
+  ],
+  "interpretation": "Exploratory postprocessing control on consumed test targets, not a new validated method. No f_B proposal selection."
+}

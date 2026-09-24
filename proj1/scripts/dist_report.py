@@ -80,14 +80,21 @@ PAIR_REFS = ("unguided", "plug")          # supplementary family; FR5 is full_ru
 # ladder MUST be built with the same oracle and the same delta as the cells it
 # is compared against, so the backend picks both -- and the cache file, which
 # is keyed by it, so one backend can never read the other's f_B predictions.
-BACKENDS = ("ours", "tfg")
-CELL_BACKEND = {"ours": None, "tfg": "TFG/EDMsecond"}
+BACKENDS = ("ours", "tfg", "equifm")
+CELL_BACKEND = {"ours": None, "tfg": "TFG/EDMsecond", "equifm": "EquiFM"}
+# both borrowed backends are scored by TFG's evaluate_<p>; only the
+# generator's one-hot divisor (which cancels in the ladder) differs
 
 
-def _tfg_pair(d, prop, dev):
+def _tfg_pair(d, prop, dev, backend="tfg"):
     """TFG's oracle and delta, built exactly as transfer_sweep.py builds them."""
     import transfer_sweep as ts
-    scale = ts.generator_feat_scale(os.path.join(ROOT, "weights", "EDMsecond"))
+    if backend == "equifm":
+        from external.equifm_backend import EQUIFM_ARGS
+        from external.tfg_assets import metadata
+        scale = float(metadata(EQUIFM_ARGS)["normalize_factors"][1])
+    else:
+        scale = ts.generator_feat_scale(os.path.join(ROOT, "weights", "EDMsecond"))
     _, f_B, delta, rep = ts.build_pair(prop, d, ts.calibration_indices(d), dev,
                                        2.0, scale)
     return f_B, delta, rep
@@ -101,8 +108,8 @@ def fB_on_real_test(d, prop, dev, cache_dir, backend="ours"):
     path = os.path.join(cache_dir, "dist_fB_test_%s%s.pt" % (tag, prop))
     if os.path.exists(path):
         return torch.load(path, weights_only=False)
-    if backend == "tfg":
-        f_B, _, rep = _tfg_pair(d, prop, dev)
+    if backend in ("tfg", "equifm"):
+        f_B, _, rep = _tfg_pair(d, prop, dev, backend)
     else:
         f_B = PhysicalProperty(os.path.join(CKPT, "f_B_%s.pt" % prop),
                                len(d["types"]), dev)
@@ -110,7 +117,7 @@ def fB_on_real_test(d, prop, dev, cache_dir, backend="ours"):
     c = d["coords"][te].to(dev).float()
     f = d["feats"][te].to(dev).float()
     m = d["mask"][te].to(dev).float()
-    if backend == "tfg":
+    if backend in ("tfg", "equifm"):
         # `Calibrated` takes the SAMPLER's feature space (the generator's
         # one-hot / normalize_factors[1]) and rescales to what its network
         # wants; the data file holds RAW one-hot. Passing it straight in fed
@@ -131,8 +138,8 @@ def build_ladder(d, prop, n, dev, cache_dir, backend="ours"):
     y_tr = d["y"][tra, pi].float().numpy()
     m_tr = d["mask"][tra].sum(1).round().int().numpy()
     fB = fB_on_real_test(d, prop, dev, cache_dir, backend).numpy()
-    if backend == "tfg":
-        delta = _tfg_pair(d, prop, dev)[1]
+    if backend in ("tfg", "equifm"):
+        delta = _tfg_pair(d, prop, dev, backend)[1]
     else:
         mae_b = float(torch.load(os.path.join(CKPT, "f_B_%s.pt" % prop),
                                  map_location="cpu", weights_only=False)["val_mae"])
@@ -185,19 +192,17 @@ def load_cells(roots, prop, backend="ours"):
     for pat in [x for x in roots.split(",") if x]:
         dirs += sorted(d for d in glob.glob(pat) if os.path.isdir(d))
     files = []
-    pre = "tr__" if backend == "tfg" else ""
+    pre = "" if backend == "ours" else "tr__"
     for dd in dirs:
         files += sorted(glob.glob(os.path.join(dd, "%s%s__*.json" % (pre, prop))))
         # the other backend's cells do not match this glob, so without this
         # check a wrong --backend reads NOTHING and prints a cell-less ladder
         # instead of an error
         other = sorted(glob.glob(os.path.join(dd, "%s%s__*.json" % (
-            "" if backend == "tfg" else "tr__", prop))))
+            "tr__" if backend == "ours" else "", prop))))
         if other:
-            raise SystemExit("%s holds %s-backend cells (e.g. %s); rerun with "
-                             "--backend %s" % (dd, "ours" if backend == "tfg"
-                                               else "tfg", os.path.basename(other[0]),
-                                               "ours" if backend == "tfg" else "tfg"))
+            raise SystemExit("%s holds cells of another backend (e.g. %s); "
+                             "check --backend" % (dd, os.path.basename(other[0])))
     cells = []
     for jf in files:
         with open(jf) as fh:

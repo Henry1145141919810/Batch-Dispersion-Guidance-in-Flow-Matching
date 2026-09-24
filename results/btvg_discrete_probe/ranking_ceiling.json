@@ -1,0 +1,20 @@
+{
+  "mu": {
+    "oracle_B_any_candidate_hits": 71,
+    "A_selected_hits": 64,
+    "maximum_additional_hits_by_ranking_same_set": 7,
+    "note": "Retrospective evaluator oracle ceiling only; never used for proposal or method selection."
+  },
+  "alpha": {
+    "oracle_B_any_candidate_hits": 44,
+    "A_selected_hits": 41,
+    "maximum_additional_hits_by_ranking_same_set": 3,
+    "note": "Retrospective evaluator oracle ceiling only; never used for proposal or method selection."
+  },
+  "gap": {
+    "oracle_B_any_candidate_hits": 122,
+    "A_selected_hits": 115,
+    "maximum_additional_hits_by_ranking_same_set": 7,
+    "note": "Retrospective evaluator oracle ceiling only; never used for proposal or method selection."
+  }
+}

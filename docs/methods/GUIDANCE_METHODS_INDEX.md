@@ -17,6 +17,20 @@ mean-preservation argument also fails after pullback. Read
 latest [living status](../status/SCOPE_FM_GUIDANCE_STATUS.md) before interpreting
 “OURS/new” as a supported novelty or performance claim.
 
+**Later 23 Sep update:** [Evolving after BTVG2 and the chemistry guard](BTVG_EVOLUTION_AFTER_CHEM_GUARD.md)
+records the completed guard failures, a measured discrete composition
+obstruction and a positive one-atom endpoint-repair control. This control is
+exploratory postprocessing, not a new production guidance arm or an established
+novel method. A future component must beat the same baseline with ordinary
+repair to earn incremental credit.
+
+**Workshop claim check:** [the executed claim audit](../results/WORKSHOP_CLAIM_AUDIT.md)
+adds target-cluster intervals, corrects the claim that tau never engages, and
+defines the remaining comparisons needed for a defensible scientific
+contribution. Original BTVG and BTVG2 remain unsuccessful proposals, not
+established improvements; `btvg2_xproj` has passed code gates but has no local
+molecular outcome result yet.
+
 ## How to read the columns
 
 | column | meaning |

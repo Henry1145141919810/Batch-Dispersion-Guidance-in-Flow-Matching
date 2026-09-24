@@ -11,6 +11,7 @@ chem_safe_project, and the `*_chem` modes in guidance_field).
       along G where active, and <= 0 along G' everywhere
   C5  `lgd_mc_chem` == chem_safe_project(lgd_mc field, J^T grad P), i.e.
       the wrapper changes nothing but the projection; same for plug_chem
+  C5n the norm-preserving variant keeps the base length and chem's direction
   C6  registration: modes known, CHEM_BASE correct, no strength rescaling
 
 Run: python proj1/tests/test_chem_guard.py
@@ -186,9 +187,33 @@ def main():
         ok5 &= torch.equal(dgw["chem_active"].bool(), act5)
     check("C5 X_chem == project(X field, J^T grad P) for lgd_mc and plug", ok5)
 
+    # C5n norm-preserving variant: same direction as lgd_mc_chem, length of the
+    # base step, and still <a, G'> <= 0
+    Gb_c, Gb_f, _ = guidance_field(f_net, post_fn, x_c, x_f, mk, y, 1.3,
+                                   mode="lgd_mc", n_mc=4,
+                                   generator=torch.Generator().manual_seed(5))
+    Gp_c, Gp_f, _ = guidance_field(f_net, post_fn, x_c, x_f, mk, y, 1.3,
+                                   mode="lgd_mc_chem", n_mc=4,
+                                   generator=torch.Generator().manual_seed(5))
+    Gn_c, Gn_f, _ = guidance_field(f_net, post_fn, x_c, x_f, mk, y, 1.3,
+                                   mode="lgd_mc_chemn", n_mc=4,
+                                   generator=torch.Generator().manual_seed(5))
+    nb = dot(Gb_c, Gb_f, Gb_c, Gb_f).sqrt()
+    nn_ = dot(Gn_c, Gn_f, Gn_c, Gn_f).sqrt()
+    npj = dot(Gp_c, Gp_f, Gp_c, Gp_f).sqrt()
+    cosn = dot(Gn_c, Gn_f, Gp_c, Gp_f) / (nn_ * npj)
+    shrunk = npj < nb * (1 - 1e-6)
+    ok5n = (torch.allclose(nn_, nb, rtol=1e-10)
+            and bool((cosn > 1 - 1e-10).all())
+            and bool((dot(a_c, a_f, Gn_c, Gn_f) <= 1e-10).all())
+            and bool(shrunk.any()))
+    check("C5n chemn: |G'| == |base|, direction == chem's, <a,G'> <= 0", ok5n,
+          "%d/%d steps were shrunk by the plain guard" % (int(shrunk.sum()), Bm))
+
     # C6 registration
-    ok6 = ({"lgd_mc_chem", "plug_chem"} <= KNOWN_MODES
-           and CHEM_BASE == {"lgd_mc_chem": "lgd_mc", "plug_chem": "plug"}
+    ok6 = ({"lgd_mc_chem", "plug_chem", "lgd_mc_chemn"} <= KNOWN_MODES
+           and CHEM_BASE == {"lgd_mc_chem": "lgd_mc", "plug_chem": "plug",
+                             "lgd_mc_chemn": "lgd_mc"}
            and strength_scale("lgd_mc_chem", {}, 1.5) == 1.0
            and strength_scale("plug_chem", {}, 1.5) == 1.0)
     check("C6 modes registered, bases correct, no strength rescaling", ok6)
