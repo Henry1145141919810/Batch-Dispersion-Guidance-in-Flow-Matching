@@ -310,6 +310,10 @@ def main():
     ap.add_argument("--root", default=os.path.join(ROOT, "results", "full", "v2", "n5000"))
     ap.add_argument("--frozen", default="")
     ap.add_argument("--md-out", default="")
+    ap.add_argument("--delta-json", default="",
+                    help="score in_band with the per-property delta in this file "
+                         "(e.g. results/local_fb_mae.json) instead of the "
+                         "pre-registered 2 x f_B val MAE the cells carry")
     args = ap.parse_args()
 
     root = args.root
@@ -338,6 +342,38 @@ def main():
     prov = any_cell.get("prov") or {}
     DELTA = {p: cells[SEEDS[0]][(p, ARMS[0])][0]["delta"] for p in PROPS}
     TARGET = {p: cells[SEEDS[0]][(p, ARMS[0])][0]["target"] for p in PROPS}
+    DELTA_PRE = dict(DELTA)
+    djs = None
+    if args.delta_json:
+        # post-hoc delta: every in_band below is recomputed from the sidecars at
+        # this delta; the cells' own in_band fields are at the pre-registered one
+        djs = json.load(open(args.delta_json if os.path.isabs(args.delta_json)
+                             else os.path.join(ROOT, args.delta_json)))
+        # the file must describe THIS run's evaluator, or it is refused
+        bad = []
+        for p in PROPS:
+            if p not in djs.get("delta", {}):
+                bad.append("%s: no delta in %s" % (p, args.delta_json))
+                continue
+            c0 = cells[SEEDS[0]][(p, ARMS[0])][0]
+            gm = djs.get("global_mae", {}).get(p)
+            if gm is None or abs(gm - c0["mae_B"]) > 1e-6 * max(1.0, abs(gm)):
+                bad.append("%s: the file's global f_B MAE %r is not the run's mae_B %r"
+                           % (p, gm, c0["mae_B"]))
+            if djs.get("k") != c0.get("k_delta"):
+                bad.append("%s: the file's k %r is not the run's k_delta %r"
+                           % (p, djs.get("k"), c0.get("k_delta")))
+            prim = [w for w in djs.get("windows", {}).get(p, [])
+                    if abs(w["h"] - djs.get("primary_h", -1)) < 1e-12]
+            if prim and abs(prim[0]["delta"] - djs["delta"][p]) > 1e-12:
+                bad.append("%s: delta is not the one at primary_h" % p)
+        if bad:
+            print("REFUSING --delta-json:")
+            for b in bad:
+                print("  * " + b)
+            raise SystemExit(1)
+        DELTA = {p: float(djs["delta"][p]) for p in PROPS}
+    HS = " (post-hoc delta)" if djs is not None else ""
 
     P, PM = {}, {}
     for p in PROPS:
@@ -350,6 +386,12 @@ def main():
             d["in_band_dec"] = sum(r["in_band_fraction_dec"] * r["n"] for r in rows) / N
             d["mae_dec"] = sum(r["prop_mae_eval_dec"] * r["n"] for r in rows) / N
             d["se_ib_dec"] = prop_se(d["in_band_dec"], N)
+            if djs is not None:
+                d["in_band"] = float(ib_vec(pm, DELTA[p]).mean())
+                d["se_ib"] = prop_se(d["in_band"], N)
+                d["in_band_dec"] = float(ib_vec(pm, DELTA[p], dec=True).mean())
+                d["se_ib_dec"] = prop_se(d["in_band_dec"], N)
+                d["delta"] = DELTA[p]
             d["uniq_valid"] = sum(r["uniqueness_of_valid"] * r["n"] for r in rows) / N
             d["uvps"] = sum(r["unique_valid_per_sample"] * r["n"] for r in rows) / N
             d["uniq_min_cell"] = min(r["uniqueness_of_valid"] for r in rows)
@@ -363,14 +405,67 @@ def main():
             d["clip_steps"] = sum(r.get("clipped_sample_steps", 0) for r in rows)
             cse, deff = cluster_se(pm, DELTA[p])
             d["cse_ib"], d["deff"] = cse, deff
+            d["cse_ib_dec"], d["deff_dec"] = cluster_se(pm, DELTA[p], dec=True)
             P[(p, a)] = d
 
     FL = {p: floor_margin(P, p) for p in PROPS}
     clears = lambda p, a: P[(p, a)]["mol_stab"] >= FLOOR * P[(p, "unguided")]["mol_stab"] - 1e-12
 
+    # computed, so the prose stays true at whatever delta is scored
+    def _zu(p, a, dec=False):
+        k, s = ("in_band_dec", "se_ib_dec") if dec else ("in_band", "se_ib")
+        r, u = P[(p, a)], P[(p, "unguided")]
+        return _z(r[k] - u[k], math.sqrt(r[s] ** 2 + u[s] ** 2))
+    flip = [(p, a) for p in PROPS for a in ARMS if a != "unguided"
+            and (abs(_zu(p, a)) >= SIGMA) != (abs(_zu(p, a, True)) >= SIGMA)]
+    over = all(abs(_zu(p, a)) >= SIGMA for p, a in flip)   # cont clears, dec does not
+    dis_line = ("On this run the two metrics disagree about which comparisons "
+                "against unguided clear z >= %g (%s), so the continuous columns "
+                "alone would %s the result."
+                % (SIGMA, ", ".join("%s `%s`" % pa for pa in flip),
+                   "overstate" if over else "misstate")) if flip else (
+                "On this run the two metrics agree on which comparisons against "
+                "unguided clear z >= %g." % SIGMA)
+    over10 = [(p, a) for p in PROPS for a in ARMS if P[(p, a)]["in_band"] > 0.10]
+
     # ---- header ---------------------------------------------------------
-    L.append("# Full run v2 - fixed-target results (q90), n = 5,000 x 3 seeds")
+    L.append("# Full run v2 - fixed-target results (q90), n = 5,000 x 3 seeds%s"
+             % (" - LOCAL delta (post-hoc)" if djs else ""))
     L.append("")
+    if djs is not None:
+        L.append("> **Post-hoc rescoring, not the pre-registered result.** Every in_band "
+                 "here uses delta = 2 x f_B's MAE on val molecules whose true property "
+                 "is near the q90 target (%s), instead of the pre-registered 2 x f_B's "
+                 "MAE over all val molecules. The pre-registered tables are in "
+                 "[FULL_RUN_V2_RESULTS.md](FULL_RUN_V2_RESULTS.md). What this cannot "
+                 "update: the frozen strengths were picked on the n = 512 screen under "
+                 "the pre-registered delta, and the screen kept no per-molecule "
+                 "sidecars, so whether this delta would have picked other strengths "
+                 "is unknown; the Sec 6 budget table and the strength/Pareto figures "
+                 "are also at the pre-registered delta."
+                 % ("window h = %g, `results/local_fb_mae.json`" % djs["primary_h"]))
+        L.append("")
+        L.append("> **The bigger calibration question is untouched.** Both deltas are "
+                 "f_B's error on *real* QM9 molecules; in_band scores *generated* ones, "
+                 "of which only ~35-40 % are molecule-stable. f_B's error on that "
+                 "population is unmeasured and may be larger. This page moves delta by "
+                 "1-3 %; it does not settle whether delta is the right size for "
+                 "generated molecules.")
+        L.append("")
+        L.append("Regenerate with `python proj1/scripts/full_run_v2_table.py "
+                 "--delta-json results/local_fb_mae.json --md-out "
+                 "docs/results/FULL_RUN_V2_RESULTS_LOCAL_DELTA.md` (the delta file is "
+                 "checked against the run's own mae_B and k_delta before use). This page "
+                 "uses one window; how the verdict moves across window widths, with the "
+                 "cluster-robust se, is in the status doc (section 10d, \"Sensitivity "
+                 "to delta\").")
+        L.append("")
+        L.append("| property | pre-registered delta | local delta | change |")
+        L.append("|---|---|---|---|")
+        for p in PROPS:
+            L.append("| %s | %.5f | %.5f | %+.1f %% |"
+                     % (p, DELTA_PRE[p], DELTA[p], 100 * (DELTA[p] / DELTA_PRE[p] - 1)))
+        L.append("")
     L.append("Generated by `proj1/scripts/full_run_v2_table.py`. Do not hand-edit; "
              "re-run the script.")
     L.append("")
@@ -404,6 +499,10 @@ def main():
     L.append("| sampler | %d-step %s, guidance window t >= %g, velocity clip %g, batch %d |"
              % (any_cell["steps"], any_cell["solver"], any_cell["t_min_guide"],
                 any_cell["clip"], any_cell["batch"]))
+    L.append("| in-band delta (half-width) | %s: mu %.5f, alpha %.5f, gap %.5f |"
+             % ("2 x f_B MAE on val molecules near q90 (post-hoc)" if djs else
+                "2 x f_B val MAE, all val molecules (pre-registered)",
+                DELTA["mu"], DELTA["alpha"], DELTA["gap"]))
     L.append("| device | %s, torch %s |" % (prov.get("device"), prov.get("torch")))
     L.append("| non-finite samples | %d across all cells |"
              % sum(P[(p, a)]["nonfinite"] for p in PROPS for a in ARMS))
@@ -433,14 +532,12 @@ def main():
     L.append("")
 
     # ---- V4 -------------------------------------------------------------
-    L.append("## V4 - the metric block, continuous and decoded")
+    L.append("## V4 - the metric block, continuous and decoded" + HS)
     L.append("")
     L.append("**The decoded columns are not a footnote.** V4 requires every "
              "property metric in its decoded (argmax one-hot atom types) form "
              "\"because arms that push the continuous type features are otherwise "
-             "flattered\". On this run the two metrics disagree about which "
-             "comparisons clear z >= %g, so the continuous columns alone would "
-             "overstate the result." % SIGMA)
+             "flattered\". %s" % dis_line)
     L.append("")
     for p in PROPS:
         u = P[(p, "unguided")]
@@ -564,7 +661,7 @@ def main():
     L.append("")
 
     # ---- V7 -------------------------------------------------------------
-    L.append("## V7 - the verdict")
+    L.append("## V7 - the verdict" + HS)
     L.append("")
     L.append("Decided on in_band at independent-samples z >= %g, between arms that "
              "both clear the chemistry floor. Paired z (same molecules, same "
@@ -631,9 +728,15 @@ def main():
                   "rule; see the margin table for how thin that call is."
                   % (", ".join("`%s`" % a for a in excl),
                      "is" if len(excl) == 1 else "are"))
+        zbdc = _z(P[(p, best)]["in_band_dec"] - P[(p, "unguided")]["in_band_dec"],
+                  math.sqrt(P[(p, best)]["cse_ib_dec"] ** 2 + P[(p, "unguided")]["cse_ib_dec"] ** 2))
         if abs(zbd) < SIGMA:
             s += (" **On the decoded metric V4 requires, this arm does not clear "
                   "z >= %g against unguided.**" % SIGMA)
+        elif abs(zbdc) < SIGMA:
+            s += (" **On the decoded metric it clears z >= %g only with the iid se;** "
+                  "with the cluster-robust se (molecules reused across seeds) it is "
+                  "z = %+.2f, below the bar." % (SIGMA, zbdc))
         L.append(s)
         L.append("")
 
@@ -657,20 +760,26 @@ def main():
              "the fixed target removes v1's per-molecule target clustering). "
              "Applying it to the headline comparisons:")
     L.append("")
-    L.append("| comparison | z (iid) | z (clustered) | still >= %g? |" % SIGMA)
-    L.append("|---|---|---|---|")
+    L.append("| comparison | z (iid) | z (clustered) | still >= %g? | decoded z (iid) | "
+             "decoded z (clustered) | still >= %g? |" % (SIGMA, SIGMA))
+    L.append("|---|---|---|---|---|---|---|")
     for p in PROPS:
         elig = [a for a in ARMS if clears(p, a)]
         best = max(elig, key=lambda a: P[(p, a)]["in_band"])
         r, u = P[(p, best)], P[(p, "unguided")]
         z1 = _z(r["in_band"] - u["in_band"], math.sqrt(r["se_ib"] ** 2 + u["se_ib"] ** 2))
         z2 = _z(r["in_band"] - u["in_band"], math.sqrt(r["cse_ib"] ** 2 + u["cse_ib"] ** 2))
-        L.append("| %s: `%s` vs unguided | %+.2f | %+.2f | %s |"
-                 % (p, best, z1, z2, "yes" if abs(z2) >= SIGMA else "**no**"))
+        z3 = _z(r["in_band_dec"] - u["in_band_dec"],
+                math.sqrt(r["se_ib_dec"] ** 2 + u["se_ib_dec"] ** 2))
+        z4 = _z(r["in_band_dec"] - u["in_band_dec"],
+                math.sqrt(r["cse_ib_dec"] ** 2 + u["cse_ib_dec"] ** 2))
+        L.append("| %s: `%s` vs unguided | %+.2f | %+.2f | %s | %+.2f | %+.2f | %s |"
+                 % (p, best, z1, z2, "yes" if abs(z2) >= SIGMA else "**no**",
+                    z3, z4, "yes" if abs(z4) >= SIGMA else "**no**"))
     L.append("")
 
     # ---- V8 -------------------------------------------------------------
-    L.append("## V8 - multiplicity")
+    L.append("## V8 - multiplicity" + HS)
     L.append("")
     L.append("Holm within each property over the registered family: each arm "
              "against `unguided` and against `%s`, which the protocol fixes at "
@@ -723,7 +832,7 @@ def main():
         L.append("")
 
     # ---- V5 -------------------------------------------------------------
-    L.append("## V5 - error-ranked buckets")
+    L.append("## V5 - error-ranked buckets" + HS)
     L.append("")
     L.append("**Descriptive only.** Molecules are sorted by |f_B - y| and the block "
              "is reported within the best 10 %, 50 % and 100 % of each cell. This "
@@ -733,14 +842,17 @@ def main():
              "distribution. These numbers are never compared against another "
              "method's achievable yield.")
     L.append("")
+    exc = ("except " + ", ".join(
+        "`%s`/`%s` (in_band %.3f > 0.10, so its @10 %% saturates at 1.0000)"
+        % (p, a, P[(p, a)]["in_band"]) for p, a in over10)) if over10 else ""
     L.append("**The in_band columns are arithmetic, not evidence.** When a cell's "
              "in_band is at or below 10 %, every in-band molecule already sits "
              "inside the best-10 % bucket, so `in_band @10 %` is exactly 10 x "
              "`@100 %` and `@50 %` exactly 2 x. The first of these holds for every "
-             "cell in this run except `gap`/`lgd_mc` (in_band 0.117 > 0.10, so its "
-             "@10 % saturates at 1.0000); the `@50 %` identity holds for that cell "
-             "too. The informative columns here are **MAE/d**, **mol_stab** and "
-             "**valid**: they say whether an arm's best decile is also its soundest.")
+             "cell in this run " + exc + "; the `@50 %` identity holds for every "
+             "cell with in_band <= 0.50. The informative columns here are "
+             "**MAE/d**, **mol_stab** and **valid**: they say whether an arm's best "
+             "decile is also its soundest.")
     L.append("")
     for p in PROPS:
         d = DELTA[p]

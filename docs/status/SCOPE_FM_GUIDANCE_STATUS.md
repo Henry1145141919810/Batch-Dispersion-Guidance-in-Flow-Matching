@@ -1653,6 +1653,71 @@ z ≥ 3 against unguided on both the continuous and the decoded metric. What a
 floor-limited arm would deliver at a floor-clearing strength is unmeasured —
 no such full-scale cell exists.*
 
+*Sensitivity to δ (next subsection, post-hoc): alpha `tmpd` holds at every δ
+tried, including with the cluster-robust se; gap `plug` is borderline on the
+decoded metric.*
+
+### Sensitivity to δ: f_B's error near q90 (post-hoc, 24 Sep)
+
+Henry's question: δ = 2 × f_B's MAE over *all* val molecules, but the run is
+scored at q90, so should the MAE come from molecules near q90? The factor 2 is
+kept. [local_fb_mae.py](../../proj1/scripts/local_fb_mae.py) measures f_B's
+MAE on val molecules whose **true** property lies near q90 (train_a rank
+window [Q(0.90 − h), Q(0.90 + h)]); the v2 tables are rescored at δ = 2 × that
+MAE in [FULL_RUN_V2_RESULTS_LOCAL_DELTA.md](../results/FULL_RUN_V2_RESULTS_LOCAL_DELTA.md)
+(`full_run_v2_table.py --delta-json results/local_fb_mae.json`, which checks
+the file against the run's own mae_B and k_delta). **This is a post-hoc
+sensitivity analysis; the pre-registered δ and its tables stand.**
+
+- **f_B is about as accurate near q90 as overall — on real molecules.** Local
+  MAE at h = 5 (q85–q95, ~1,780 molecules): 1.01× global (mu), 0.97× (alpha),
+  0.97× (gap), so δ moves +1.2 %, −2.9 %, −2.8 %. Across h = 2.5–7.5 the ratio
+  stays within 0.95–1.07×. **h = 10 is not a ±10-point window:** its upper
+  edge is Q(1.00), the train_a maximum, for all three properties, so it runs
+  one-sided from q80 to the max (mu's 1.19× there comes from the extreme tail).
+- **The bigger calibration question is untouched.** Both δ are f_B's error on
+  *real* QM9 molecules; in-band scores *generated* ones, only ~35–40 % of which
+  are molecule-stable. f_B's error on that population is unmeasured and may be
+  larger. Moving δ by 1–3 % does not settle whether δ is sized right for
+  generated molecules. (Val is also the set f_B's checkpoint was selected on,
+  so both MAEs are slightly optimistic.)
+- **The factor 2 does what it is meant to.** At h = 5, 88.2–90.2 % of
+  molecules truly near the target have f_B within 2 × local MAE of their true
+  value — the in-band rate a perfect generator would score. Within 1 × MAE it
+  is only 61.6–67.9 %, so a one-MAE band would miss about a third of genuine
+  hits.
+- **The top arm and the ties do not move.** The top floor-clearing arm is the
+  same at every δ tried (`tfg` mu, `tmpd` alpha, `plug` gap), and each is still
+  tied with its runner-up. Against unguided, decoded z, iid and
+  **cluster-robust** (molecules are reused across seeds, design effect 1.0–1.2):
+
+  | | pre-registered | h = 2.5 | h = 5 | h = 7.5 | h = 10 (one-sided) |
+  |---|---|---|---|---|---|
+  | mu `tfg`, iid / clustered | 2.67 / 2.65 | 2.70 / 2.68 | 2.72 / 2.69 | 2.44 / 2.42 | 2.74 / 2.71 |
+  | alpha `tmpd`, iid / clustered | 3.57 / 3.37 | 3.59 / 3.39 | 3.54 / 3.35 | 3.53 / 3.34 | 3.57 / 3.38 |
+  | gap `plug`, iid / clustered | 2.94 / **2.75** | 3.39 / **3.17** | 3.25 / **3.04** | 3.22 / **3.01** | 3.00 / **2.81** |
+
+  **alpha `tmpd`** clears 3σ on the decoded metric at every δ, even
+  cluster-robust. **mu `tfg`** fails at every δ. **gap `plug` is borderline:**
+  on the cluster-robust se it clears at 3 of 5 δ, by 0.04σ at h = 5 and 0.01σ
+  at h = 7.5, and fails at the pre-registered δ and at h = 10.
+- **How small the gap `plug` crossing is.** Decoded, plug's surplus over
+  unguided goes from 123 to 134 in-band molecules out of 15,000 when δ narrows
+  from the pre-registered to the local value — a swing of 11 molecules.
+  Gap's δ changes by 2.75 %, about 1.3 bootstrap se of the local MAE (2.2 %),
+  and the choice of window alone moves it anywhere from −3.6 % to −0.6 %.
+  Across seeds the plug − unguided difference is +0.0118 / +0.0096 / +0.0054.
+- **Why a narrower band raised plug's z.** Narrowing the band costs unguided
+  proportionally more in-band molecules than plug (decoded: 870 → 836, −3.9 %,
+  against 993 → 970, −2.3 %): more of unguided's hits sat just inside the old
+  edge. The surplus grows while the se shrinks, so z rises.
+- **Not updated by rescoring:** the frozen strengths (the n = 512 screen kept
+  no sidecars, so whether this δ would have picked other strengths is
+  unknown); the §6 budget table and the strength/Pareto figures (both at the
+  pre-registered δ); and the `dist`-target pilots — BTVG-2, xproj and
+  `pilot_chem` — where "near q90" does not apply and BTVG-family guidance uses
+  δ internally (τ = δ/1.96).
+
 ### Other results from the run
 
 - **No mode collapse.** Lowest uniqueness of any single cell is 0.99340

@@ -16,6 +16,7 @@ Protocol: [FULL_RUN_V2_PROTOCOL.md](../protocol/FULL_RUN_V2_PROTOCOL.md) (rules 
 | frozen strengths | `results/full/v2/n5000/frozen_v2.json` md5 `12228b9a` |
 | screen the strengths came from | stage `compare`, target `q90`, n = 512, seed 20260921 |
 | sampler | 100-step euler, guidance window t >= 0.5, velocity clip 1, batch 128 |
+| in-band delta (half-width) | 2 x f_B val MAE, all val molecules (pre-registered): mu 0.16799, alpha 0.48135, gap 0.00760 |
 | device | NVIDIA B200 MIG 2g.45gb, torch 2.11.0+cu128 |
 | non-finite samples | 0 across all cells |
 
@@ -35,7 +36,7 @@ Only the first column was run at full scale. The other two are the screen's answ
 
 ## V4 - the metric block, continuous and decoded
 
-**The decoded columns are not a footnote.** V4 requires every property metric in its decoded (argmax one-hot atom types) form "because arms that push the continuous type features are otherwise flattered". On this run the two metrics disagree about which comparisons clear z >= 3, so the continuous columns alone would overstate the result.
+**The decoded columns are not a footnote.** V4 requires every property metric in its decoded (argmax one-hot atom types) form "because arms that push the continuous type features are otherwise flattered". On this run the two metrics disagree about which comparisons against unguided clear z >= 3 (mu `tfg`, gap `plug`), so the continuous columns alone would overstate the result.
 
 ### mu (target 4.6627, delta 0.16799)
 
@@ -227,11 +228,11 @@ All three seeds reuse the same 5,000 `val` sizes and the same fixed target, so r
 
 The inflation is **small** (v1's sqrt(3) worst case does not apply: the fixed target removes v1's per-molecule target clustering). Applying it to the headline comparisons:
 
-| comparison | z (iid) | z (clustered) | still >= 3? |
-|---|---|---|---|
-| mu: `tfg` vs unguided | +3.56 | +3.50 | yes |
-| alpha: `tmpd` vs unguided | +3.90 | +3.70 | yes |
-| gap: `plug` vs unguided | +3.30 | +3.09 | yes |
+| comparison | z (iid) | z (clustered) | still >= 3? | decoded z (iid) | decoded z (clustered) | still >= 3? |
+|---|---|---|---|---|---|---|
+| mu: `tfg` vs unguided | +3.56 | +3.50 | yes | +2.67 | +2.65 | **no** |
+| alpha: `tmpd` vs unguided | +3.90 | +3.70 | yes | +3.57 | +3.37 | yes |
+| gap: `plug` vs unguided | +3.30 | +3.09 | yes | +2.94 | +2.75 | **no** |
 
 ## V8 - multiplicity
 
@@ -281,7 +282,7 @@ Holm within each property over the registered family: each arm against `unguided
 
 **Descriptive only.** Molecules are sorted by |f_B - y| and the block is reported within the best 10 %, 50 % and 100 % of each cell. This ranks molecules by the same oracle it then scores them with, so no row here is a yield anyone could reproduce -- a user does not have f_B at generation time. Its purpose is the SHAPE of an arm's error distribution. These numbers are never compared against another method's achievable yield.
 
-**The in_band columns are arithmetic, not evidence.** When a cell's in_band is at or below 10 %, every in-band molecule already sits inside the best-10 % bucket, so `in_band @10 %` is exactly 10 x `@100 %` and `@50 %` exactly 2 x. The first of these holds for every cell in this run except `gap`/`lgd_mc` (in_band 0.117 > 0.10, so its @10 % saturates at 1.0000); the `@50 %` identity holds for that cell too. The informative columns here are **MAE/d**, **mol_stab** and **valid**: they say whether an arm's best decile is also its soundest.
+**The in_band columns are arithmetic, not evidence.** When a cell's in_band is at or below 10 %, every in-band molecule already sits inside the best-10 % bucket, so `in_band @10 %` is exactly 10 x `@100 %` and `@50 %` exactly 2 x. The first of these holds for every cell in this run except `gap`/`lgd_mc` (in_band 0.117 > 0.10, so its @10 % saturates at 1.0000); the `@50 %` identity holds for every cell with in_band <= 0.50. The informative columns here are **MAE/d**, **mol_stab** and **valid**: they say whether an arm's best decile is also its soundest.
 
 ### mu
 
