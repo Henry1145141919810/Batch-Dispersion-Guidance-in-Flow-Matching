@@ -1836,6 +1836,46 @@ draft of this subsection said "isolates"; withdrawn.)
 
 ---
 
+## 10e. BDG (batch-dispersion guidance) — reviewed 25 Sep
+
+A team member's handoff proposes **BDG**: plug, plus a feedback term driven by the
+batch variance `V_b` of the guide's predicted property against a setpoint τ². The
+author's record is [BDG_HANDOFF.md](../methods/BDG_HANDOFF.md); the corrected
+reading is **[BDG_REVIEW.md](../methods/BDG_REVIEW.md) — read that first.** The code
+lives in another member's Betty tree. An independent port is on branch
+`worktree-wf_bc7c0f18-844-2` (not merged; it would fast-forward), with its 64 cells
+in `results/bdg_port/`.
+
+**Verdict (three independent judges): sound mechanics with an overstated
+interpretation; incremental; misaimed as an in-band lever; doable only as a
+secondary result.**
+
+- **What holds.**
+  - The gradient and the §3 reduction are exact, and η = 0 is bit-identical to plug.
+  - Cost is the same as plug. The knob moves spread monotonically on 6/6 curves, reproduced by a port built from the prose alone.
+  - Two structural properties are real: `w_eff ≥ 1−η` is bounded where BTVG's coefficient has a pole, and the dispersion term's sign survives the J-pullback (algebra; BTVG-2's flipped on 45–57 % of molecules in a toy).
+- **What BDG is.** In mean/deviation form, `num_i = w[(y−F̄) − w_eff(F_i−F̄)]` with `w_eff = 1+ηe`. It is plug with the centring gain fixed and **only the deviation gain servoed**. It is not negative-weight plug: its widening cells still pull the mean toward the target.
+- **What does not hold as written:**
+  - The law's equilibrium is `V* = τ²(1−1/η)`, not τ². It is an asymptote the 50-step window never reaches.
+  - "Does not reduce to any fixed schedule" is refuted: a schedule replayed on another seed recovers 69.5–96 % of the effect, one seed pair.
+  - "No existing arm widens reproducibly" is false: `rch` widens 1.42×/1.455× on both seeds.
+  - The chemistry floor is borrowed from `results/sweep`.
+  - §8 mis-describes MGD and omits the closed-loop guidance literature.
+- **Why it cannot move the headline.** The handoff never states its target. Its plug control rules out q90, so it ran at q50 or `dist`. Spread governs coverage only near a centred target. At the v2 q90 headline |bias|/σ ≈ 1.2–1.6, and the best the spread lever can do is +0.0001 to +0.007 in-band, at or below the z = 3 resolution even at n = 15,000 per arm. Removing the bias is worth +0.025 to +0.047.
+
+**Decision recommended:**
+- No Betty time, and no BDG number in a q90 headline table.
+- Write it up only after the headline sections are drafted, capped at ~4–6 h.
+
+Use in the paper:
+- the **bias-versus-spread decomposition by target** (§4.3/§4.7/§5), zero compute;
+- **V_b vs V_F** as the continuation of the BTVG failure story;
+- the simplex transfer argument (§3.6);
+- one appendix table labelled with its target, n, device and its own floor.
+
+Any §4.4 row first needs a second replay seed pair, a signed-w plug control and paired
+tests. The required changes are in BDG_REVIEW.md §5.
+
 ## 11. Known defects and corrections — carry these into the write-up
 
 Things measured wrong at some point and since fixed. They belong in the

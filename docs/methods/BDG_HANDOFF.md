@@ -1,0 +1,318 @@
+# BDG — Batch-Dispersion Guidance: complete handoff
+
+> **⚠️ Reviewed 25 Sep 2026 — read [BDG_REVIEW.md](BDG_REVIEW.md) before relying on
+> anything below.** This document is kept unchanged as the author's record. The
+> review verified the mechanics (the gradient, the §3 reduction, η = 0 ≡ plug, same
+> cost as plug, a monotone knob reproduced by an independent port), but found that
+> several claims below do not hold as written:
+> - **What BDG is.** Plug with the centring gain fixed and only the *deviation* gain `w_eff = 1+ηe` servoed. It is not plug at a negative weight: its widening cells still pull the batch mean toward the target.
+> - **The equilibrium is not the setpoint.** The law settles where w_eff = 0, i.e. `V* = τ²(1−1/η)`, an asymptote the 50-step window never reaches. At η ≤ 1 the controller's own field is never repulsive. "V_b does not vanish, so it is stable" is not the reason; boundedness (`w_eff ≥ 1−η`) is.
+> - **"Does not reduce to any fixed schedule" is refuted as stated.** A schedule replayed on another seed's noise recovers 69.5–96 % of the effect; feedback adds a small real remainder.
+> - **The target is never stated.** The plug control rules out q90, so it is q50 or `dist`. At the project's q90 headline the §1 premise and "widening lowers coverage by definition" are false.
+> - **"No existing arm widens reproducibly / 1.010×" is false.** `rch` widens 1.42×/1.455× on both seeds.
+> - **The floor 0.362109375 is borrowed** from `results/sweep`, and the gap e4t0.5 "FAILS" is knife-edge.
+> - **§8 mis-describes MGD and omits the closed-loop guidance literature.**
+>
+> The required changes are listed in BDG_REVIEW.md §5. This file's code lives in another member's Betty tree; an independent port is on branch `worktree-wf_bc7c0f18-844-2`, with its cells in `results/bdg_port/`.
+
+**Written for:** Henry, and an AI agent working on his behalf. Assumes familiarity with the repo's
+guidance arms but *no* knowledge of this work. Nothing here needs to be re-derived.
+
+**Status as of 25 Sep 2026.** Implemented, tested, run on two seeds, audited. The method works at
+what it claims and fails on a different axis, both measured. **Read §3 before claiming anything.**
+
+---
+
+## 1. One paragraph
+
+Band coverage (`in_band`) is governed by how tightly the batch clusters, not where it is centred —
+`delta/sigma = 0.056–0.169`, so the acceptance window is 6–17% of one standard deviation. But every
+guidance arm optimises a *centring* objective and exposes one knob (strength) that moves centring and
+spread together. BDG adds a feedback loop: measure the batch's current spread of the predicted
+property, compare it to a requested setpoint, and modulate the guidance coefficient by the error.
+Spread becomes a first-class control. **It works** — monotone requested-to-achieved on 6/6 curves
+across two seeds, spanning `sd/unguided` 0.65 to 1.17, including *widening*, which no existing arm
+here can do reproducibly. **It does not improve `in_band`**, and we can prove neither direction of the
+knob can: tightening enough to matter breaks the chemistry floor, widening lowers coverage by
+definition.
+
+---
+
+## 2. The method
+
+Per guided sampling step, for a batch of `B` trajectories.
+
+### Baseline (`plug` / DPS), for contrast
+
+```
+m_i  = x_t[i] + (1-t) * v_theta(x_t[i], t)     endpoint estimate
+F_i  = f_A(m_i)                                predicted property, one scalar per molecule
+g_i  = grad f_A(m_i)
+push_i = [ (y - F_i) / s^2 ] * g_i             then J^T pullback
+```
+
+### BDG adds two batch statistics and an error signal
+
+```
+F_bar = (1/B) sum_i F_i                            where the batch is centred
+V_b   = (1/(B-1)) sum_i (F_i - F_bar)^2            HOW TIGHTLY IT IS GROUPED
+e     = (V_b - tau^2) / tau^2                      relative error vs the SETPOINT
+
+push_i = [ (y - F_i) - eta * e * (F_i - F_bar) ] / s^2 * g_i
+           \________/   \_____________________/
+            centring          dispersion
+```
+
+`tau` is **the knob** (requested spread); `eta` is the gain. In the sweep `tau = tau_mult * s` with
+`s = f_A.y_std`, so `tau_mult` reads as "fraction of the natural spread".
+
+### Why that dispersion term is the gradient of the grouping
+
+```
+dV_b/dF_i = 2/(B-1) * (F_i - F_bar)        the F_bar dependence cancels, since sum_j (F_j - F_bar) = 0
+dV_b/dm_i = 2/(B-1) * (F_i - F_bar) * g_i  chain rule
+```
+
+Push each molecule along **its own** property gradient, proportional to its signed deviation from the
+batch mean. The `2/(B-1)` is absorbed into `eta` so the gain does not depend on batch size.
+
+### Signs — the whole mechanism
+
+```
+V_b > tau^2  ->  e > 0  ->  high-F molecules pushed DOWN, low-F UP  ->  TIGHTEN
+V_b = tau^2  ->  e = 0  ->  term vanishes, reduces to plug exactly
+V_b < tau^2  ->  e < 0  ->  signs reverse                           ->  WIDEN
+```
+
+**No clamp.** The existing `btvg` arm clamps its coefficient at `<= 0` (guidance.py:1471) so it can
+only ever tighten. That clamp is forced: `btvg` servos the *per-sample* posterior variance
+`V_F = g' Sigma g` with `Sigma = k*J`, `k = (1-t)^2/t -> 0`, so `V_F < tau^2` becomes true on **every**
+trajectory late in `t` and the widening branch fires unconditionally (measured runaway coefficients
++5.3, +110.8, +78.6). `V_b` does not vanish, so the fixed point is stable and the clamp comes off.
+**That is what buys the widening direction.**
+
+**Cost: zero extra NFE.** Both terms are a scalar times `g_i`, so they share the one backward pass
+`plug` already performs. Cost dict is byte-identical to `plug`.
+
+---
+
+## 3. THE REDUCTION — read this before claiming novelty
+
+`num_i` is **affine in `F_i`**, so it factors exactly:
+
+```
+(y - F_i) - eta*e*(F_i - F_bar)  =  (1 + eta*e) * ( y_eff - F_i )
+                                      \_________/
+                                         w_eff        y_eff = (y + eta*e*F_bar)/(1 + eta*e)
+```
+
+Verified numerically to **1e-14**. Both `w_eff` and `y_eff` are single numbers shared by the batch.
+
+**So BDG adds no new direction.** At any instant it is `plug` at a rescaled weight aiming at a shifted
+target — a *batch-feedback-adaptive guidance weight*, not a variance controller. **Do not call it
+variance control in the paper.** State this reduction yourself in §3.5; a reviewer will find it.
+
+This generalises: **any guidance whose per-sample coefficient is affine in `F_i` is `plug` reweighted.**
+That covers BDG, the "two-gain" idea, `spbc`/MGD's mean-only corrector, and `btvg`'s mean term. To get
+a genuinely new *direction* you need a nonlinear function of `F_i`, or a direction other than `g_i`.
+
+**What does NOT reduce: the feedback.** Freezing `w_eff` at its time-average and running plain `plug`
+at that constant weight **fails to reproduce BDG** — mu widened 2.53x instead of 1.17x and
+`mol_stability` collapsed from 0.377 to 0.252. The loop self-limits: as `V_b` grows, `e` falls, and the
+weight pulls itself back. A fixed schedule cannot do that. Cells: `results/bdg/*__plug__*weff*.json`.
+
+---
+
+## 4. Code inventory
+
+Pre-change copies are saved as `*.bak_bdg`; diff against those to review.
+
+| file | change | lines |
+|---|---|---|
+| `proj1/src/guidance.py` | `"bdg"` in `KNOWN_MODES`; kwargs `bdg_eta`/`bdg_tau`/`bdg_onesided` on `guidance_field`; the dispersion block in the shared plug/SMG tail; 6 diagnostics | +65 / −2 |
+| `proj1/src/sampling.py` | 3 kwargs on `_Base.__init__`, stored, forwarded in `_guide`; **6 keys added to `DIAG_KEYS`** | +16 / −3 |
+| `proj1/scripts/guidance_sweep.py` | `arm_kwargs` bdg branch (variant `e<eta>t<tau_mult>[o]`); `bdg_tau` resolved in `run_cell` once `s` is known; `plan_bdg_cells`; `bdg` stage; `--only-variant` / `--only-arm`; constants `BDG_TAU_MULT`, `BDG_ETA`, `BDG_W`, `BDG_FIXED_POINT`, `BDG_WEFF` | +120 / −1 |
+| `proj1/tests/test_bdg.py` | 28 exact gates | new, 161 |
+| `proj1/scripts/bdg_table.py` | results → §4.4 table, with two automatic gates | new, 113 |
+| `proj1/cluster/bdg_cpu.slurm` | main 45-cell array | new, 81 |
+| `proj1/cluster/bdg_hold.slurm` | per-property fixed-point cells | new, 43 |
+| `proj1/cluster/bdg_vf.slurm` | `btvg_var` (V_F contrast), 8 cores / batch 128 after OOM | new, 45 |
+| `proj1/cluster/bdg_weff.slurm` | the reduction control (plug at negative w) | new, 34 |
+| `proj1/cluster/bdg_seed2.slurm` | seed-2 replication, 19 cells | new, 47 |
+
+`proj1/cluster/bdg.slurm` is the **abandoned GPU version** — kept for reference only; the GPU queue was
+not the bottleneck but CPU was faster. Do not run it.
+
+**`DIAG_KEYS` is load-bearing.** `_accumulate_diag` (sampling.py:172) only accumulates keys listed
+there. Without the six additions every cell lands with the controller state silently absent — the same
+gap that made `osc`'s mechanism unfalsifiable. This bug was present and fixed before any cell was
+written.
+
+**Clean up before shipping:** `*.bak_bdg` (3 files) and `proj1/scripts/guidance_sweep.py.bak_0154`
+(from an earlier session, unrelated). Delete or gitignore; do not leave a teammate guessing which is
+authoritative.
+
+---
+
+## 5. Reproducing
+
+```bash
+export SLURM_CONF=/cm/shared/apps/slurm/etc/slurm/slurm.conf
+cd /vast/projects/pranam/lab/boboli/cis6270-project1-group2
+PY=/vast/projects/pranam/lab/boboli/diffusion_qm9_training/.venv/bin/python
+
+# 1. gates (fast, no cluster). Expect "all BDG gates pass".
+$PY proj1/tests/test_bdg.py
+# regression: BDG must not have broken any existing arm
+$PY proj1/tests/test_v2_arms.py; $PY proj1/tests/test_btvg2.py; $PY proj1/tests/test_chem_guard.py
+
+# 2. plan check, no compute
+$PY proj1/scripts/guidance_sweep.py --stage bdg --props mu,alpha,gap \
+    --fm weights/fm_ema.pt --dry-run
+
+# 3. the runs (CPU arrays, one cell per task -- tensors are too small for
+#    torch intra-op parallelism, so parallelism must be ACROSS cells)
+sbatch --array=0-44 proj1/cluster/bdg_cpu.slurm      # 45 cells, seed 20260921
+sbatch --array=0-5  proj1/cluster/bdg_hold.slurm     # fixed-point cells
+sbatch --array=0-5  proj1/cluster/bdg_vf.slurm       # V_F contrast
+sbatch --array=0-3  proj1/cluster/bdg_weff.slurm     # reduction control
+sbatch --array=0-18 proj1/cluster/bdg_seed2.slurm    # seed 20260922
+
+# 4. the table
+$PY proj1/scripts/bdg_table.py results/bdg
+$PY proj1/scripts/bdg_table.py results/bdg_seed2
+```
+
+**Cluster constraints that actually bite:** `SLURM_CONF` must be exported or you get DNS SRV errors.
+`genoa-std-mem` gives 5632 MB/CPU implicitly — do not pass `--mem`. 4 cores per task is right for BDG;
+`btvg_var` needs **8 cores and batch 128** because its HVP OOMs at batch 512.
+
+**Protocol facts you must not break:**
+
+- `weights/fm_last.pt`, which produced **every** cell in `results/sweep*`, is **not in this tree**
+  (it lives under another account, permission denied). The only generator here is `weights/fm_ema.pt`.
+  **No BDG number may be compared to `results/sweep`.** That is why `unguided` and `plug` controls are
+  re-run inside every BDG job, and why output goes to `results/bdg/`, not `results/sweep/`.
+- BDG runs `--n 512 --batch 512` (one batch) on purpose: **for BDG the batch IS the estimator.** The
+  usual 128-in-512 would run four independent controllers.
+- `btvg_var` runs at batch 128. This is sound *only* because `V_F` is per-sample and cannot depend on
+  batch size. State this asymmetry in the paper rather than hiding it.
+
+Cost: ~40–70 min wall per array (all tasks run concurrently), ~4 core-hours total per seed.
+
+---
+
+## 6. Results
+
+Two seeds: `20260921` (`results/bdg/`, 55 cells) and `20260922` (`results/bdg_seed2/`, 19 cells).
+`n=512`, 100 steps, `t_min_guide=0.5`, CPU, per-molecule sidecars written. Floor FR3a = 0.362109375.
+
+### 6.1 The knob works — `sd/unguided`, seed1 / seed2
+
+| property | e4t0.5 (tight) | e4t1 | e4t1.21 | e4t1.5 (wide) |
+|---|---|---|---|---|
+| mu | 0.739 / 0.730 | 0.951 / 0.931 | 1.016 / 1.065 | **1.168 / 1.094** |
+| alpha | 0.681 / 0.654 | 0.905 / 0.884 | — | **1.034 / 1.042** |
+| gap | 0.787 / 0.742 | 0.984 / 0.964 | — | **1.096 / 1.117** |
+
+Monotone on **6/6 curves, both seeds**. Widening replicates on all three properties; mu and alpha
+clear the floor on both seeds, gap fails it on seed 2 (but so does its *control* — gap chemistry is
+marginal on that seed generally). For scale: a prior scan of 1,766 existing cells found the largest
+reproducible floor-clearing widening anywhere was **1.010x**, not seed-reproducible.
+
+### 6.2 The failure — `in_band` does not improve inside the floor
+
+The bind, in two adjacent rows of the same property:
+
+```
+gap  e4t0.5   sd 0.787   in_band 0.1523  <- best score anywhere   mol_stab 0.3477  FAILS floor
+gap  e4t1     sd 0.984   in_band 0.1230                           mol_stab 0.3867  passes
+```
+
+`plug w=4` shows the same thing: best raw `in_band` on all three (0.1309 / 0.0684 / 0.1602) and fails
+the floor on all three (0.2930 / 0.3438 / 0.2812). Every `e4t0.5` cell fails the floor on alpha and
+gap. Widening lowers `in_band` every time, as predicted.
+
+### 6.3 `V_b` vs `V_F` — which batch statistic matters
+
+| arm | servos | spread range over its sweep | floor |
+|---|---|---|---|
+| `bdg` | `V_b` (across-batch, survives) | **31–43%** | mostly PASS |
+| `btvg_var` | `V_F` (per-sample, vanishes) | **0.4–8.6%** | **5 of 6 FAIL** |
+
+This is the scientific core, and both arms were run on the *same* checkpoint, seed, device and window
+so the comparison is valid.
+
+---
+
+## 7. What is verified
+
+| check | evidence |
+|---|---|
+| field matches the spec | brute-force autograd, **2.8e-14**, non-diagonal coupled toy |
+| equivariance | 28 checks (global + per-sample rotations, reflection, translation, atom and batch permutation, padding inertness), max err **8.7e-19** |
+| `eta=0` ≡ `plug` | bit-identical at field level AND cell level, all 3 properties |
+| denominator | `den == s^2` exactly; no SMG branch fires |
+| cost | dict byte-identical to `plug` |
+| one-sided ablation | `e4t1.5o` reproduces `plug` exactly — clamped, asked to widen, does **nothing** |
+| reduction | `w_eff` factorisation verified to 1e-14; open-loop control does **not** reproduce it |
+
+---
+
+## 8. Novelty — the honest position
+
+**Not new:** batch-coupled guidance (Particle Guidance, Corso et al. ICLR 2024 — but *repulsive*, in
+sample space, no setpoint); moment correction (MGD, arXiv 2602.17211); spread targeting through a
+batch distribution (Variance-Tilted Diffusion, arXiv 2606.22239 — but *monotone*, can only widen, on a
+fixed linear feature); divergence-to-a-reference matching (MMD Guidance, arXiv 2601.08379); adaptive
+guidance scales (autoguidance, CFG++, guidance intervals); and **the one-sided version of this exact
+controller**, specified in this repo's own `Three_New_Guidance_Ideas_Variance_and_Switching.md` §5.2 as
+`b_V = -eta_V (V - tau^2)_+`, never implemented, and abandoned in its own revision.
+
+**What is ours:** removing the positive-part restriction so one controller both narrows *and* widens;
+the stability argument that licenses removing it (the clamp is only necessary for the vanishing
+per-sample `V_F`, not for `V_b`); the setpoint-relative scale-free error `e`; and the demonstration
+that the resulting loop does not reduce to any fixed weight schedule.
+
+**Do not claim** to be first to control variance, and do not present this as a new *direction* —
+the reduction in §3 forbids it.
+
+Two independent checks rated this `yes / yes / marginal` with ~0.85 confidence of clearing a
+"slightly novel" bar for a course project, ~0.1 for a workshop paper.
+
+---
+
+## 9. Open items, ranked by fragility
+
+1. **`eta=1` was only run on seed 1.** The cells that beat `plug` *while clearing the floor* are all
+   `eta=1` (alpha 0.0645 vs 0.0449; gap 0.1348 vs 0.1133), and they are maxima over ~13 cells per
+   property — the grid-search artifact that produced two false results earlier in this project.
+   **Cheapest fix: 6 cells, ~1 h.** This is the highest-value remaining run.
+2. **`plug` at negative `w` beats BDG on alpha** (1.153x at `mol_stab` 0.397 vs BDG's 1.034 / 0.373).
+   The simpler thing wins there. Report it; do not bury it. Negative guidance weight as a deliberate
+   widening mechanism may be a cleaner claim than BDG itself.
+3. **`bdg_dev` and `bdg_disp` are structurally uninformative** — both are mean-zero over the batch by
+   construction and `_accumulate_diag` takes a batch mean, so they record ~1e-7 in every cell. Persist
+   the batch RMS instead.
+4. **`bdg_e` is recorded post-clamp**, so the one-sided cells report `e = +0.000` by construction and
+   cannot show how deep the widening branch would have gone. Persist the raw `e` too.
+5. **`bdg_table.py:34`'s `se_prop`** assumes independent samples, which is wrong for BDG cells (all 512
+   are coupled through `F_bar` and `V_b`). The printed z-scores are understated.
+6. **`BDG_FIXED_POINT` is wrong for mu and alpha.** It was estimated from cells whose own widening
+   inflated `V_b`. Measured: mu ≈ 0.574–0.678, alpha ≈ 0.84–0.87, gap ≈ 0.673. The fixed point is also
+   `eta`-dependent, contradicting the planner comment.
+
+---
+
+## 10. Mapping to the paper
+
+- **§3.5 (0.625 pt)** — problem (coverage is σ-governed), mechanism (§2), the reduction (§3, state it
+  yourself), controls named.
+- **§4.4 (0.675 pt, largest Results item)** — five ablations exist: `eta=0` base (bit-identical),
+  one-sided vs two-sided, the τ ladder, `V_b` vs `V_F`, and the `w_eff` reduction control.
+- **§4.3** — guidance works; the rubric explicitly rewards investigating a *non*-improvement.
+- **§4.7** — two failure modes, both measured: the chemistry price of contraction, and the geometric
+  impossibility of widening helping coverage.
+- **§3.6 / §4.6 (Modality 2)** — `V_b` is the batch variance of a scalar and carries no geometry, so
+  only `f_A` and the pullback change. **Verify this claim before relying on it** — it has not been
+  tested on the simplex.

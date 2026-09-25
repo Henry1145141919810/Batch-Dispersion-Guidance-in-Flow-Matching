@@ -85,12 +85,17 @@ the project's untested value sits.**
 | **band** (Component D) | **OURS** | `band` | [COMPONENTS_ABCD_MATH_AND_PROOFS §3.6](COMPONENTS_ABCD_MATH_AND_PROOFS.md), [D_WHY_INNOVATIVE](D_WHY_INNOVATIVE.md) | ball∩slab QP: largest diversifying edit inside the tolerance band |
 | **RCH** (Haimo v1) | **PRIOR, twice published** — Residual ∇-DB (Liu, ICLR 2025 eq. 15); VGG-Flow (NeurIPS 2025 eq. 16) | `rch` | [INNOVATION_IDEAS_INDEX](INNOVATION_IDEAS_INDEX.md) | a **deflation test** for SMG: if a ridge lookup reproduces `c`, SMG's per-state JVP/HVP is not earning its cost. *Run, never claim* |
 | **κ₃ skew probe** | **OURS** (the *use* is ours; the identity is standard) | `kappa3_skew` + `--kappa3` | TOP6 §1 (rank **#1**) | measures whether the Gaussian closure every SMG arm assumes is valid. **The programme's stated go/no-go** |
-
 > **BTVG's mean half is exactly `plug`.** After the `(τ/s)²` strength
 > normalisation, `btvg_mean`'s coefficient is `w(y−f)/s²`, which is `plug` at
 > strength `w` — verified to 1.4e-17. This is not a bug; it means **BTVG's
 > entire novelty lives in the variance term.** Say that in the paper rather
 > than presenting `btvg_mean` as an independent arm.
+
+### 2b. Measured outside `main`, reviewed
+
+| method | class | mode | where it lives | proof / review | what it targets |
+|---|---|---|---|---|---|
+| **BDG** (batch-dispersion) | **OURS**, incremental — *reviewed 25 Sep* | `bdg` — **not on `main`** | author's code and cells in another member's Betty tree; independent port on branch `worktree-wf_bc7c0f18-844-2`, 64 cells in `results/bdg_port/` | [BDG_HANDOFF](BDG_HANDOFF.md) (author), **[BDG_REVIEW](BDG_REVIEW.md) (read first)** | **spread.** Plug with the centring gain fixed and only the deviation gain `w_eff = 1+ηe` servoed on the batch variance `V_b` of `f_A`. The law's equilibrium is `V* = τ²(1−1/η)`, not τ². It moves spread monotonically but does not raise in-band: spread governs coverage only at q50, and at the q90 headline the whole spread lever is ≤ +0.007. **Secondary result, not a headline** |
 
 ---
 

@@ -41,6 +41,13 @@ audit/fa_fb_search/*
 audit/fa_fb_search/TFG/**/logs.txt
 audit/fa_fb_search/TFG/*.html
 
+# The BDG review's evidence (25 Sep 2026): every math check, data check,
+# defence script and the full agent record that docs/methods/BDG_REVIEW.md
+# cites as its provenance. ~2.4 MB of scripts and JSON. Tracked so that the
+# review's numbers can be re-run from a clone, not only from the machine
+# that produced them.
+!audit/bdg_review/
+
 # ---------------------------------------------------------------- scratch
 tmp/
 scratch_schnet/

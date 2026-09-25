@@ -1,0 +1,104 @@
+A. unguided cells on fm md5 a190ac83 (transfer/EDMsecond excluded)
+   64 cells in 12 (seed,n,batch,devtype,mask,steps,solver) groups
+   (20260921, 512, 128, 'cuda', 'dist', 100, 'euler'): 1 cells, distinct mol_stab values [0.384765625]  e.g. results\dist_checks\n512_unguided\mu__unguided__dist__w1__tmin0.5__tgt.json
+   (20260921, 512, 128, 'cuda', 'fixed', 100, 'euler'): 33 cells, distinct mol_stab values [0.40234375]  e.g. results\qbench\alpha__unguided__q05__w1__tmin0.5__qb.json
+   (20260921, 64, 64, 'cuda', 'dist', 100, 'euler'): 1 cells, distinct mol_stab values [0.453125]  e.g. results\dist_checks\n64_smoke\mu__unguided__dist__w1__tmin0.5__tgt.json
+   (20260922, 512, 128, 'cuda', 'fixed', 100, 'euler'): 6 cells, distinct mol_stab values [0.369140625]  e.g. results\sweep_v2_seed2\alpha__unguided__q50__w1__tmin0.5__v2ref.json
+   (20261001, 2048, 128, 'cuda', 'dist', 100, 'euler'): 3 cells, distinct mol_stab values [0.3896484375]  e.g. results\pilot_chem\seed20261001_n2048\alpha__unguided__dist__w1__tmin0.5__tgt.json
+   (20261001, 256, 128, 'cuda', 'fixed', 100, 'euler'): 2 cells, distinct mol_stab values [0.4140625]  e.g. results\pilot_clip\clip1\mu__unguided__q90__w1__tmin0.5__tgt.json
+   (20261001, 5000, 128, 'cuda', 'dist', 100, 'euler'): 3 cells, distinct mol_stab values [0.3944]  e.g. results\full\n5000\seed20261001\alpha__unguided__dist__w1__tmin0.5__full.json
+   (20261001, 5000, 128, 'cuda', 'fixed', 100, 'euler'): 3 cells, distinct mol_stab values [0.3906]  e.g. results\full\v2\n5000\seed20261001\alpha__unguided__q90__w1__tmin0.5__full.json
+   (20261002, 5000, 128, 'cuda', 'dist', 100, 'euler'): 3 cells, distinct mol_stab values [0.408]  e.g. results\full\n5000\seed20261002\alpha__unguided__dist__w1__tmin0.5__full.json
+   (20261002, 5000, 128, 'cuda', 'fixed', 100, 'euler'): 3 cells, distinct mol_stab values [0.4038]  e.g. results\full\v2\n5000\seed20261002\alpha__unguided__q90__w1__tmin0.5__full.json
+   (20261003, 5000, 128, 'cuda', 'dist', 100, 'euler'): 3 cells, distinct mol_stab values [0.4022]  e.g. results\full\n5000\seed20261003\alpha__unguided__dist__w1__tmin0.5__full.json
+   (20261003, 5000, 128, 'cuda', 'fixed', 100, 'euler'): 3 cells, distinct mol_stab values [0.396]  e.g. results\full\v2\n5000\seed20261003\alpha__unguided__q90__w1__tmin0.5__full.json
+
+   pooled v2 fixed-target n=5000 x3: p = 0.39680 +/- 0.00399 (N=15000); floor 0.9p = 0.35712
+   pooled over every distinct draw (12 draws): p = 0.39818 +/- 0.00266 (N=33904); floor = 0.35836
+   heterogeneity across draws: chi2 = 8.53 on 11 df
+
+   load-bearing row: gap e4t0.5 mol_stab 0.3477 -> 178/512 = 0.34766
+   vs borrowed (0.9 x results/sweep seed-1 B200/128 screen): floor 0.36211  margin -0.01445 = -0.69 se(G)  -> FAIL
+   vs project pooled convention (0.9 x v2 3x5000): floor 0.35712  margin -0.00946 = -0.45 se(G)  -> FAIL
+   vs pooled over every distinct draw: floor 0.35836  margin -0.01071 = -0.51 se(G)  -> FAIL
+   vs objection's seed-2 floor (0.9 x sweep_v2_seed2 B200/128): floor 0.33223  margin +0.01543 = +0.73 se(G)  -> PASS
+
+B. per-molecule corr(mol_stable unguided, mol_stable guided) on the SAME noise (v2 sidecars)
+   seed20261001 mu    lgd_mc@w4      rho +0.219  same-verdict 0.636  unguided 0.3906 guided 0.3420
+   seed20261001 mu    plug@w0.05     rho +0.831  same-verdict 0.919  unguided 0.3906 guided 0.3908
+   seed20261001 mu    tfg@w0.05      rho +0.840  same-verdict 0.924  unguided 0.3906 guided 0.3846
+   seed20261001 mu    tmpd@w0.25     rho +0.807  same-verdict 0.908  unguided 0.3906 guided 0.3846
+   seed20261001 alpha lgd_mc@w2      rho +0.419  same-verdict 0.726  unguided 0.3906 guided 0.3742
+   seed20261001 alpha plug@w0.5      rho +0.458  same-verdict 0.745  unguided 0.3906 guided 0.3668
+   seed20261001 alpha tfg@w0.05      rho +0.631  same-verdict 0.826  unguided 0.3906 guided 0.3646
+   seed20261001 alpha tmpd@w1        rho +0.450  same-verdict 0.742  unguided 0.3906 guided 0.3562
+   seed20261001 gap   lgd_mc@w4      rho +0.221  same-verdict 0.635  unguided 0.3906 guided 0.3538
+   seed20261001 gap   plug@w0.25     rho +0.622  same-verdict 0.822  unguided 0.3906 guided 0.3686
+   seed20261001 gap   tfg@w0.01      rho +0.779  same-verdict 0.895  unguided 0.3906 guided 0.3808
+   seed20261001 gap   tmpd@w1        rho +0.588  same-verdict 0.806  unguided 0.3906 guided 0.3532
+   seed20261002 mu    lgd_mc@w4      rho +0.232  same-verdict 0.636  unguided 0.4038 guided 0.3586
+   seed20261002 mu    plug@w0.05     rho +0.834  same-verdict 0.920  unguided 0.4038 guided 0.3954
+   seed20261002 mu    tfg@w0.05      rho +0.834  same-verdict 0.920  unguided 0.4038 guided 0.3946
+   seed20261002 mu    tmpd@w0.25     rho +0.808  same-verdict 0.908  unguided 0.4038 guided 0.3938
+   seed20261002 alpha lgd_mc@w2      rho +0.429  same-verdict 0.728  unguided 0.4038 guided 0.3720
+   seed20261002 alpha plug@w0.5      rho +0.429  same-verdict 0.728  unguided 0.4038 guided 0.3766
+   seed20261002 alpha tfg@w0.05      rho +0.611  same-verdict 0.814  unguided 0.4038 guided 0.3806
+   seed20261002 alpha tmpd@w1        rho +0.400  same-verdict 0.715  unguided 0.4038 guided 0.3716
+   seed20261002 gap   lgd_mc@w4      rho +0.205  same-verdict 0.624  unguided 0.4038 guided 0.3514
+   seed20261002 gap   plug@w0.25     rho +0.583  same-verdict 0.801  unguided 0.4038 guided 0.3818
+   seed20261002 gap   tfg@w0.01      rho +0.759  same-verdict 0.884  unguided 0.4038 guided 0.3990
+   seed20261002 gap   tmpd@w1        rho +0.559  same-verdict 0.790  unguided 0.4038 guided 0.3744
+   seed20261003 mu    lgd_mc@w4      rho +0.212  same-verdict 0.630  unguided 0.3960 guided 0.3536
+   seed20261003 mu    plug@w0.05     rho +0.839  same-verdict 0.923  unguided 0.3960 guided 0.3862
+   seed20261003 mu    tfg@w0.05      rho +0.840  same-verdict 0.924  unguided 0.3960 guided 0.3808
+   seed20261003 mu    tmpd@w0.25     rho +0.808  same-verdict 0.909  unguided 0.3960 guided 0.3838
+   seed20261003 alpha lgd_mc@w2      rho +0.438  same-verdict 0.734  unguided 0.3960 guided 0.3710
+   seed20261003 alpha plug@w0.5      rho +0.442  same-verdict 0.735  unguided 0.3960 guided 0.3796
+   seed20261003 alpha tfg@w0.05      rho +0.597  same-verdict 0.808  unguided 0.3960 guided 0.3844
+   seed20261003 alpha tmpd@w1        rho +0.425  same-verdict 0.727  unguided 0.3960 guided 0.3780
+   seed20261003 gap   lgd_mc@w4      rho +0.236  same-verdict 0.642  unguided 0.3960 guided 0.3408
+   seed20261003 gap   plug@w0.25     rho +0.610  same-verdict 0.815  unguided 0.3960 guided 0.3742
+   seed20261003 gap   tfg@w0.01      rho +0.775  same-verdict 0.893  unguided 0.3960 guided 0.3836
+   seed20261003 gap   tmpd@w1        rho +0.576  same-verdict 0.799  unguided 0.3960 guided 0.3676
+   rho range +0.205 .. +0.840, median +0.588
+   rho +0.205: sd(verdict) own-control 0.0256 vs pooled fixed 0.0214
+   rho +0.588: sd(verdict) own-control 0.0184 vs pooled fixed 0.0214
+   rho +0.840: sd(verdict) own-control 0.0115 vs pooled fixed 0.0214
+   break-even rho (own-control as precise as pooled) = 0.447
+
+C. probabilities
+   row passes an own-control floor iff U <= 0.38628; P(U <= thr) with U~N(0.3968,0.0216) = 0.313
+   P(true mu_G >= 0.3621 | G observed, flat prior) = 0.246   [borrowed (0.9 x results/sweep seed-1 B200/128 screen)]
+   P(true mu_G >= 0.3571 | G observed, flat prior) = 0.326   [project pooled convention (0.9 x v2 3x5000)]
+   P(true mu_G >= 0.3584 | G observed, flat prior) = 0.305   [pooled over every distinct draw]
+   P(true mu_G >= 0.3322 | G observed, flat prior) = 0.768   [objection's seed-2 floor (0.9 x sweep_v2_seed2 B200/128)]
+
+D. if the row passed: in_band vs floor-clearing plug in the BDG tree (s9.1: 0.1133)
+   78/512 vs 58/512: diff +0.0391, z = 1.84, one-sided p = 0.033, Sidak over 13 cells p = 0.351
+   project bar: z >= 3 with Holm within property (FULL_RUN_V2_PROTOCOL V7/V8)
+
+   same-weights proxy frontier: results/sweep gap plug q50 tmin0.5 (B200/128, seeds 1 and 2)
+   sweep           w=0.01  in_band 0.1055  mol_stab 0.4141  seed 20260921  gap__plug__q50__w0.01__tmin0.5__cmp.json
+   sweep           w=0.01  in_band 0.1055  mol_stab 0.4141  seed 20260921  gap__plug__q50__w0.01__tmin0.5__v2ref.json
+   sweep           w=0.05  in_band 0.1035  mol_stab 0.4004  seed 20260921  gap__plug__q50__w0.05__tmin0.5__cmp.json
+   sweep           w=0.05  in_band 0.1035  mol_stab 0.4004  seed 20260921  gap__plug__q50__w0.05__tmin0.5__v2ref.json
+   sweep           w=0.25  in_band 0.1035  mol_stab 0.4082  seed 20260921  gap__plug__q50__w0.25__tmin0.5__cmp.json
+   sweep           w=0.25  in_band 0.1035  mol_stab 0.4082  seed 20260921  gap__plug__q50__w0.25__tmin0.5__v2ref.json
+   sweep           w=0.5   in_band 0.1035  mol_stab 0.3984  seed 20260921  gap__plug__q50__w0.5__tmin0.5__cmp.json
+   sweep           w=0.5   in_band 0.1035  mol_stab 0.3984  seed 20260921  gap__plug__q50__w0.5__tmin0.5__v2ref.json
+   sweep           w=1.0   in_band 0.1250  mol_stab 0.3594  seed 20260921  gap__plug__q50__w1__tmin0.5__cmp.json
+   sweep           w=1.0   in_band 0.1250  mol_stab 0.3594  seed 20260921  gap__plug__q50__w1__tmin0.5__v2ref.json
+   sweep           w=2.0   in_band 0.1465  mol_stab 0.3438  seed 20260921  gap__plug__q50__w2__tmin0.5__cmp.json
+   sweep           w=2.0   in_band 0.1465  mol_stab 0.3438  seed 20260921  gap__plug__q50__w2__tmin0.5__v2ref.json
+   sweep           w=4.0   in_band 0.1758  mol_stab 0.2734  seed 20260921  gap__plug__q50__w4__tmin0.5__cmp.json
+   sweep           w=4.0   in_band 0.1758  mol_stab 0.2734  seed 20260921  gap__plug__q50__w4__tmin0.5__v2ref.json
+   sweep           unguided in_band 0.1055  mol_stab 0.4023  gap__unguided__q50__w1__tmin0.5__cmp.json
+   sweep           unguided in_band 0.1055  mol_stab 0.4023  gap__unguided__q50__w1__tmin0.5__v2ref.json
+   sweep_v2_seed2  w=0.01  in_band 0.1191  mol_stab 0.3750  seed 20260922  gap__plug__q50__w0.01__tmin0.5__v2ref.json
+   sweep_v2_seed2  w=0.05  in_band 0.1074  mol_stab 0.3770  seed 20260922  gap__plug__q50__w0.05__tmin0.5__v2ref.json
+   sweep_v2_seed2  w=0.25  in_band 0.1113  mol_stab 0.3535  seed 20260922  gap__plug__q50__w0.25__tmin0.5__v2ref.json
+   sweep_v2_seed2  w=0.5   in_band 0.1230  mol_stab 0.3750  seed 20260922  gap__plug__q50__w0.5__tmin0.5__v2ref.json
+   sweep_v2_seed2  w=1.0   in_band 0.1074  mol_stab 0.3340  seed 20260922  gap__plug__q50__w1__tmin0.5__v2ref.json
+   sweep_v2_seed2  w=2.0   in_band 0.1367  mol_stab 0.2910  seed 20260922  gap__plug__q50__w2__tmin0.5__v2ref.json
+   sweep_v2_seed2  w=4.0   in_band 0.1465  mol_stab 0.2305  seed 20260922  gap__plug__q50__w4__tmin0.5__v2ref.json
+   sweep_v2_seed2  unguided in_band 0.1211  mol_stab 0.3691  gap__unguided__q50__w1__tmin0.5__v2ref.json
