@@ -60,6 +60,16 @@ Figures: `../results/figs/targets_{mu,alpha,gap}.png` — the QM9 distribution,
 the target, the +-delta band, and what the unguided generator actually
 produces.
 
+> **Post-registration note (24 Sep, after the run; the table above is
+> unchanged).** delta above is the pre-registered one and every headline uses
+> it. At Henry's request a post-hoc sensitivity analysis kept k = 2 but took
+> f_B's MAE only over val molecules whose true property lies near the target
+> (train_a q85–q95): delta = 0.16992 / 0.46754 / 0.00739, a change of
+> +1.2 / −2.9 / −2.8 %. It does not replace this table. Rescored tables:
+> [FULL_RUN_V2_RESULTS_LOCAL_DELTA.md](../results/FULL_RUN_V2_RESULTS_LOCAL_DELTA.md);
+> method, window robustness and limits:
+> [status doc §6 and §10d](../status/SCOPE_FM_GUIDANCE_STATUS.md).
+
 **Why the 90th percentile, and not something else.**
 
 1. **One rule, applied blind to all three properties.** No per-property

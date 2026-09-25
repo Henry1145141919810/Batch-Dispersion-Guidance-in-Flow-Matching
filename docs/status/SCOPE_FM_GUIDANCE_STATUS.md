@@ -229,6 +229,31 @@ n = 512 samples.
 | `f_B_mean` | mean predicted property | with the target gives the **bias** |
 | `guide_eval_gap_mean/max` | `|f_A(x) − f_B(x)|` | **reward-hacking detector.** If guidance exploits `f_A`, this grows with strength. Measured flat ⇒ no hacking |
 
+### How δ is set (the in-band half-width)
+
+A molecule is in band when |f_B(x) − y*| ≤ δ, so the band is 2δ wide. Every
+cell records `delta`, `mae_B` and `k_delta`.
+
+| δ | definition | values (mu D / alpha Bohr³ / gap Ha) | used for |
+|---|---|---|---|
+| **pre-registered** | k × f_B's MAE over **all** 17,748 `val` molecules, k = 2 (`evaluation.choose_delta`; v2 protocol §2) | 0.16799 / 0.48135 / 0.00760 | **every reported result** |
+| local (post-hoc, v2 only) | 2 × f_B's MAE over `val` molecules whose **true** property lies in [Q(0.85), Q(0.95)] of train_a, i.e. near the q90 target ([local_fb_mae.py](../../proj1/scripts/local_fb_mae.py) → `results/local_fb_mae.json`) | 0.16992 / 0.46754 / 0.00739 | the sensitivity analysis only: [FULL_RUN_V2_RESULTS_LOCAL_DELTA.md](../results/FULL_RUN_V2_RESULTS_LOCAL_DELTA.md), §10d |
+
+- **Why k = 2.** Among `val` molecules truly near the target, 88–90 % have f_B
+  within 2 × MAE of their true value — the in-band rate a perfect generator
+  would score — against 62–68 % within 1 × MAE (measured at the local window).
+  One MAE would miss a third of genuine hits.
+- **Why true-property selection for the local δ.** δ must let a molecule that
+  genuinely hits the target be counted, which is f_B's error given the true
+  value. Selecting by f_B's own prediction answers a different question (how
+  far a predicted hit truly is) and is reported only as a check.
+- **Limits.** Both δ are f_B's error on *real* molecules; in-band scores
+  *generated* ones, where f_B's error is unmeasured. `val` is also the set f_B's
+  checkpoint was selected on, so both are slightly optimistic.
+- **δ also enters guidance** for the BTVG family and SHG schedules
+  (τ = δ/1.96, `guidance_sweep.arm_kwargs`). None of the five v2 arms uses it,
+  which is why v2 can be rescored at another δ without re-sampling.
+
 ### Chemistry metrics
 
 | metric | definition |
@@ -1633,11 +1658,14 @@ V4 mandates every property metric in decoded (argmax one-hot) form "because
 arms that push the continuous type features are otherwise flattered". The
 first pass omitted it entirely — the one V-rule that was wholly unexecuted.
 
-| comparison | z continuous | z **decoded** |
-|---|---|---|
-| mu `tfg` vs unguided | +3.56 | **+2.67** |
-| gap `plug` vs unguided | +3.30 | **+2.94** |
-| alpha `tmpd` vs unguided | +3.90 | **+3.57** |
+| comparison | z continuous | z **decoded** | z decoded, cluster-robust |
+|---|---|---|---|
+| mu `tfg` vs unguided | +3.56 | **+2.67** | +2.65 |
+| gap `plug` vs unguided | +3.30 | **+2.94** | +2.75 |
+| alpha `tmpd` vs unguided | +3.90 | **+3.57** | +3.37 |
+
+(Cluster-robust: the three seeds reuse the same 5,000 molecules, so rows are
+clustered by molecule; the correction lowers each z by up to 0.2.)
 
 Only alpha/`tmpd` survives. The headline therefore rested on the metric V4
 pre-registered as the flattering one.

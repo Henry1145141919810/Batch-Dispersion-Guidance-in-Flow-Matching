@@ -499,10 +499,13 @@ def main():
     L.append("| sampler | %d-step %s, guidance window t >= %g, velocity clip %g, batch %d |"
              % (any_cell["steps"], any_cell["solver"], any_cell["t_min_guide"],
                 any_cell["clip"], any_cell["batch"]))
-    L.append("| in-band delta (half-width) | %s: mu %.5f, alpha %.5f, gap %.5f |"
+    L.append("| in-band delta (half-width) | %s: mu %.5f, alpha %.5f, gap %.5f%s |"
              % ("2 x f_B MAE on val molecules near q90 (post-hoc)" if djs else
                 "2 x f_B val MAE, all val molecules (pre-registered)",
-                DELTA["mu"], DELTA["alpha"], DELTA["gap"]))
+                DELTA["mu"], DELTA["alpha"], DELTA["gap"],
+                "" if djs else ". Post-hoc rescoring at 2 x f_B's MAE near q90: "
+                "[FULL_RUN_V2_RESULTS_LOCAL_DELTA.md](FULL_RUN_V2_RESULTS_LOCAL_DELTA.md); "
+                "how delta is set: status doc section 6"))
     L.append("| device | %s, torch %s |" % (prov.get("device"), prov.get("torch")))
     L.append("| non-finite samples | %d across all cells |"
              % sum(P[(p, a)]["nonfinite"] for p in PROPS for a in ARMS))

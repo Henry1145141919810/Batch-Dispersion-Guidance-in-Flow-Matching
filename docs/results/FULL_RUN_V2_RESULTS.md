@@ -16,7 +16,7 @@ Protocol: [FULL_RUN_V2_PROTOCOL.md](../protocol/FULL_RUN_V2_PROTOCOL.md) (rules 
 | frozen strengths | `results/full/v2/n5000/frozen_v2.json` md5 `12228b9a` |
 | screen the strengths came from | stage `compare`, target `q90`, n = 512, seed 20260921 |
 | sampler | 100-step euler, guidance window t >= 0.5, velocity clip 1, batch 128 |
-| in-band delta (half-width) | 2 x f_B val MAE, all val molecules (pre-registered): mu 0.16799, alpha 0.48135, gap 0.00760 |
+| in-band delta (half-width) | 2 x f_B val MAE, all val molecules (pre-registered): mu 0.16799, alpha 0.48135, gap 0.00760. Post-hoc rescoring at 2 x f_B's MAE near q90: [FULL_RUN_V2_RESULTS_LOCAL_DELTA.md](FULL_RUN_V2_RESULTS_LOCAL_DELTA.md); how delta is set: status doc section 6 |
 | device | NVIDIA B200 MIG 2g.45gb, torch 2.11.0+cu128 |
 | non-finite samples | 0 across all cells |
 
