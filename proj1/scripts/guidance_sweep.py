@@ -530,6 +530,118 @@ def plan_compare_cells(props, arms=None):
     return cells
 
 
+# ---------------------------------------------------------------------------
+# stage `tune`: the JOINT (strength x start-time) screen, 25 Sep
+# ---------------------------------------------------------------------------
+# Every earlier stage swept strength at ONE window and window at ONE strength,
+# so it could never see an interaction between them -- and the project's
+# best-supported claim is that the window matters more than the method. This
+# stage sweeps the two together, on one fixed target (q90), and is the input to
+# freeze_tune.py, which picks TWO operating points per (property, arm): the
+# best in-band that clears the chemistry floor, and the best in-band with no
+# chemistry constraint at all.
+TUNE_ARMS = ["unguided", "plug", "tmpd", "lgd_mc", "tfg", "btvg", "btvg_var"]
+# 9 points, dense where every strength ever frozen has landed (0.01-4) and
+# running to 16. v2's rule V2a found lgd_mc still clearing the floor at the top
+# of a 7-point grid that stopped at 4 -- the grid, not chemistry, was capping
+# the strongest competitor -- and then measured that lgd_mc falls BELOW the
+# floor at w = 8. So 16 is comfortably past where the floor can still bind, and
+# an arm whose pick lands at 16 is reported as grid-limited rather than quietly
+# frozen at the edge. Trimmed from 10 points (a 32 was dropped) to fit the
+# 15-hour cluster budget; see TUNE_SWEEP_PLAN.md for the arithmetic.
+TUNE_STRENGTHS = [0.01, 0.05, 0.25, 0.5, 1.0, 2.0, 4.0, 8.0, 16.0]
+# The same three windows the v1 arms were screened on, so the two screens are
+# comparable. t_min_guide is the time guidance STARTS: 0.05 guides almost the
+# whole trajectory, 0.75 only the last quarter.
+TUNE_WINDOWS = [0.05, 0.5, 0.75]
+TUNE_TARGET = "q90"
+TUNE_VARIANT = "tune"
+
+
+def plan_tune_cells(props, arms=None, strengths=None, windows=None):
+    """The joint strength x window screen at one fixed target.
+
+    Ordered so that a partial run is still a usable experiment:
+      pass 1  unguided, once per property -- the chemistry floor's reference,
+              without which nothing can be frozen at all
+      pass 2  every arm's strength curve at V2_WIN, the window v2 used, so the
+              first complete slice reproduces the comparison we already know
+      pass 3  the remaining windows
+
+    `unguided` gets ONE cell per property, not one per (w, window): it applies
+    no guidance, so neither knob can change its output, and running it 30 times
+    per property would buy nothing but noise in the floor.
+    """
+    arms = list(TUNE_ARMS) if arms is None else list(arms)
+    strengths = TUNE_STRENGTHS if strengths is None else list(strengths)
+    windows = TUNE_WINDOWS if windows is None else list(windows)
+    seen, cells = set(), []
+
+    def add(prop, arm, w, win):
+        k = (prop, arm, TUNE_TARGET, w, win, TUNE_VARIANT)
+        if k not in seen:
+            seen.add(k)
+            cells.append(k)
+
+    for prop in props:                                   # pass 1
+        if "unguided" in arms:
+            add(prop, "unguided", DEFAULT_W, V2_WIN)
+    guided = [a for a in arms if a != "unguided"]
+    # V2_WIN first WHEN IT IS ASKED FOR. The cluster hands this function one
+    # window per array task, so a pass that ran V2_WIN unconditionally would
+    # make every non-0.5 task re-plan the whole 0.5 slice: 819 cell-runs for
+    # 489 unique cells, and the task's budget spent before it reached the
+    # window it was submitted to run. Gated by test_tune.py's
+    # plan_tune_single_window_* cases, which call this the way the cluster does.
+    ordered = ([V2_WIN] if V2_WIN in windows else []) + \
+              [w for w in windows if w != V2_WIN]
+    for win in ordered:
+        for prop in props:
+            for arm in guided:
+                for w in strengths:
+                    add(prop, arm, w, win)
+    return cells
+
+
+def plan_tuned_full_cells(props, frozen, arms=None):
+    """The full run at the operating points freeze_tune.py chose.
+
+    `frozen` is frozen_tune.json. Each (property, arm) contributes up to TWO
+    cells -- its floor-constrained pick and its unconstrained pick -- but the
+    two are DEDUPLICATED by (w, t_min): when an arm's best in-band already
+    clears the chemistry floor the two picks coincide, and the cell is sampled
+    once. frozen_tune.json records which file each set points at, so the
+    reporting never has to guess.
+
+    Cells are named by their parameters alone (variant `tuned`), never by which
+    set chose them, which is what makes that deduplication safe.
+    """
+    seen, cells = set(), []
+    want = set(frozen["picks"]) if arms is None else set(arms)
+    unknown = sorted(want - set(frozen["picks"]))
+    if unknown:
+        raise SystemExit("frozen_tune.json has no picks for arm(s): %s"
+                         % ", ".join(unknown))
+    # unguided FIRST. It is the chemistry floor's reference and the denominator
+    # of every z-test, and the per-task budget can cut a group short, so it
+    # must never be the cell that gets dropped. frozen_tune.json is written
+    # with sort_keys, which would otherwise put it last.
+    order = ([a for a in frozen["picks"] if a == "unguided" and a in want]
+             + [a for a in frozen["picks"] if a != "unguided" and a in want])
+    for prop in props:
+        for arm in order:
+            for which in ("floor", "open"):
+                pick = frozen["picks"][arm].get(prop, {}).get(which)
+                if not pick:
+                    continue
+                k = (prop, arm, frozen.get("target", TUNE_TARGET),
+                     float(pick["w"]), float(pick["t_min_guide"]), "tuned")
+                if k not in seen:
+                    seen.add(k)
+                    cells.append(k)
+    return cells
+
+
 def plan_target_cells(props, arms, targets, win=None, strengths=None):
     """One target-protocol grid: every arm x every strength, at one window.
 
@@ -639,11 +751,15 @@ def main():
                          "'dist' (per-molecule, the published protocol), or any "
                          "TARGETS key such as q50,q90")
     ap.add_argument("--stage", default="main",
-                    choices=["main", "v2", "all", "compare", "targets", "full"],
+                    choices=["main", "v2", "all", "compare", "targets", "full",
+                             "tune", "tuned_full"],
                     help="main = the v1 grid (default arms); v2 = the new arms "
                          "against re-run references; all = both, v1 first; "
                          "full = every compare-set arm once at its --frozen "
-                         "strength on the `dist` target")
+                         "strength on the `dist` target; tune = the joint "
+                         "strength x t_min_guide screen at q90; tuned_full = "
+                         "the full run at the two operating points "
+                         "freeze_tune.py chose (needs --frozen)")
     ap.add_argument("--frozen", default="",
                     help="--stage full only: the json check_fullrun_go.py "
                          "--json-out wrote (FR3's frozen strengths)")
@@ -670,7 +786,16 @@ def main():
     ap.add_argument("--only-w", default="",
                     help="comma list: keep only planned cells at these "
                          "strengths (a pilot filter; planning is unchanged)")
-    ap.add_argument("--strengths", default="",
+    ap.add_argument("--windows", default="",
+                    help="stage tune: comma-separated t_min_guide values, "
+                         "default TUNE_WINDOWS")
+    ap.add_argument("--delta-json", default="",
+                    help="take the in-band delta per property from this file "
+                         "(results/local_fb_mae.json) instead of "
+                         "k_delta x f_B's val MAE. It also sets BTVG's tau "
+                         "(= delta / 1.96), so it changes sampling, not only "
+                         "scoring -- see the note in main()")
+    ap.add_argument("--strengths", default="",   # stages `targets` and `tune`
                     help="--stage targets only: comma list replacing the "
                          "registered strength grid (default: STRENGTHS)")
     ap.add_argument("--dist-offset", type=int, default=0,
@@ -726,6 +851,8 @@ def main():
         arms = V1_MISSING + V2_ARMS + SHG_ARMS
     elif args.stage == "compare":
         arms = list(COMPARE_SET)
+    elif args.stage in ("tune", "tuned_full"):
+        arms = list(TUNE_ARMS)
     elif args.stage in ("targets", "full"):
         arms = list(COMPARE_SET)
     else:
@@ -749,6 +876,27 @@ def main():
         # --arms restricts the compare plan (an arm added later, e.g. tfg);
         # without it, the whole COMPARE_SET as before
         cells += plan_compare_cells(props, arms if args.arms else None)
+    if args.stage == "tune":
+        cells += plan_tune_cells(
+            props, arms if args.arms else None,
+            strengths=([float(x) for x in args.strengths.split(",") if x]
+                       if args.strengths else None),
+            windows=([float(x) for x in args.windows.split(",") if x]
+                     if args.windows else None))
+    if args.stage == "tuned_full":
+        if not args.frozen:
+            raise SystemExit("--stage tuned_full needs --frozen "
+                             "(frozen_tune.json from freeze_tune.py)")
+        ft = json.load(open(args.frozen))
+        if ft.get("schema") != "frozen_tune/1":
+            raise SystemExit("%s is not a frozen_tune file (schema %r)"
+                             % (args.frozen, ft.get("schema")))
+        missing = [p for p in props
+                   if any(p not in ft["picks"][a] for a in ft["picks"])]
+        if missing:
+            raise SystemExit("frozen_tune.json has no picks for %s"
+                             % ", ".join(missing))
+        cells += plan_tuned_full_cells(props, ft, arms if args.arms else None)
     if args.stage == "targets":
         cells += plan_target_cells(
             props, arms, [t for t in args.targets.split(",") if t],
@@ -810,6 +958,28 @@ def main():
             "cuda": torch.version.cuda,
             "device": (torch.cuda.get_device_name(0)
                        if dev == "cuda" and torch.cuda.is_available() else "cpu")}
+    if args.stage == "tuned_full" and args.frozen:
+        # same idea as below, for the tune chain: every tuned cell must be
+        # traceable to the freeze that chose its (w, t_min), and the freeze's
+        # delta must be the one this run is sampling under -- btvg's tau comes
+        # from it, so a mismatch would mean the cell was sampled at a strength
+        # the freeze never screened.
+        _ft = json.load(open(args.frozen))
+        for _p in props:
+            _fd = (_ft.get("delta") or {}).get(_p)
+            if _fd is not None and abs(_fd - deltas[_p][0]) > 1e-12:
+                raise SystemExit(
+                    "%s froze %s at delta %r, but this run is sampling at %r. "
+                    "btvg's tau is delta/1.96, so the frozen strengths were "
+                    "screened under a different guidance field."
+                    % (args.frozen, _p, _fd, deltas[_p][0]))
+        prov.update({"frozen_path": os.path.abspath(args.frozen),
+                     "frozen_md5": file_md5(args.frozen),
+                     "frozen_schema": _ft.get("schema"),
+                     "frozen_rule": _ft.get("rule"),
+                     "frozen_selection_metric": _ft.get("selection_metric"),
+                     "frozen_screen_n": _ft.get("n"),
+                     "frozen_screen_seed": _ft.get("seed")})
     if frozen is not None:
         # which screen the strengths came from travels with every cell, so a
         # full-run number can always be traced to the decision that set it
@@ -848,6 +1018,41 @@ def main():
               % (prop, float(torch.load(ga, map_location="cpu",
                                         weights_only=False)["val_mae"]),
                  mae_b, deltas[prop][0]))
+
+    # --delta-json overrides the tolerance for every property. This is NOT a
+    # scoring-only switch: delta sets BTVG's tau (arm_kwargs: tau = delta/1.96)
+    # and the `band` arm's width, so btvg/btvg_var/band cells SAMPLED under one
+    # delta are not comparable to cells sampled under another. Every cell
+    # records `delta`, `mae_B`, `k_delta` and `delta_source`, so a mixed tree
+    # is detectable after the fact; freeze_tune.py refuses one.
+    delta_src = "k_delta x f_B val MAE"
+    if args.delta_json:
+        dj = json.load(open(args.delta_json))
+        miss = [p for p in props if p not in dj.get("delta", {})]
+        if miss:
+            raise SystemExit("--delta-json %s has no delta for %s"
+                             % (args.delta_json, ", ".join(miss)))
+        for prop in props:
+            gm = dj.get("global_mae", {}).get(prop)
+            mae_b = deltas[prop][1]
+            if gm is None:
+                raise SystemExit(
+                    "--delta-json %s records no global_mae for %s. Without it "
+                    "there is no way to tell whether this delta was computed "
+                    "against the f_B this run uses, and a delta from another "
+                    "f_B would silently move the in-band bar (and btvg's tau)."
+                    % (args.delta_json, prop))
+            if abs(gm - mae_b) > 1e-6 * max(1.0, abs(gm)):
+                raise SystemExit(
+                    "--delta-json %s was computed against a different f_B for "
+                    "%s: its global val MAE %r is not this run's %r"
+                    % (args.delta_json, prop, gm, mae_b))
+            deltas[prop] = (float(dj["delta"][prop]), mae_b)
+        delta_src = dj.get("rule", os.path.basename(args.delta_json))
+        print("  delta overridden from %s:" % args.delta_json)
+        for prop in props:
+            print("    %-6s delta %.5f  (was %.5f)"
+                  % (prop, deltas[prop][0], choose_delta(deltas[prop][1], args.k_delta)))
 
     va = d["split"]["val"][: args.n]
     mask_v = d["mask"][va].to(dev)
@@ -1012,6 +1217,7 @@ def main():
                   "dist_offset": args.dist_offset,
                   "fm": os.path.basename(args.fm),
                   "clip": args.clip, "k_delta": args.k_delta,
+                  "delta_source": delta_src,
                   "sigma_mc": args.sigma_mc, "batch": args.batch})
         if arm == "tfg":
             # n_mc / sigma_mc above are lgd_mc's and tfg_mc's settings; tfg
@@ -1057,10 +1263,10 @@ def main():
             if per_mol is not None:
                 # the sidecar lands BEFORE the json: the json is the
                 # completion marker, so a cell is never "done" without it
-                ptmp = os.path.join(OUT, name + ".permol.tmp")
+                ptmp = os.path.join(OUT, "%s.permol.%d.tmp" % (name, os.getpid()))
                 torch.save(per_mol, ptmp)
                 os.replace(ptmp, os.path.join(OUT, name[:-5] + ".permol.pt"))
-            tmp = os.path.join(OUT, name + ".tmp")
+            tmp = os.path.join(OUT, "%s.%d.tmp" % (name, os.getpid()))
             with open(tmp, "w") as fh:
                 json.dump(r, fh)
             os.replace(tmp, os.path.join(OUT, name))
