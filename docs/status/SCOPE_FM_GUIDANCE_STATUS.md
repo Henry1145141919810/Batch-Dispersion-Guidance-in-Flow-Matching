@@ -6,7 +6,7 @@ restricted to **Modality 1 (QM9) with the flow-matching generator**. The
 diffusion generator and Modality 2 (DNA simplex) are explicitly out of scope of
 this document and are listed as not-started in §10.
 
-Status as of **2026-09-23**. Submission **29 Sep 08:30**, defence **30 Sep**.
+Status as of **2026-09-24**. Submission **29 Sep 08:30**, defence **30 Sep**.
 
 **Latest BTVG decision (23 Sep, after both chemistry guards):** the registered
 full run is negative against LGD-MC; BTVG2 has no demonstrated incremental
@@ -1552,6 +1552,148 @@ pass, and the 2 that clear the floor do so only under the one-seed floor.
    `t_min=0.05` and +4.5σ at 0.5, and the SMG family overtakes it. **"When you
    guide matters more than how" is the best-supported claim in the project** —
    it replicates across both windows, all three properties and both seeds.
+
+---
+
+## 10d. Full run v2 (24 Sep) — the fixed-target headline
+
+The pre-registered fixed-target run ([protocol](../protocol/FULL_RUN_V2_PROTOCOL.md),
+rules V1–V8) came back complete: **45 cells = 3 properties × 5 arms × 3 seeds
+at n = 5,000**, one generator, one sampler configuration, every cell at the
+strength `frozen_v2.json` picked, the three seeds verified distinct by `f_B`
+hash. Full tables:
+[FULL_RUN_V2_RESULTS.md](../results/FULL_RUN_V2_RESULTS.md), regenerate with
+
+```
+python proj1/scripts/full_run_v2_table.py --md-out docs/results/FULL_RUN_V2_RESULTS.md
+```
+
+**`btvg` and `btvg_var` are not in this run.** The protocol queues them as a
+later pass (§4), so nothing here is a verdict on our own method.
+
+> **Everything below holds at a chemistry budget of 0.9× unguided stability.**
+> §6 measured on the screen that the ranking changes at 0.7× and 0.5×; only
+> one budget was run. That table is reproduced in the results doc and must
+> travel with any sentence quoted from here.
+
+### The one claim this run supports without qualification
+
+**Guidance beats no guidance, and `tmpd` on alpha is the cleanest instance:**
+in_band 0.0315 vs unguided 0.0241, z = +3.90 continuous and **+3.57 decoded**,
++3.46 against `lgd_mc` head-to-head, clearing the chemistry floor, surviving
+Holm at the registered family size and the cluster-robust se. It is the only
+arm–property pair in the run that clears z ≥ 3 on *both* metrics.
+
+### Three retreats from the first reading of this run
+
+The first pass of this analysis reported "the winner flips to `tfg` on mu and
+`plug` on gap because `lgd_mc` fails the chemistry floor". An adversarial
+re-check forced three corrections, all from the run's own numbers.
+
+**1. `lgd_mc` is floor-limited, not measurably below the floor.** Re-measuring
+the floor at full scale is what V7 licenses — under a selection-only reading
+the clause is vacuous, since V2 guarantees every frozen strength cleared the
+screen — and the project applied the same rule at full scale against the same
+arm in [FR3A_VS_FR3_COMPARISON.md](../results/FR3A_VS_FR3_COMPARISON.md). But
+`mol_stability` is a proportion with its own error, and so is the unguided
+reference the floor is 0.9× of:
+
+| property | `lgd_mc` mol_stab | floor | margin | sigma | per-seed |
+|---|---|---|---|---|---|
+| mu | 0.3514 | 0.3571 | −0.0057 | **−1.08** | 0/3 pass |
+| gap | 0.3487 | 0.3571 | −0.0085 | **−1.60** | **1/3 pass** |
+
+This project decides everything else at 3 sigma. The disqualification is made
+at 1.1 and 1.6 sigma, and on gap one seed of three passes. It is a **rule**
+applied correctly, not a measured finding that the arm is worse. "Cannot hold
+the verdict whatever its in_band" was unsupportable and is gone. The floor
+cuts both ways: `tmpd` clears it on gap by only +1.49 sigma.
+
+Note also what moved. The run's floor is *lower* than the screen's (0.3571 vs
+0.3621) — re-measurement did not raise the bar. `lgd_mc`'s own estimate moved,
+0.3750 → 0.3487/0.3514. At n = 512 its "clears by +0.013" was +0.44 sigma.
+Screen and run agree that **`lgd_mc` at w = 4 sits on the chemistry floor**,
+which is what §3 of the protocol already said.
+
+**2. No arm is separated from any other.** V7 requires ties be reported as
+ties, and the winner-vs-runner-up comparison — which the first pass never
+showed — is where they are:
+
+| property | top floor-clearing arm | vs runner-up | z |
+|---|---|---|---|
+| mu | `tfg` 0.0427 | `tmpd` 0.0385 | +1.84 **tie** |
+| alpha | `tmpd` 0.0315 | `plug` 0.0289 | +1.32 **tie** |
+| gap | `plug` 0.0687 | `tmpd` 0.0673 | +0.50 **tie** |
+
+On gap the top three are within 0.0021 of each other. These are the highest
+point estimates, not winners.
+
+**3. On the decoded metric V4 requires, two of the three do not clear z ≥ 3.**
+V4 mandates every property metric in decoded (argmax one-hot) form "because
+arms that push the continuous type features are otherwise flattered". The
+first pass omitted it entirely — the one V-rule that was wholly unexecuted.
+
+| comparison | z continuous | z **decoded** |
+|---|---|---|
+| mu `tfg` vs unguided | +3.56 | **+2.67** |
+| gap `plug` vs unguided | +3.30 | **+2.94** |
+| alpha `tmpd` vs unguided | +3.90 | **+3.57** |
+
+Only alpha/`tmpd` survives. The headline therefore rested on the metric V4
+pre-registered as the flattering one.
+
+### What the run says, stated at the strength the data supports
+
+*At a chemistry budget of 0.9× unguided stability: `lgd_mc` at its frozen
+strength sits on the chemistry floor on mu and gap (−1.1 and −1.6 sigma,
+unresolved) and is floor-limited under V7. With it set aside, the remaining
+arms are mutually tied on in-band; the highest point estimates are `tfg` on
+mu, `tmpd` on alpha, `plug` on gap, and of these only `tmpd` on alpha clears
+z ≥ 3 against unguided on both the continuous and the decoded metric. What a
+floor-limited arm would deliver at a floor-clearing strength is unmeasured —
+no such full-scale cell exists.*
+
+### Other results from the run
+
+- **No mode collapse.** Lowest uniqueness of any single cell is 0.99340
+  against V6's 0.95 threshold.
+- **Guidance is mostly bias, not narrowing.** On mu the best floor-clearing
+  arm (`tfg`) moves bias/δ from −10.87 to −9.72 while residual sd/δ falls only
+  9.07 → 8.21. Same shape as v1.
+- **alpha's size stratification changes nothing.** Required by §2 caveat (b);
+  `tmpd` leads in all four strata (0.0056/0.0201/0.0644/0.1065).
+- **Clustering barely matters here.** Design effect 1.03–1.15, not v1's √3 —
+  the fixed target removes v1's per-molecule target clustering. All three
+  headline z's survive it.
+- **A tension the run exposes, unresolved:** V7 says a floor-limited arm can
+  neither win nor be beaten, yet V8's family tests every arm *against*
+  `lgd_mc`. On gap, 4 of 7 tests are against an arm the same rule says cannot
+  be beaten. Those rows are marked descriptive.
+
+### BTVG-2 cross-projection retest — a null
+
+The 12-cell pilot registered in
+[WORKSHOP_CLAIM_AUDIT.md](../results/WORKSHOP_CLAIM_AUDIT.md) also returned:
+[XPROJ_RETEST.md](../results/XPROJ_RETEST.md). On the audit's registered
+primary metric (decoded coverage) `btvg2_xproj` is ahead of `lgd_mc` at
+z ≥ 3 in **0 of 6** paired comparisons; on continuous in-band, also 0 of 6.
+
+Under the rule fixed before the run, a null narrows the corrected method's
+claim. **The supportable statement is that the projection error was not what
+was costing the method its outcome** — not that the corrected method is
+equivalent to `lgd_mc`. Two things stop it being a clean negative: at n = 2,048
+and one seed the pilot cannot exclude a real effect of ~0.02, and on decoded
+coverage the point estimate favours `btvg2_xproj` on mu at both strengths
+(the continuous metric reverses that sign, so the metric choice decides the
+direction there).
+
+`btvg2_xproj` clips more often than `lgd_mc` in 6 of 6 cells (1.09–1.41× of
+guided sample-steps) at a variance share of 0.16–0.27. **This is not read as a
+mechanism**: the audit pre-registered that correction-versus-LGD alone cannot
+separate objective mismatch, estimator noise and clipping competition, and
+adding a variance term at the same nominal w makes more clipping close to
+definitional. An earlier draft of this section asserted the mechanism anyway;
+that assertion is withdrawn.
 
 ---
 

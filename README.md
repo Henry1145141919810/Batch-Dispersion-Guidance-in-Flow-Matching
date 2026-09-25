@@ -16,6 +16,7 @@ sampling time, without retraining it. Two modalities: **QM9 3D molecules**
 | the timetable and who owns what | [docs/status/PLAN_AND_TIMETABLE.md](docs/status/PLAN_AND_TIMETABLE.md) |
 | how the data is split and why | [docs/protocol/SPLIT_PROTOCOL.md](docs/protocol/SPLIT_PROTOCOL.md) |
 | how the base model compares to published work | [docs/results/BASE_MODEL_BENCHMARK.md](docs/results/BASE_MODEL_BENCHMARK.md) |
+| **the headline guidance result** (v2, fixed target) | [docs/results/FULL_RUN_V2_RESULTS.md](docs/results/FULL_RUN_V2_RESULTS.md), pre-registered in [docs/protocol/FULL_RUN_V2_PROTOCOL.md](docs/protocol/FULL_RUN_V2_PROTOCOL.md) |
 
 **The two status documents above are living documents — update them, do not
 write new ones.**
