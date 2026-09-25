@@ -204,6 +204,32 @@ at all — which no screen so far could see.
 
 ## 7. Submitting — the whole chain, one paste
 
+### First: ship the δ file, which the code tarball does NOT carry
+
+`tar ... proj1/scripts proj1/src proj1/tests proj1/cluster` ships code only, so
+`results/local_fb_mae.json` never reaches Betty. It is committed and
+deterministic, so **copy it rather than regenerating it** — that pins the exact
+δ this plan was written against:
+
+```
+scp results/local_fb_mae.json betty:/vast/projects/ajw/wharton/hyhuang/cgm/results/
+```
+
+Regenerating on Betty would also work (the same f_B gives the same numbers),
+but `local_fb_mae.py` runs f_B over 17,748 `val` molecules for each of three
+properties — **that is not a login-node job.** If you must, give it a GPU:
+
+```
+srun --partition=b200-mig45 --gpus=1 --cpus-per-task=6 --mem=48G \
+     --time=00:20:00 python proj1/scripts/local_fb_mae.py
+```
+
+Either way the run re-checks it: `--delta-json` refuses a file whose
+`global_mae` is not the f_B this box actually loads, so a stale or
+foreign δ file cannot silently move the in-band bar (or BTVG's τ).
+
+### Then: the chain
+
 Run from `$PROJ` with the venv active. Each `sbatch` prints the id the next
 line depends on, so nothing has to be typed twice.
 

@@ -93,8 +93,19 @@ fi
 # --- the delta file must exist and match this f_B ----------------------------
 if [ ! -f "$DELTA_JSON" ]; then
   echo "FATAL: $DELTA_JSON not found." >&2
-  echo "Generate it once (CPU, ~1 min on a GPU node, or on the login node):" >&2
-  echo "  python proj1/scripts/local_fb_mae.py" >&2
+  echo "" >&2
+  echo "It is NOT in the code tarball -- that ships proj1/ only, not results/." >&2
+  echo "It is committed, so copy it from the laptop rather than regenerating:" >&2
+  echo "  scp results/local_fb_mae.json betty:$PROJ/results/" >&2
+  echo "" >&2
+  echo "Copying is also the safer option: it pins the exact deltas the plan" >&2
+  echo "was written against, and the run re-checks them against this box's own" >&2
+  echo "f_B (--delta-json refuses a file whose global_mae is not this f_B's)." >&2
+  echo "" >&2
+  echo "If you must regenerate it here, do NOT do it on the login node -- it" >&2
+  echo "runs f_B over 17,748 val molecules for each of three properties." >&2
+  echo "  srun --partition=b200-mig45 --gpus=1 --cpus-per-task=6 --mem=48G \\" >&2
+  echo "       --time=00:20:00 python proj1/scripts/local_fb_mae.py" >&2
   exit 1
 fi
 mkdir -p "$OUT"
