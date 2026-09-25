@@ -35,6 +35,7 @@ import hashlib
 import itertools
 import json
 import os
+import re
 import sys
 import time
 
@@ -293,6 +294,58 @@ def cell_name(prop, arm, tgt, w, win, variant="-"):
     return base + ".json"
 
 
+# ---- BDG (25 Sep) ---------------------------------------------------------
+# Ported from docs/methods/BDG_HANDOFF.md section 2. The grid below is the
+# handoff's own ladder, reduced to what a local single-GPU run can finish.
+BDG_ETA = 4.0
+BDG_TAU_MULT = (0.5, 1.0, 1.5)
+BDG_W = 1.0
+
+
+def parse_bdg_variant(v):
+    """"e<eta>t<tau_mult>[o]" -> (eta, tau_mult, onesided).
+
+    Raises on anything else rather than silently defaulting: a typo'd variant
+    that fell back to eta=0 would write a cell named like a BDG cell that is
+    bit-identical to plug, which is exactly the failure this project has
+    already been bitten by twice (band's dead direction, the SHG multiplier).
+    """
+    m = re.fullmatch(r"e(-?[0-9.]+)t([0-9.]+)(o?)", v or "")
+    if not m:
+        raise ValueError("bdg needs variant 'e<eta>t<tau_mult>[o]', got %r" % (v,))
+    return float(m.group(1)), float(m.group(2)), bool(m.group(3))
+
+
+def plan_bdg_cells(props, targets, variants, ws, win=None):
+    """BDG grid plus the two controls every BDG cell is read against.
+
+    The controls are re-run INSIDE this plan, at this n, batch, device and
+    seed, rather than read off results/sweep: the handoff is explicit that no
+    BDG number may be compared to a cell produced by a different generator
+    file, and here the batch size and device differ from the sweep as well.
+    `unguided` and `plug` therefore appear once per (prop, target).
+    """
+    win = V2_WIN if win is None else win
+    seen, cells = set(), []
+
+    def add(prop, arm, tgt, w, variant):
+        k = (prop, arm, tgt, w, win, variant)
+        if k not in seen:
+            seen.add(k)
+            cells.append(k)
+
+    for tgt in targets:
+        for prop in props:                   # pass 1: the controls
+            add(prop, "unguided", tgt, 0.0, "bdgctl")
+            for w in ws:
+                add(prop, "plug", tgt, w, "bdgctl")
+        for prop in props:                   # pass 2: the BDG ladder
+            for w in ws:
+                for v in variants:
+                    add(prop, "bdg", tgt, w, v)
+    return cells
+
+
 def arm_kwargs(arm, variant, delta):
     """Sampler kwargs implied by (arm, variant). One place, so the sweep and
     the final benchmark cannot drift apart.
@@ -308,6 +361,20 @@ def arm_kwargs(arm, variant, delta):
     elif arm.startswith("btvg"):
         mult = float(v.split("tau")[1]) if "tau" in v else 1.0
         kw["tau"] = mult * delta / 1.96
+    elif arm == "bdg":
+        # variant "e<eta>t<tau_mult>[o]", e.g. e4t0.5, e4t1.5o, e0t1.
+        #   eta       the gain
+        #   tau_mult  the setpoint as a FRACTION OF THE GUIDE'S OWN SPREAD:
+        #             tau = tau_mult * s with s = f_A.y_std. s is not known
+        #             here (it needs the loaded guide), so the multiplier is
+        #             carried through and run_cell resolves it. Leaving the
+        #             raw multiplier in kw would hand an unknown kwarg to the
+        #             sampler, so it travels under a key run_cell pops.
+        #   trailing "o"  the one-sided (positive-part) ablation
+        eta, mult, one = parse_bdg_variant(v)
+        kw["bdg_eta"] = eta
+        kw["bdg_onesided"] = one
+        kw["_bdg_tau_mult"] = mult
     elif arm == "spbc":
         r = float(v.split("r")[1]) if v.startswith("r") else -1.0
         kw["spbc_radius"] = None if r < 0 else r
@@ -752,14 +819,19 @@ def main():
                          "TARGETS key such as q50,q90")
     ap.add_argument("--stage", default="main",
                     choices=["main", "v2", "all", "compare", "targets", "full",
-                             "tune", "tuned_full"],
+                             "tune", "tuned_full", "bdg"],
                     help="main = the v1 grid (default arms); v2 = the new arms "
                          "against re-run references; all = both, v1 first; "
                          "full = every compare-set arm once at its --frozen "
                          "strength on the `dist` target; tune = the joint "
                          "strength x t_min_guide screen at q90; tuned_full = "
                          "the full run at the two operating points "
-                         "freeze_tune.py chose (needs --frozen)")
+                         "freeze_tune.py chose (needs --frozen); bdg = the BDG "
+                         "ladder plus its own re-run unguided/plug controls")
+    ap.add_argument("--bdg-variants", default="",
+                    help="--stage bdg: comma-separated 'e<eta>t<mult>[o]'. "
+                         "Default: eta=%g at tau_mult %s."
+                         % (BDG_ETA, ",".join(str(m) for m in BDG_TAU_MULT)))
     ap.add_argument("--frozen", default="",
                     help="--stage full only: the json check_fullrun_go.py "
                          "--json-out wrote (FR3's frozen strengths)")
@@ -919,6 +991,15 @@ def main():
     if args.stage in ("v2", "all"):
         v2 = V1_MISSING + V2_ARMS + SHG_ARMS if args.stage == "all" else arms
         cells += plan_v2_cells(props, v2)
+    if args.stage == "bdg":
+        variants = ([v for v in args.bdg_variants.split(",") if v]
+                    or ["e%gt%g" % (BDG_ETA, m) for m in BDG_TAU_MULT])
+        for v in variants:
+            parse_bdg_variant(v)          # fail on a typo before any compute
+        cells += plan_bdg_cells(
+            props, [t for t in args.targets.split(",") if t], variants,
+            ws=([float(x) for x in args.strengths.split(",") if x]
+                if args.strengths else [BDG_W]))
     if args.preflight:
         seen_arm, first = set(), []
         for c in cells:
@@ -1123,6 +1204,25 @@ def main():
         else:
             target = TARGETS[prop][tgt]
         s = f_A.y_std
+        if "_bdg_tau_mult" in extra:
+            # tau = tau_mult * s, s = the guide's own output sd. Resolved here
+            # because s comes from the loaded guide. Recorded on the cell below
+            # so a result can be read without re-deriving it.
+            mult = extra.pop("_bdg_tau_mult")
+            extra["bdg_tau"] = mult * float(s)
+            bdg_meta = {"bdg_tau_mult": mult, "bdg_tau": extra["bdg_tau"],
+                        "bdg_eta": extra["bdg_eta"],
+                        "bdg_onesided": extra["bdg_onesided"], "bdg_s": float(s)}
+        else:
+            bdg_meta = {}
+        if arm == "bdg" and args.batch < args.n:
+            # V_b is taken over ONE call's batch, so n split across batches
+            # runs several independent controllers with different setpoint
+            # errors. Refuse rather than write a cell whose controller is not
+            # the one the cell name claims.
+            raise ValueError(
+                "bdg needs --batch == --n (the batch IS the estimator); "
+                "got n=%d batch=%d" % (args.n, args.batch))
         w_scale = strength_scale(arm, extra, s)
         w_applied = w * w_scale
         if arm in SHG_SCHEDULES:
@@ -1223,6 +1323,8 @@ def main():
             # n_mc / sigma_mc above are lgd_mc's and tfg_mc's settings; tfg
             # uses none of them. Its real configuration travels with the cell.
             r["tfg_config"] = extra["tfg"]
+        if bdg_meta:
+            r.update(bdg_meta)
         return r
 
     for (prop, arm, tgt, w, win, variant) in todo:

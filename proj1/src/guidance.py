@@ -1287,6 +1287,12 @@ KNOWN_MODES = {"plug", "smg_mean", "smg_var", "smg", "smg2", "smg2_curv",
                # BTVG-2 (23 Sep, after the full run): see btvg2_weighted_grad
                "btvg2", "btvg2_nogate", "btvg2_noorth", "btvg2_nocap",
                "btvg2_band", "btvg2_xproj",
+               # BDG (25 Sep), ported from docs/methods/BDG_HANDOFF.md section 2.
+               # Batch-Dispersion Guidance: plug plus a term proportional to
+               # each sample's signed deviation from the BATCH mean predicted
+               # property, gated by the relative error of the batch variance
+               # against a setpoint tau^2. Shares plug's single backward pass.
+               "bdg",
                # chemistry-safe guidance: any base arm + the valence guard
                "lgd_mc_chem", "plug_chem", "lgd_mc_chemn"}
 # the base arm each CSG mode wraps; the guard never changes the base field's
@@ -1334,7 +1340,8 @@ def guidance_field(f_net, post_fn, coords, feats, mask, y, s,
                    mode="plug", n_probe=1, generator=None, cost=_NOCOST,
                    n_mc=4, sigma_mc=0.1, want_kappa3=False, rch=None,
                    band_tau=None, band_eta=1.0, band_radius=None, t_scalar=None,
-                   tau=None, spbc_eta=1.0, spbc_radius=None):
+                   tau=None, spbc_eta=1.0, spbc_radius=None,
+                   bdg_eta=0.0, bdg_tau=None, bdg_onesided=False):
     """Return (G_coords, G_feats, diagnostics) in SCORE units.
 
     mode:
@@ -1367,6 +1374,12 @@ def guidance_field(f_net, post_fn, coords, feats, mask, y, s,
                     rather than maximise the likelihood of y*. Needs tau.
       "btvg_mean"   the mean half alone   (ablation)
       "btvg_var"    the variance half alone (ablation -- the decisive one)
+      "bdg"         batch-dispersion guidance. plug's numerator plus
+                    -eta * e * (F_i - F_bar) with e = (V_b - bdg_tau^2)/bdg_tau^2
+                    the relative error of the BATCH variance of the predicted
+                    property against a setpoint. Needs bdg_tau; bdg_eta is the
+                    gain; bdg_onesided clamps e >= 0 (tighten only), which is
+                    the spec in Three_New_Guidance_Ideas §5.2.
 
     Every mode also returns diagnostics. Pass want_kappa3=True to log the
     standardised skew of the observable alongside the field; it costs 2-3 extra
@@ -1682,6 +1695,75 @@ def guidance_field(f_net, post_fn, coords, feats, mask, y, s,
 
     num = y - fval - c_term
     den = s ** 2 + v_f + v2
+
+    bdg_diag = {}
+    if mode == "bdg":
+        # BATCH-DISPERSION GUIDANCE, handoff section 2.
+        #
+        #   F_bar = mean_i F_i                     where the batch is centred
+        #   V_b   = var_i F_i   (unbiased, 1/(B-1)) how tightly it is grouped
+        #   e     = (V_b - tau^2) / tau^2          scale-free error vs setpoint
+        #   num_i = (y - F_i) - eta * e * (F_i - F_bar)
+        #
+        # dV_b/dm_i = 2/(B-1) (F_i - F_bar) g_i, so the added term IS a descent
+        # direction on the batch variance; the 2/(B-1) is absorbed into eta so
+        # the gain does not scale with B. Both terms multiply the SAME g_i, so
+        # the arm shares plug's single backward pass and costs zero extra NFE.
+        #
+        # THE BATCH IS THE ESTIMATOR. V_b is computed over whatever tensor the
+        # sampler hands in, so running n in several batches runs several
+        # independent controllers. The sweep must use one batch per cell.
+        #
+        # WHAT THIS IS NOT. num_i is affine in F_i, so it factors exactly as
+        # (1 + eta e)(y_eff - F_i) with y_eff = (y + eta e F_bar)/(1 + eta e):
+        # at any instant this is plug at a rescaled weight aiming at a shifted
+        # target, NOT a new direction. See handoff section 3; gate (b) below
+        # checks the factorisation on the real field.
+        if bdg_tau is None:
+            raise ValueError("mode 'bdg' needs bdg_tau (setpoint property sd)")
+        tau_b = torch.as_tensor(bdg_tau, device=fval.device, dtype=fval.dtype)
+        if not bool((tau_b > 0).all()):
+            raise ValueError("bdg_tau must be > 0, got %r" % (bdg_tau,))
+        B = fval.shape[0]
+        F_bar = fval.mean()
+        # B < 2: the unbiased variance is undefined (nan). One trajectory has
+        # no dispersion to control, so the arm degrades to plug rather than
+        # poisoning the field with a nan. This is reachable from the sweep's
+        # last partial batch, not only from tests.
+        if B > 1:
+            V_b = fval.var(unbiased=True)
+        else:
+            V_b = torch.zeros_like(F_bar) + tau_b ** 2
+        e_raw = (V_b - tau_b ** 2) / tau_b ** 2
+        # ONE-SIDED is the ablation, not the default. The repo's own §5.2 spec
+        # (Three_New_Guidance_Ideas_Variance_and_Switching.md) is the positive
+        # part, b_V = -eta_V (V - tau^2)_+, which can only TIGHTEN: asked to
+        # widen it must reproduce plug exactly, which is gate (c).
+        e = e_raw.clamp(min=0.0) if bdg_onesided else e_raw
+        dev = fval - F_bar                       # signed deviation, sums to 0
+        disp = bdg_eta * e * dev                 # the dispersion term
+        num = num - disp
+        # DIAGNOSTICS. _accumulate_diag takes a BATCH MEAN of each key, and
+        # both `dev` and `disp` are mean-zero over the batch by construction --
+        # handoff open item 3 measured ~1e-7 in every cell, i.e. the controller
+        # state was unfalsifiable. Persist the batch RMS instead (broadcast to
+        # the batch so the mean of the recorded key IS the RMS), and persist
+        # the RAW e beside the clamped one so a one-sided cell can still show
+        # how deep the widening branch would have gone (open item 4).
+        rms_dev = dev.pow(2).mean().sqrt()
+        rms_disp = disp.pow(2).mean().sqrt()
+        bdg_diag = {
+            "bdg_e": e.detach().expand_as(fval).clone(),
+            "bdg_e_raw": e_raw.detach().expand_as(fval).clone(),
+            "bdg_V_b": V_b.detach().expand_as(fval).clone(),
+            "bdg_V_over_tau2": (V_b / tau_b ** 2).detach().expand_as(fval).clone(),
+            "bdg_tau": tau_b.detach().expand_as(fval).clone(),
+            "bdg_dev_rms": rms_dev.detach().expand_as(fval).clone(),
+            "bdg_disp_rms": rms_disp.detach().expand_as(fval).clone(),
+            "bdg_w_eff": (1.0 + bdg_eta * e).detach().expand_as(fval).clone(),
+            "bdg_batch": torch.full_like(fval, float(B)),
+        }
+
     scale = (num / den).view(-1, 1, 1)
     w_c, w_f = scale * g_c, scale * g_f
 
@@ -1699,6 +1781,7 @@ def guidance_field(f_net, post_fn, coords, feats, mask, y, s,
 
     diag = {"f": fval, "c": c_term, "v_f": v_f, "v2": v2, "k": k,
             "num": num, "den": den}
+    diag.update(bdg_diag)
     if want_kappa3:
         if sg_c is None:
             sg_c, sg_f = sigma_times_vector(post_fn, coords, feats, mask,
