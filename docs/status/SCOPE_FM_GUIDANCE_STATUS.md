@@ -1695,6 +1695,52 @@ adding a variance term at the same nominal w makes more clipping close to
 definitional. An earlier draft of this section asserted the mechanism anyway;
 that assertion is withdrawn.
 
+### Every BTVG-2 cell, against a GPU-matched `lgd_mc`
+
+All 15 BTVG-2 cells on disk (`btvg2` w 4/8, `btvg2_band` w 8, `btvg2_xproj`
+w 8/16, × 3 properties; one seed, n = 2,048, `dist` target) with the full
+metric block: [BTVG2_FULL_METRICS.md](../results/BTVG2_FULL_METRICS.md),
+regenerate with `python proj1/scripts/btvg2_table.py --md-out
+docs/results/BTVG2_FULL_METRICS.md`.
+
+**What `variant − lgd_mc` measures:** adding the variance term *as
+implemented* — the variants share `lgd_mc`'s draws and mean-term arithmetic,
+but after the first step the trajectories differ, the clip scales the combined
+field (and the variants clip more), and for `btvg2`/`btvg2_band` the
+pulled-back variance step also moves the mean. It is **not** the variance term
+in isolation, as the `btvg2` "What" paragraph above already says. (A first
+draft of this subsection said "isolates"; withdrawn.)
+
+- **0 of 15** comparisons against `lgd_mc` reach |z| ≥ 3 on in-band (either
+  metric) or on molecule stability, in either direction.
+- **In-band leans negative on the continuous metric (13 of 15 point
+  estimates) but not on the decoded one** (3 of 6 xproj comparisons positive;
+  largest mu w = 16, +0.019, z = +1.93). Neither count is a test — the
+  comparisons share molecules and comparators. Decoded exists only for xproj.
+- **MAE falls on mu and alpha in 8 of 10 and rises on gap in 4 of 5**, none
+  at 3σ. On alpha the visible gains (three rows, MAE down ≥ 0.1 δ) are
+  **smaller bias, not tighter spread**: |bias| drops 0.49–0.85 δ while
+  residual sd moves −0.17 to +0.09 δ. The variants shrink `lgd_mc`'s alpha
+  undershoot; they do not concentrate the output. **Stability is a wash**
+  (8 up, 7 down).
+- **Guidance itself creates a growing bias on alpha:** unguided −0.02 δ,
+  `lgd_mc` −1.93 / −2.92 / −3.39 δ at w = 4 / 8 / 16, and the guide's own f_A
+  shows the same (−1.86 / −2.89 / −3.36). It is the guide's view, not a
+  guide–evaluator disagreement. Cause not established.
+- **`btvg2_band` engages less, not negligibly** (variance share 3.5–8.3 %
+  against 16–27 %), and on gap it is the second-worst row (in-band −0.013,
+  z = −1.85; MAE +0.09 δ, z = +2.22). Its gate is a soft Gaussian of width
+  1.96τ around the target, not an inside-the-band switch.
+- **29 of 30 guided cells beat unguided** on continuous in-band at z ≥ 3
+  (gain +0.020 to +0.079, z up to +7.59); the exception is alpha `btvg2` w = 4
+  (z = +2.94). The stability cost reaches 3σ in 6 cells, all on gap: `lgd_mc`
+  at w = 8 and 16 on both GPUs, `btvg2_band` w = 8, `btvg2_xproj` w = 16.
+- **`btvg2` and `btvg2_band` have no decoded view** (no `_dec` fields, no
+  coordinates in the sidecars, no other copy on disk). Only `btvg2_xproj` can
+  be judged on the metric V4 requires; the others need a re-run.
+- **Cost:** generator passes are 3× unguided for `lgd_mc`/`btvg2` and 5× for
+  `btvg2_xproj`; guide passes are equal across the three.
+
 ---
 
 ## 11. Known defects and corrections — carry these into the write-up
@@ -1719,6 +1765,19 @@ methods section, not hidden.
 **Verified sound:** local (RTX 5080) and cluster (B200) cells are **genuinely
 paired** — three cluster cells re-run locally matched to 0.15 se on MAE and
 *exactly* on in-band, stability and SMILES. Pooling the two is safe.
+*Qualified 24 Sep:* "exactly" holds for unguided, not for guided cells.
+Measured on the same molecules and seed ([BTVG2_FULL_METRICS.md](../results/BTVG2_FULL_METRICS.md)):
+unguided agrees across the two GPUs (0 in-band, stability or SMILES flips),
+but guided `lgd_mc` diverges molecule by molecule already at w = 4 (mu: 3
+in-band flips, 9 stability flips, 19 SMILES differences, a few molecules off
+by up to 16 δ), growing with strength on mu and gap. Aggregates stay within
+noise (largest cross-GPU |z| 1.77), so pooling is safe for aggregate metrics
+of these cells; a paired, molecule-level comparison of a guided arm should use
+a comparator from the same GPU. Choosing the other GPU's comparator for
+`btvg2_xproj` moves a paired z by at most 0.44 and flips no 3σ call. Measured
+for one arm (`lgd_mc`) at w = 4-16 only. (A first version of this note said
+w = 4 was bit-identical across machines; both copies compared were on the
+5080. Withdrawn.)
 
 **One cell to exclude by hand:** `alpha__smg__q50__w2__tmin0.05.json` —
 MAE 4.36e7, 47/512 non-finite. `select_arms` already filters it.

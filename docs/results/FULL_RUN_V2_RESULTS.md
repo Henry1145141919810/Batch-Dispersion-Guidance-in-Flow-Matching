@@ -281,35 +281,35 @@ Holm within each property over the registered family: each arm against `unguided
 
 **Descriptive only.** Molecules are sorted by |f_B - y| and the block is reported within the best 10 %, 50 % and 100 % of each cell. This ranks molecules by the same oracle it then scores them with, so no row here is a yield anyone could reproduce -- a user does not have f_B at generation time. Its purpose is the SHAPE of an arm's error distribution. These numbers are never compared against another method's achievable yield.
 
-**The in_band columns are arithmetic, not evidence.** When a cell's in_band is at or below 10 %, every in-band molecule already sits inside the best-10 % bucket, so `in_band @10 %` is exactly 10 x `@100 %` and `@50 %` exactly 2 x. The first of these holds for every cell in this run except `gap`/`lgd_mc` (in_band 0.117 > 0.10, so its @10 % saturates at 1.0000); the `@50 %` identity holds for that cell too. The informative columns here are **MAE/d** and **mol_stab**: they say whether an arm's best decile is also its soundest.
+**The in_band columns are arithmetic, not evidence.** When a cell's in_band is at or below 10 %, every in-band molecule already sits inside the best-10 % bucket, so `in_band @10 %` is exactly 10 x `@100 %` and `@50 %` exactly 2 x. The first of these holds for every cell in this run except `gap`/`lgd_mc` (in_band 0.117 > 0.10, so its @10 % saturates at 1.0000); the `@50 %` identity holds for that cell too. The informative columns here are **MAE/d**, **mol_stab** and **valid**: they say whether an arm's best decile is also its soundest.
 
 ### mu
 
-| arm | in_band @10 % | @50 % | @100 % | MAE/d @10 % | @50 % | @100 % | mol_stab @10 % | @100 % |
-|---|---|---|---|---|---|---|---|---|
-| `lgd_mc` | 0.4793 | 0.0959 | 0.0479 | 1.049 | 4.921 | 10.145 | 0.3720 | 0.3514 |
-| `tfg` | 0.4267 | 0.0853 | 0.0427 | 1.164 | 5.470 | 10.950 | 0.3673 | 0.3867 |
-| `tmpd` | 0.3847 | 0.0769 | 0.0385 | 1.283 | 6.028 | 11.860 | 0.3867 | 0.3874 |
-| `plug` | 0.3747 | 0.0749 | 0.0375 | 1.335 | 6.220 | 12.095 | 0.3960 | 0.3908 |
-| `unguided` | 0.3473 | 0.0695 | 0.0347 | 1.398 | 6.440 | 12.332 | 0.3953 | 0.3968 |
+| arm | in_band @10 / 50 / 100 % | MAE/d @10 / 50 / 100 % | mol_stab @10 / 50 / 100 % | valid @10 / 50 / 100 % |
+|---|---|---|---|---|
+| `lgd_mc` | 0.4793 / 0.0959 / 0.0479 | 1.049 / 4.921 / 10.145 | 0.3720 / 0.3516 / 0.3514 | 0.6840 / 0.6916 / 0.7220 |
+| `tfg` | 0.4267 / 0.0853 / 0.0427 | 1.164 / 5.470 / 10.950 | 0.3673 / 0.3708 / 0.3867 | 0.6987 / 0.7217 / 0.7566 |
+| `tmpd` | 0.3847 / 0.0769 / 0.0385 | 1.283 / 6.028 / 11.860 | 0.3867 / 0.3811 / 0.3874 | 0.7060 / 0.7301 / 0.7552 |
+| `plug` | 0.3747 / 0.0749 / 0.0375 | 1.335 / 6.220 / 12.095 | 0.3960 / 0.3836 / 0.3908 | 0.7147 / 0.7307 / 0.7593 |
+| `unguided` | 0.3473 / 0.0695 / 0.0347 | 1.398 / 6.440 / 12.332 | 0.3953 / 0.3892 / 0.3968 | 0.7127 / 0.7327 / 0.7603 |
 
 ### alpha
 
-| arm | in_band @10 % | @50 % | @100 % | MAE/d @10 % | @50 % | @100 % | mol_stab @10 % | @100 % |
-|---|---|---|---|---|---|---|---|---|
-| `tmpd` | 0.3147 | 0.0629 | 0.0315 | 1.629 | 8.141 | 17.755 | 0.3453 | 0.3686 |
-| `plug` | 0.2887 | 0.0577 | 0.0289 | 1.747 | 8.545 | 18.546 | 0.3467 | 0.3743 |
-| `tfg` | 0.2653 | 0.0531 | 0.0265 | 1.859 | 8.966 | 19.408 | 0.3407 | 0.3765 |
-| `lgd_mc` | 0.2487 | 0.0497 | 0.0249 | 1.881 | 8.958 | 18.718 | 0.3160 | 0.3724 |
-| `unguided` | 0.2407 | 0.0481 | 0.0241 | 2.185 | 10.471 | 22.339 | 0.3387 | 0.3968 |
+| arm | in_band @10 / 50 / 100 % | MAE/d @10 / 50 / 100 % | mol_stab @10 / 50 / 100 % | valid @10 / 50 / 100 % |
+|---|---|---|---|---|
+| `tmpd` | 0.3147 / 0.0629 / 0.0315 | 1.629 / 8.141 / 17.755 | 0.3453 / 0.3532 / 0.3686 | 0.7440 / 0.7373 / 0.7345 |
+| `plug` | 0.2887 / 0.0577 / 0.0289 | 1.747 / 8.545 / 18.546 | 0.3467 / 0.3548 / 0.3743 | 0.7440 / 0.7404 / 0.7412 |
+| `tfg` | 0.2653 / 0.0531 / 0.0265 | 1.859 / 8.966 / 19.408 | 0.3407 / 0.3507 / 0.3765 | 0.7360 / 0.7411 / 0.7438 |
+| `lgd_mc` | 0.2487 / 0.0497 / 0.0249 | 1.881 / 8.958 / 18.718 | 0.3160 / 0.3484 / 0.3724 | 0.7033 / 0.7351 / 0.7423 |
+| `unguided` | 0.2407 / 0.0481 / 0.0241 | 2.185 / 10.471 / 22.339 | 0.3387 / 0.3647 / 0.3968 | 0.7387 / 0.7575 / 0.7603 |
 
 ### gap
 
-| arm | in_band @10 % | @50 % | @100 % | MAE/d @10 % | @50 % | @100 % | mol_stab @10 % | @100 % |
-|---|---|---|---|---|---|---|---|---|
-| `lgd_mc` | 1.0000 | 0.2345 | 0.1173 | 0.417 | 2.576 | 6.392 | 0.4953 | 0.3487 |
-| `plug` | 0.6873 | 0.1375 | 0.0687 | 0.719 | 4.332 | 8.881 | 0.5720 | 0.3749 |
-| `tmpd` | 0.6727 | 0.1345 | 0.0673 | 0.736 | 4.342 | 8.763 | 0.5680 | 0.3651 |
-| `tfg` | 0.6660 | 0.1332 | 0.0666 | 0.755 | 4.517 | 9.149 | 0.5660 | 0.3878 |
-| `unguided` | 0.5940 | 0.1188 | 0.0594 | 0.844 | 5.080 | 9.822 | 0.5773 | 0.3968 |
+| arm | in_band @10 / 50 / 100 % | MAE/d @10 / 50 / 100 % | mol_stab @10 / 50 / 100 % | valid @10 / 50 / 100 % |
+|---|---|---|---|---|
+| `lgd_mc` | 1.0000 / 0.2345 / 0.1173 | 0.417 / 2.576 / 6.392 | 0.4953 / 0.4175 / 0.3487 | 0.8327 / 0.8104 / 0.7205 |
+| `plug` | 0.6873 / 0.1375 / 0.0687 | 0.719 / 4.332 / 8.881 | 0.5720 / 0.4344 / 0.3749 | 0.8760 / 0.8128 / 0.7350 |
+| `tmpd` | 0.6727 / 0.1345 / 0.0673 | 0.736 / 4.342 / 8.763 | 0.5680 / 0.4296 / 0.3651 | 0.8687 / 0.8073 / 0.7203 |
+| `tfg` | 0.6660 / 0.1332 / 0.0666 | 0.755 / 4.517 / 9.149 | 0.5660 / 0.4271 / 0.3878 | 0.8640 / 0.8152 / 0.7483 |
+| `unguided` | 0.5940 / 0.1188 / 0.0594 | 0.844 / 5.080 / 9.822 | 0.5773 / 0.4349 / 0.3968 | 0.8673 / 0.8199 / 0.7603 |
 

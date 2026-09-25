@@ -739,22 +739,24 @@ def main():
              "`@100 %` and `@50 %` exactly 2 x. The first of these holds for every "
              "cell in this run except `gap`/`lgd_mc` (in_band 0.117 > 0.10, so its "
              "@10 % saturates at 1.0000); the `@50 %` identity holds for that cell "
-             "too. The informative columns here are **MAE/d** and **mol_stab**: "
-             "they say whether an arm's best decile is also its soundest.")
+             "too. The informative columns here are **MAE/d**, **mol_stab** and "
+             "**valid**: they say whether an arm's best decile is also its soundest.")
     L.append("")
     for p in PROPS:
         d = DELTA[p]
         L.append("### %s" % p)
         L.append("")
-        L.append("| arm | in_band @10 % | @50 % | @100 % | MAE/d @10 % | @50 % | @100 % | "
-                 "mol_stab @10 % | @100 % |")
-        L.append("|---|---|---|---|---|---|---|---|---|")
+        L.append("| arm | in_band @10 / 50 / 100 % | MAE/d @10 / 50 / 100 % | "
+                 "mol_stab @10 / 50 / 100 % | valid @10 / 50 / 100 % |")
+        L.append("|---|---|---|---|---|")
         for a in sorted(ARMS, key=lambda x: -P[(p, x)]["in_band"]):
             b = buckets(PM[(p, a)], d)
-            L.append("| `%s` | %.4f | %.4f | %.4f | %.3f | %.3f | %.3f | %.4f | %.4f |"
+            L.append("| `%s` | %.4f / %.4f / %.4f | %.3f / %.3f / %.3f | "
+                     "%.4f / %.4f / %.4f | %.4f / %.4f / %.4f |"
                      % (a, b[0]["in_band"], b[1]["in_band"], b[2]["in_band"],
                         b[0]["mae"] / d, b[1]["mae"] / d, b[2]["mae"] / d,
-                        b[0]["mol_stab"], b[2]["mol_stab"]))
+                        b[0]["mol_stab"], b[1]["mol_stab"], b[2]["mol_stab"],
+                        b[0]["validity"], b[1]["validity"], b[2]["validity"]))
         L.append("")
 
     out = NL.join(L) + NL
