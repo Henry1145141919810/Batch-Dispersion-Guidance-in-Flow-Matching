@@ -1341,7 +1341,8 @@ def guidance_field(f_net, post_fn, coords, feats, mask, y, s,
                    n_mc=4, sigma_mc=0.1, want_kappa3=False, rch=None,
                    band_tau=None, band_eta=1.0, band_radius=None, t_scalar=None,
                    tau=None, spbc_eta=1.0, spbc_radius=None,
-                   bdg_eta=0.0, bdg_tau=None, bdg_onesided=False):
+                   bdg_eta=0.0, bdg_tau=None, bdg_onesided=False,
+                   bdg_e_override=None):
     """Return (G_coords, G_feats, diagnostics) in SCORE units.
 
     mode:
@@ -1740,6 +1741,19 @@ def guidance_field(f_net, post_fn, coords, feats, mask, y, s,
         # part, b_V = -eta_V (V - tau^2)_+, which can only TIGHTEN: asked to
         # widen it must reproduce plug exactly, which is gate (c).
         e = e_raw.clamp(min=0.0) if bdg_onesided else e_raw
+        # OPEN-LOOP REPLAY. With an override, e is SUPPLIED for this step
+        # instead of measured from this batch, which turns the arm into the
+        # same time-varying weight schedule with the feedback cut. It is the
+        # control the reduction in handoff section 3 actually needs: freezing
+        # w_eff at its TIME-AVERAGE (what the handoff did) confounds "no
+        # feedback" with "constant", and w_eff is measured here to change sign
+        # up to 34 times in a 50-step window, so a constant was never going to
+        # reproduce it. V_b is still measured and recorded, so the replay can
+        # be compared against what the loop would have asked for.
+        e_measured = e
+        if bdg_e_override is not None:
+            e = torch.as_tensor(bdg_e_override, device=fval.device,
+                                dtype=fval.dtype)
         dev = fval - F_bar                       # signed deviation, sums to 0
         disp = bdg_eta * e * dev                 # the dispersion term
         num = num - disp
@@ -1755,6 +1769,9 @@ def guidance_field(f_net, post_fn, coords, feats, mask, y, s,
         bdg_diag = {
             "bdg_e": e.detach().expand_as(fval).clone(),
             "bdg_e_raw": e_raw.detach().expand_as(fval).clone(),
+            # what the closed loop WOULD have asked for at this step, so an
+            # open-loop replay can be scored against the live controller
+            "bdg_e_measured": e_measured.detach().expand_as(fval).clone(),
             "bdg_V_b": V_b.detach().expand_as(fval).clone(),
             "bdg_V_over_tau2": (V_b / tau_b ** 2).detach().expand_as(fval).clone(),
             "bdg_tau": tau_b.detach().expand_as(fval).clone(),
