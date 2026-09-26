@@ -388,19 +388,12 @@ def arm_kwargs(arm, variant, delta):
     elif arm == "spbc":
         r = float(v.split("r")[1]) if v.startswith("r") else -1.0
         kw["spbc_radius"] = None if r < 0 else r
-    elif arm == "bdg":
-        # variant "e<eta>t<tau_mult>[o]":  eta = dispersion gain,
-        # tau_mult = setpoint as a multiple of s (= f_A.y_std by default), so
-        # t1 means "hold the data's own spread", t0.5 contract, t1.5 WIDEN.
-        # A trailing "o" is the one-sided ablation (BTVG's contract-only
-        # restriction). tau itself is resolved in run_cell, where s is known.
-        m = re.match(r"^e([0-9.]+)t([0-9.]+)(o?)$", v)
-        if not m:
-            raise ValueError("bdg variant must look like e1t0.5 or e4t1.5o, "
-                             "got %r" % (v,))
-        kw["bdg_eta"] = float(m.group(1))
-        kw["bdg_onesided"] = bool(m.group(3))
-        kw["_bdg_tau_mult"] = float(m.group(2))
+    # NOTE: a SECOND `elif arm == "bdg"` used to sit here, from the other
+    # BDG implementation this file was merged with on 26 Sep. It was
+    # unreachable -- the branch above always won -- and the two disagreed:
+    # this one rejected a negative eta, parse_bdg_variant accepts one. Anyone
+    # editing the dead copy would have seen no effect at all. Removed; the
+    # live parsing is parse_bdg_variant, used by the branch above.
     elif arm in SHG_SCHEDULES:
         kw["schedule"] = SHG_SCHEDULES[arm]
         # any mode the schedule can select must have its own hyperparameters

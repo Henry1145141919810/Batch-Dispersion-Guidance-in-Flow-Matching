@@ -57,7 +57,12 @@ def load():
             clip=d.get("clipped_sample_steps", 0),
             valid=d.get("validity"), uniq=d.get("uniqueness_of_valid"),
             V_b=dg.get("bdg_V_b"), e=dg.get("bdg_e"),
-            widen=dg.get("bdg_widening"), disp=dg.get("bdg_disp"))
+            widen=dg.get("bdg_widening"),
+            # bdg_disp is MEAN-ZERO over the batch by construction, so this
+            # accumulator's mean drives it to ~1e-7 -- the signal is in
+            # bdg_disp_rms. Prefer it where the cell has it; older cells,
+            # written before the rms keys existed, still fall back.
+            disp=dg.get("bdg_disp_rms", dg.get("bdg_disp")))
     return rows
 
 

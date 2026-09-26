@@ -6,17 +6,19 @@ Both pairs built on the **same 3000 calibration molecules** (`train_a` + `train_
 
 | property | delta OURS | delta TFG | ours / TFG | direction |
 |---|---|---|---|---|
-| mu | 0.136757 | 0.156754 | **0.87×** | ours **narrower** |
-| alpha | 0.430463 | 0.164797 | **2.61×** | ours **wider** |
-| gap | 0.005381 | 0.003736 | **1.44×** | ours **wider** |
+| mu | 0.175407 | 0.156754 | **1.12×** | ours **wider** |
+| alpha | 0.506184 | 0.164797 | **3.07×** | ours **wider** |
+| gap | 0.007480 | 0.003736 | **2.00×** | ours **wider** |
 
 | property | f_B MAE ours | f_B MAE TFG | f_A MAE ours | f_A MAE TFG |
 |---|---|---|---|---|
-| mu | 0.06838 | 0.07838 | 0.07019 | 0.04174 |
-| alpha | 0.21523 | 0.08240 | 0.20759 | 0.09248 |
-| gap | 0.00269 | 0.00187 | 0.00285 | 0.00185 |
+| mu | 0.08770 | 0.07838 | 0.08722 | 0.04174 |
+| alpha | 0.25309 | 0.08240 | 0.23247 | 0.09248 |
+| gap | 0.00374 | 0.00187 | 0.00402 | 0.00185 |
 
-**The direction is not uniform, and that matters.** Our oracle is the more accurate one on **mu**, so our band there is *narrower*, not wider. It is the less accurate one on alpha and gap. Any statement of the form "the ours-pair backends are scored in a wider band" is therefore **wrong on mu** and must be made per property.
+**Our band is wider on all three**, so an ours-pair backend (`fm`, `edm`) accepts molecules a TFG-pair backend (`equifm`) would reject, before any base model or arm is considered.
+
+⚠️ **Each of our nets is scored on the half of the calibration pool it did NOT train on** (f_A trained on `train_a` is scored on the `train_b` half, and vice versa). Scoring them on the whole pool -- which is correct for TFG's external pair -- measures each one partly on its own training data and flatters it by ~19 %, which is enough to invert the mu row. An earlier version of this table did exactly that and reported our mu band as *narrower*; that is **withdrawn**. The figures above are the held-out ones, and they land close to `2 x val_mae` from the checkpoints, which is the independent check that they are right.
 
 **What does not change:** `in_band` is still not comparable across backends that use different pairs, in either direction. Within one backend every arm shares one delta, so the arm-against-arm comparison is unaffected.
 
@@ -26,9 +28,9 @@ Both pairs built on the **same 3000 calibration molecules** (`train_a` + `train_
 
 | property | fitted slope, guide | fitted slope, oracle | y_std |
 |---|---|---|---|
-| mu | 0.9967 | 0.9943 | 1.46259 |
-| alpha | 1.0002 | 0.9992 | 8.26987 |
-| gap | 1.0025 | 0.9987 | 0.04769 |
+| mu | 0.9948 | 0.9900 | 1.46259 |
+| alpha | 1.0006 | 0.9971 | 8.26987 |
+| gap | 1.0053 | 0.9979 | 0.04769 |
 
 All six sit within 0.6 % of 1, comfortably inside the check's 0.85-1.15 window, so it will not fire spuriously on a correctly configured run.
 

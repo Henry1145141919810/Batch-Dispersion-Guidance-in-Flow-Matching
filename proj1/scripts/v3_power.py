@@ -237,13 +237,21 @@ def main():
              "larger. Re-run with `--arms %d` to size against it."
              % (len(abl), len(abl)))
     out = "\n".join(L) + "\n"
-    print(out)
+    # WRITE BEFORE PRINTING. A Windows console is cp1252 and cannot encode
+    # this markdown's non-ASCII, so print(out) raised UnicodeEncodeError and
+    # the file -- written after it -- was never produced, silently leaving a
+    # stale doc beside a script that had already been corrected.
     if a.md_out:
         path = a.md_out if os.path.isabs(a.md_out) else os.path.join(ROOT, a.md_out)
         os.makedirs(os.path.dirname(path), exist_ok=True)
         with open(path, "w", encoding="utf-8", newline="\n") as fh:
             fh.write(out)
         print("wrote %s" % path)
+    try:
+        print(out)
+    except UnicodeEncodeError:
+        # console cannot encode it; the file already has it verbatim
+        print(out.encode('ascii', 'replace').decode('ascii'))
 
 
 if __name__ == "__main__":

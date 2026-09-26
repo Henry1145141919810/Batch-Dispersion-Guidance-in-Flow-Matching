@@ -9,12 +9,18 @@ the acceptance band, so `in_band` is not comparable across backends that use
 different pairs.
 
 "Not comparable" is only half the statement. The other half is BY HOW MUCH AND
-IN WHICH DIRECTION, and that has to be measured rather than asserted -- an
-earlier draft of the protocol claimed our band was uniformly wider ("~1.2x on
-mu, 3x on alpha, 2x on gap"), quoting a table computed on a different split.
-Measured here, on the same 3000 calibration molecules and through the same
-code path both pairs actually use, THE DIRECTION IS NOT UNIFORM: our oracle is
-the BETTER one on mu, so our band there is NARROWER.
+IN WHICH DIRECTION, which has to be measured.
+
+A WARNING ABOUT HOW TO MEASURE IT, because this was got wrong twice. The
+calibration pool is train_a + train_b -- correct for TFG's pair, since those
+are external networks -- but OUR f_A was trained on train_a and OUR f_B on
+train_b. Scoring them on the pool measures each one partly on its own
+training data and makes our MAEs look ~19 % better than they are, which made
+our band look NARROWER than TFG's on mu. It is not. `build_pair_ours` now
+scores each net on the half it did not train on, and the honest answer is
+that our band is WIDER on all three properties -- which is what the original
+BASECMP-sourced estimate said before it was "corrected" on contaminated
+numbers.
 
 Both pairs are built through their own `build_pair*` function at
 sampler_scale = 1 (the `fm` case), delta_mode "global" -- the rule v3
@@ -74,12 +80,20 @@ def main():
     for (p, _do, _dt, mo, mt, go, gt, _sg, _so, _ys) in rows:
         L.append("| %s | %.5f | %.5f | %.5f | %.5f |" % (p, mo, mt, go, gt))
     L += ["",
-          "**The direction is not uniform, and that matters.** Our oracle is "
-          "the more accurate one on **mu**, so our band there is *narrower*, "
-          "not wider. It is the less accurate one on alpha and gap. Any "
-          "statement of the form \"the ours-pair backends are scored in a "
-          "wider band\" is therefore **wrong on mu** and must be made per "
-          "property.",
+          "**Our band is wider on all three**, so an ours-pair backend "
+          "(`fm`, `edm`) accepts molecules a TFG-pair backend (`equifm`) "
+          "would reject, before any base model or arm is considered.",
+          "",
+          "⚠️ **Each of our nets is scored on the half of the calibration "
+          "pool it did NOT train on** (f_A trained on `train_a` is scored on "
+          "the `train_b` half, and vice versa). Scoring them on the whole "
+          "pool -- which is correct for TFG's external pair -- measures each "
+          "one partly on its own training data and flatters it by ~19 %, "
+          "which is enough to invert the mu row. An earlier version of this "
+          "table did exactly that and reported our mu band as *narrower*; "
+          "that is **withdrawn**. The figures above are the held-out ones, "
+          "and they land close to `2 x val_mae` from the checkpoints, which "
+          "is the independent check that they are right.",
           "",
           "**What does not change:** `in_band` is still not comparable across "
           "backends that use different pairs, in either direction. Within one "
@@ -111,13 +125,21 @@ def main():
           "checkpoint, and the `edm` branch asserts it against "
           "`generator_feat_scale`.", ""]
     out = "\n".join(L)
-    print(out)
+    # WRITE BEFORE PRINTING. A Windows console is cp1252 and cannot encode
+    # this markdown's non-ASCII, so print(out) raised UnicodeEncodeError and
+    # the file -- written after it -- was never produced, silently leaving a
+    # stale doc beside a script that had already been corrected.
     if a.md_out:
         path = a.md_out if os.path.isabs(a.md_out) else os.path.join(ROOT, a.md_out)
         os.makedirs(os.path.dirname(path), exist_ok=True)
         with open(path, "w", encoding="utf-8", newline="\n") as fh:
             fh.write(out)
         print("wrote %s" % path)
+    try:
+        print(out)
+    except UnicodeEncodeError:
+        # console cannot encode it; the file already has it verbatim
+        print(out.encode('ascii', 'replace').decode('ascii'))
 
 
 if __name__ == "__main__":

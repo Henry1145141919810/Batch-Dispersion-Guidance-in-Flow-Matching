@@ -124,7 +124,7 @@ itself or from measured evidence.
 | `G_full`, `v_quad`, 3rd/4th moments | OURS | [SMG_WHY §6.2, §8](SMG_WHY_INNOVATIVE.md) | *"need not be smaller in covariance order than the retained correction"*; expensive and sensitive to network derivative error |
 | CPGO / GAPL | OURS — **GAPL is the strongest unclaimed idea in the corpus** | [INNOVATION_V8](INNOVATION_V8_TRAINING_TIME_GUIDANCE.md) Prop. 1–5 | training-time, out of scope for this deadline. **Record as future work with the Prop. 5 bound** |
 | Centred-residual "orthogonal guidance" | **PRIOR** — Tilt Matching eq. 24 | [INNOVATION_V8](INNOVATION_V8_TRAINING_TIME_GUIDANCE.md) | *"renaming it would not create a new algorithm"* |
-| **Exact simplex marginalisation** | **OURS, un-indexed** | [SMG_FULL §5](SMG_FULL_MATH_AND_PROOFS.md) | **Flagged: the only *exact* method in the corpus** — no Tweedie, no Jacobian, no Hutchinson — ~60 lines, and it has no ID in any ranking table. Needs **Modality 2**, which has not started |
+| **Exact simplex marginalisation** | **OURS, un-indexed** | [SMG_FULL §5](SMG_FULL_MATH_AND_PROOFS.md) | **Flagged: the only *exact* method in the corpus** — no Tweedie, no Jacobian, no Hutchinson — ~60 lines, and it has no ID in any ranking table. Needs **Modality 2**, whose base model is now trained and tracked (`proj1/m2/`); its guidance sweep is built but has not been run |
 
 ---
 

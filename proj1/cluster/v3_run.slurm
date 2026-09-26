@@ -5,8 +5,16 @@
 #SBATCH --cpus-per-task=6
 #SBATCH --mem=48G
 #SBATCH --time=04:00:00
-#SBATCH --output=/vast/projects/ajw/wharton/hyhuang/cgm/logs/v3-%j.out
-#SBATCH --error=/vast/projects/ajw/wharton/hyhuang/cgm/logs/v3-%j.err
+#SBATCH --output=logs/v3-%j.out
+#SBATCH --error=logs/v3-%j.err
+#
+# THE LOG PATHS ARE RELATIVE, and submit_v3.sh overrides them anyway with
+# --output/--error built from CGM_PROJ. They used to be absolute into one
+# person's /vast allocation: sbatch parses these lines BEFORE the body runs,
+# so CGM_PROJ could not reach them, and a teammate's jobs failed at launch
+# with the log -- the thing that would have said why -- being what broke.
+# Relative means "relative to the submitting directory", which submit_v3.sh
+# has already cd'd into.
 #
 # PROTOCOL v3 (docs/protocol/FULL_RUN_V3_PROTOCOL.md) and its BDG ablation.
 # One job script, three stages, two base models.
@@ -38,11 +46,14 @@
 # have died on its first cell, and the n = 5000 this run used to plan needed
 # 200 and 280 GiB reserved, so BOTH backends would have.
 #
-# 500 still fits with headroom -- measured ON BETTY at 17.57 GiB reserved on our
-# base and 26.65 on EquiFM, inside an 80 % budget of 33.5 GiB -- and it is still
-# the largest divisor that does: 1000 needs ~56 GiB, i.e. OOM. So it did NOT
-# change when n did. A cell therefore runs FOUR controllers of 500, not ten and
-# not one. Each estimates V_b from 500 samples -- a 6.3 % standard error on the
+# 500 still fits with headroom -- EXTRAPOLATED from the laptop slopes at
+# ~20 GiB reserved on our base and ~28 on EquiFM, inside an 80 % budget of
+# 33.5 GiB -- and it is still the largest round batch that does: 1000 needs
+# ~56 GiB, i.e. OOM. An earlier version of this comment gave 17.57 and 26.65
+# as "measured ON BETTY"; that measurement does not exist in this repository
+# and is WITHDRAWN (FULL_RUN_V3_PROTOCOL.md 2.4). The preflight below does
+# run the real check on the actual card before the array starts. So it did NOT
+# change when n did. A cell therefore runs N/500 controllers of 500, not one. Each estimates V_b from 500 samples -- a 6.3 % standard error on the
 # variance, against 53 % for the 8-molecule remainder the old batch-128 default
 # would have produced -- and the cell's reported controller state is the mean
 # over those four. CONTROLLER COUNT is what the n cut economised; controller
@@ -75,16 +86,17 @@
 # comparison arms plus 3.5 per BDG arm, so:
 #
 # Units are DEFINED AT n = 5000 and scale linearly in n, so multiply by n/5000
-# -- 0.4 for the headline's 2000, 0.2 for the ablation's 1000:
+# -- both stages at the operator's chosen n:
 #
 #   headline task, 7 arms = 30.5 units x 0.4 = 12.2 units
-#                         = 30 min ours, 55 min at 1.83x, 75 min at 2.5x
+#                         scaled by n/5000; v3_power.py prints the hours
 #   ablation task, 17 arms = 59.5 units x 0.2 = 11.9 units
 #                         = 29 min ours, 54 min at 1.83x, 73 min at 2.5x
 #
-# The longest task is therefore 75 min against BUDGET_MIN 225 and a 4-hour wall
-# -- a 3x margin, where at n = 5000 it was 210 against 225. 2.5x is a MARGIN,
-# not a measurement (see above).
+# THE LONGEST TASK IS AN ABLATION TASK (17 arms), and at a large n it can
+# exceed the wall: at n = 5000 it is ~269 min at the 2.5x margin, past
+# BUDGET_MIN 225 and the 4-hour --time. Check with v3_power.py before choosing
+# n. 2.5x is a MARGIN, not a measurement (see above).
 #
 # CAVEAT ON LINEARITY. The only MEASURED datum is v2's 58 min for 23.5 units at
 # n = 5000; the scaling is assumed. Per-task FIXED cost does not scale with n --
@@ -93,10 +105,10 @@
 # noise; at 30 min it is a visible fraction, so treat 12.2 units as a FLOOR and
 # read the real number off the [timing] line.
 #
-#   STAGE=v3      18 tasks = 2 backends x 3 properties x 3 seeds
-#                 task = 9*backend + 3*property + seed; all 7 headline arms
-#   STAGE=v3abl   6 tasks = 2 backends x 3 properties, ONE seed, all 17 arms
-#                 task = 3*backend + property
+#   STAGE=v3      NB*NP*NS tasks (27 with three backends), all 7 headline arms
+#   STAGE=v3abl   the SAME grid, all 17 grid arms. The QM9-diffusion base runs
+#                 neither, so its tasks exit 0 at once
+#                 both: task = (NP*NS)*backend + NS*property + seed
 #   STAGE=table   one job, no array
 #
 # proj1/tests/test_v3.py PARSES this arithmetic out of this file and asserts the
@@ -151,21 +163,12 @@ if [ -z "$N" ]; then
   exit 1
 fi
 BATCH="${V3_BATCH:-500}"
-# THE ABLATION IS SMALLER THAN THE HEADLINE (Henry, 26 Sep): n = 1000 and one
-# seed, 4.2 GPU-h against the headline's 12.8. (The 51.3 this line used to cite
-# was the ABLATION's own first plan -- 14 grid arms in a shared n5000 tree --
-# never the headline. Do not read it as a headline figure.) See
-# docs/protocol/ABLATION_V3_PROTOCOL.md. The batch does NOT shrink with it --
-# 1000 / 500 = 2, so each controller still estimates V_b from 500 molecules (a
-# 6.3 % standard error); the cell runs two of them against the headline's four.
-# Controller COUNT is what was economised, not controller QUALITY, which is the
-# only sane way to make a BDG run cheaper.
-#
-# 1000 AND NOT 2000, because 2000 is now the HEADLINE's n. At equal n both
-# stages write results/v3/<be>/n2000/ under one stage label, and v3_table.py --
-# which requires every (prop, arm) at all three seeds -- would glob the
-# ablation's 15 single-seed arms into the headline's table and refuse. It must
-# stay divisible by BATCH.
+# THE ABLATION RUNS THE SAME n AND THE SAME THREE SEEDS as the headline
+# (Henry, 26 Sep, final). It is the LARGER stage: 17 grid arms against 7.
+# Earlier drafts ran it at one seed and a smaller n, purely so that n could
+# tell the two result trees apart; transfer_sweep now writes
+# results/v3/<be>/<stage>/n<N>/seed<S>/, so the STAGE directory does that job.
+# See docs/protocol/ABLATION_V3_PROTOCOL.md.
 # The ablation runs at the SAME n and the SAME seeds as the headline. It used
 # to run smaller on both, purely so that n could tell the two trees apart;
 # transfer_sweep now writes results/v3/<be>/<stage>/n<N>/seed<S>/, so the
@@ -201,17 +204,18 @@ FM_CKPT="$(python -u proj1/scripts/verify_generator.py --print-path)"
 FM_MD5=a190ac8394902027d4a951f8d30e8c5c
 V3_ARMS="unguided,plug,tmpd,lgd_mc,tfg,bdg_e4t0.5,bdg_e4t1"
 # ALL 17 grid arms, in one list. They are not split into halves any more and the
-# headline's are no longer excluded: at n = 1000 the ablation writes to
-# results/v3/<be>/n1000/, a different tree from the headline's n2000/, so there
+# headline's are no longer excluded: the ablation writes to
+# results/v3/<be>/v3abl/, a different tree from the headline's v3/, so there
 # is nothing to reuse and the grid must be self-contained to be readable at all.
 # The grid keeps ALL FOUR tau_mults even though the headline now runs two: the
 # 0.75 rung lives here, and a monotonicity or curvature claim about the tau
 # ladder must be read off this grid, never off the headline's two endpoints.
 # 17 arms = eta 0 once at tau_mult 1 (the dispersion term is multiplied by zero,
 # so tau_mult cannot change those samples) + eta {1,2,4,8} x tau_mult
-# {0.5,0.75,1,1.5}. One task carries all 17: at n = 1000 that is 17 x 3.5 x 0.2
-# = 11.9 cost units, 29 min on our base and about 54 min on EquiFM (73 at the
-# 2.5x margin), well inside BUDGET_MIN.
+# {0.5,0.75,1,1.5}. One task carries all 17 = 59.5 cost units at n = 5000,
+# scaled by n/5000. AT LARGE n THIS IS THE TASK THAT CAN EXCEED THE WALL: at
+# n = 5000 it is ~269 min at the 2.5x margin, past BUDGET_MIN 225 and the
+# 4-hour --time. Check it with v3_power.py before choosing a large n.
 # ONE line on purpose: test_v3.py PARSES this literal out of this file rather
 # than re-deriving it, which is how a stride bug was caught once before. A
 # generated list would force the test to execute shell instead.
@@ -291,7 +295,7 @@ if [ "$STAGE" = "preflight" ]; then
   #      catches an arm that is broken only on EquiFM -- a missing kwarg, a shape
   #      that only the two-clock sampler hits. Without it, run_cell's per-cell
   #      `except Exception: continue` would log the failure and carry on, and a
-  #      BASELINE arm could be missing from all 18 tasks before anyone noticed.
+  #      BASELINE arm could be missing from every task before anyone noticed.
   #   2. THE BATCH FITS AT THE REAL SIZE on this machine. The slope that chose
   #      500 was fitted on a 16 GB laptop card at batches <= 128; this measures
   #      the actual slice with the actual checkpoint.

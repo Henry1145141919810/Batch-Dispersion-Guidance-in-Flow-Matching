@@ -106,9 +106,11 @@ gate("stages_have_distinct_tree_dirs",
 _ts_src = io.open(os.path.join(ROOT, "proj1", "scripts", "transfer_sweep.py"),
                   encoding="utf-8").read()
 gate("stages_write_distinct_cell_labels",
-     '"v3": "v3", "v3abl": "v3abl"' in _ts_src,
-     "the two stages once shared the label \"v3\"; with one tree per stage a "
-     "cell belongs to exactly one of them and the label must say which")
+     _ts_src.count('"v3": "v3", "v3abl": "v3abl"') >= 2,
+     "this literal appears in BOTH V3_STAGE_DIRS and the cell_stage map, so "
+     "testing `in` passed while only one was intact. Count, or a break in "
+     "the label map alone -- the one that decides what a cell records -- "
+     "goes unnoticed")
 gate("out_dir_includes_the_stage_level",
      "V3_STAGE_DIRS[args.stage]" in _ts_src,
      "results/v3/<backend>/<stage>/n<N>/seed<S>/ -- without the stage level "
@@ -361,6 +363,33 @@ N_TASKS = NB * NP * NS
 # submit_v3.sh DERIVES the range from the job file rather than restating it,
 # so the gate checks that it derives rather than that it matches a literal --
 # a literal is exactly what went stale when the third backend landed.
+# THE GATE MUST EXECUTE THE DERIVATION, not grep for it. A first version only
+# checked the two literal expressions were present -- so when the sed
+# backreferences in those same lines were corrupted into control bytes, and
+# the script exited 1 without submitting anything, it still PASSED.
+_sub_lines = [l for l in sub.split(chr(10))
+              if re.match(r"^N(B|PROPS|SEEDS)=", l)]
+gate("submit_extracts_three_dimensions", len(_sub_lines) == 3,
+     "expected NB/NPROPS/NSEEDS assignments in submit_v3.sh, found %d"
+     % len(_sub_lines))
+_derived = None
+try:
+    _script = (chr(34).join(["JOB=", os.path.join(ROOT, "proj1", "cluster",
+                             "v3_run.slurm").replace(chr(92), "/"), ""])
+               + chr(10)
+               + chr(10).join(_sub_lines) + chr(10)
+               + 'echo "$NB $NPROPS $NSEEDS"')
+    _derived = subprocess.run(["bash", "-c", _script], capture_output=True,
+                              text=True, timeout=30).stdout.split()
+except Exception as _exc:                          # noqa: BLE001
+    print("  (note: could not run bash, derivation not executed: %s)" % _exc)
+if _derived:
+    gate("submit_array_range_derivation_runs",
+         _derived == [str(NB), str(NP), str(NS)],
+         "submit_v3.sh extracts %s from the job file, which declares %d "
+         "backends / %d properties / %d seeds. A mismatch means the array "
+         "range is wrong and tasks go unsubmitted."
+         % (_derived, NB, NP, NS))
 gate("submit_derives_the_array_range",
      "NTASKS=$(( NB * NPROPS * NSEEDS ))" in sub
      and 'ARRAY="0-$(( NTASKS - 1 ))"' in sub
@@ -461,7 +490,7 @@ _env = {"SLURM_CONF", "SLURM_JOB_ID", "SLURM_ARRAY_JOB_ID", "SLURM_ARRAY_TASK_ID
 _echoed = set()
 for _line in _code.split('\n'):
     if 'echo "' in _line:
-        _echoed |= set(re.findall(r'([A-Z_][A-Z0-9_]*)=', _line))
+        _echoed |= set(re.findall('([A-Z_][A-Z0-9_]*)=', _line))
 _defined -= {n for n in _echoed
              if not re.search(r'^\s*%s=' % n, _code, re.M)}
 _read = set(re.findall(r'\$\{?([A-Z_][A-Z0-9_]*)', _code))

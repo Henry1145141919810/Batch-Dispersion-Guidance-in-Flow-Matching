@@ -20,7 +20,7 @@
 #   E  table                      one page per base model, plus both side by side
 #
 # The ablation is chained AFTER the headline, but the two no longer share a
-# tree or a cell: n = 2000 and n = 1000 are separate directories, so there is
+# tree or a cell: results/v3/*/v3/ and results/v3/*/v3abl/ are separate, so there is
 # nothing to collide over and nothing to reuse. The ordering now buys only one
 # thing -- the headline's [timing] lines land before the ablation commits.
 #
@@ -31,7 +31,11 @@
 set -uo pipefail
 export SLURM_CONF="${SLURM_CONF:-/cm/shared/apps/slurm/etc/slurm/slurm.conf}"
 
-PROJ=/vast/projects/ajw/wharton/hyhuang/cgm
+# THE CHECKOUT TO SUBMIT FROM. CGM_PROJ overrides it, and it must -- this
+# line was a bare literal while the JOB file already honoured CGM_PROJ, so a
+# teammate who followed the handoff's "override it, no editing" got a `cd`
+# into a path that does not exist on their cluster.
+PROJ="${CGM_PROJ:-/vast/projects/ajw/wharton/hyhuang/cgm}"
 JOB=proj1/cluster/v3_run.slurm
 # NO DEFAULT. v3 pre-registers no cell size: the operator picks it (Henry,
 # 26 Sep). Choose it against the power table in section 6.1 of
@@ -60,10 +64,14 @@ ABL_N="$N"
 # and it changed the moment a third base model was added; a hardcoded range
 # would have silently left the last 9 tasks unsubmitted. The job file is the
 # single source of the backend list, so read it from there.
-NB=$(grep -c . <<<"$(sed -n 's/^BACKENDS=(\(.*\))$//p' "$JOB" | tr ' ' '
-')")
-NPROPS=$(sed -n 's/^PROPS=(\(.*\))$//p' "$JOB" | wc -w)
-NSEEDS=$(sed -n 's/^SEEDS=(\(.*\))$//p' "$JOB" | wc -w)
+# No sed backreferences here, on purpose: an earlier version used a \1
+# and the tool that wrote this file ate the backslash, leaving a literal
+# control byte. `bash -n` passed, the guard below fired, and the script
+# exited 1 without submitting anything. Strip the prefix and the bracket
+# instead -- there is nothing to get wrong.
+NB=$(sed -n 's/^BACKENDS=(//p' "$JOB" | tr -d ')' | wc -w)
+NPROPS=$(sed -n 's/^PROPS=(//p' "$JOB" | tr -d ')' | wc -w)
+NSEEDS=$(sed -n 's/^SEEDS=(//p' "$JOB" | tr -d ')' | wc -w)
 if [ "$NB" -lt 1 ] || [ "$NPROPS" -lt 1 ] || [ "$NSEEDS" -lt 1 ]; then
   echo "STOP: could not read BACKENDS/PROPS/SEEDS out of $JOB." >&2
   exit 1
@@ -86,12 +94,27 @@ EXPORTS="ALL,V3_N=$N,V3_ABL_N=$ABL_N,V3_BATCH=$BATCH"
 [ -n "${CGM_PROJ:-}" ] && EXPORTS="$EXPORTS,CGM_PROJ=$CGM_PROJ"
 [ -n "${CGM_VENV:-}" ] && EXPORTS="$EXPORTS,CGM_VENV=$CGM_VENV"
 
-cd "$PROJ" || exit 1
+cd "$PROJ" || {
+  echo "STOP: cannot cd to $PROJ." >&2
+  echo "Set CGM_PROJ to your checkout:  CGM_PROJ=/path/to/repo V3_N=<n> bash $0" >&2
+  exit 1; }
 [ -f "$JOB" ] || { echo "STOP: $JOB not found -- ship the code tarball first" >&2; exit 1; }
+
+# LOG DIRECTORY. sbatch parses #SBATCH --output BEFORE the job body runs, so
+# the job file cannot place its own logs relative to CGM_PROJ -- the header's
+# absolute path would send a teammate's logs to an allocation they cannot
+# write, and the failure is invisible because the log is what broke. Pass it
+# on the submit line instead, which overrides the header.
+LOGDIR="${CGM_LOGDIR:-$PROJ/logs}"
+mkdir -p "$LOGDIR" || { echo "STOP: cannot create $LOGDIR" >&2; exit 1; }
 
 sub () {                # sub NAME ARRAY DEPENDENCY STAGE -> echoes job id
     local name="$1" arr="$2" dep="$3" stage="$4"
     local cmd=(sbatch --parsable --job-name="cgm-v3-$name")
+    # override the job file's absolute --output/--error (see LOGDIR above)
+    cmd+=(--output="$LOGDIR/v3-%j.out" --error="$LOGDIR/v3-%j.err")
+    [ -n "${CGM_QOS:-}" ] && cmd+=(--qos="$CGM_QOS")
+    [ -n "${CGM_PARTITION:-}" ] && cmd+=(--partition="$CGM_PARTITION")
     [ -n "$arr" ] && cmd+=(--array="$arr")
     [ -n "$dep" ] && cmd+=(--dependency="$dep")
     cmd+=(--export="$EXPORTS,STAGE=$stage" "$JOB")
@@ -103,24 +126,26 @@ sub () {                # sub NAME ARRAY DEPENDENCY STAGE -> echoes job id
 WHAT="${1:-headline}"
 case "$WHAT" in all|headline|ablation|table) ;; *)
     echo "usage: bash proj1/cluster/submit_v3.sh [headline|ablation|all|table]" >&2
-    echo "  headline  the comparison set + BDG eta=4   ~12.8 GPU-h (the default)" >&2
-    echo "  ablation  the eta x tau_mult grid          ~4.2 GPU-h" >&2
-    echo "  all       both, chained                    ~17.0 GPU-h" >&2
+    echo "  headline  the comparison set + BDG eta=4   (the default)" >&2
+    echo "  ablation  the eta x tau_mult grid, 17 arms -- the LARGER stage" >&2
+    echo "  all       both, chained" >&2
+    echo "  cost depends on V3_N: python proj1/scripts/v3_power.py" >&2
     echo "  table     re-read whatever is on disk" >&2
     exit 1 ;;
 esac
 
 # WHY THE DEFAULT IS STILL `headline` AND NOT `all`.
-# It is no longer about the 24-hour window: at n = 2000 the whole run is 17.0
-# GPU-h (21.2 at the 2.5x margin) and `all` fits 24 h even SERIALIZED. The
-# reason is now only that the headline's [timing] lines settle EquiFM's real
-# per-cell cost -- the one assumed factor in the budget, and the one that
-# decides whether the 1.83x or the 2.5x column is the true one -- before the
-# ablation commits. If you already trust the ratio, `all` is fine.
+# The headline's [timing] lines settle the real per-pass cost of the non-fm
+# backends -- the one assumed factor in the whole budget, and the one that
+# decides whether the 1.83x or the 2.5x column is true -- before the ABLATION,
+# which is the LARGER stage (17 arms against 7), commits. If you already trust
+# the ratio, `all` is fine.
 #
-# The two stages NO LONGER share a tree (n2000 vs n1000), so the ablation
-# recomputes its own eta = 4 rungs rather than skipping the headline's. That
-# duplication is priced in: the ablation is 4.2 GPU-h entire.
+# Cost depends on V3_N and is not quoted here; hardcoded GPU-hour figures in
+# this file went stale twice. Run:  python proj1/scripts/v3_power.py
+#
+# The two stages do NOT share a tree (v3/ vs v3abl/), so the ablation
+# recomputes its own eta = 4 rungs rather than skipping the headline's.
 #
 # Check your own limit before choosing:
 #   sacctmgr show assoc user=$USER format=User,QOS,MaxJobs,GrpTRES%30
@@ -175,14 +200,17 @@ the ablation is NOT queued. Read the [timing] lines first, then:
 
 watch it:
   squeue -u \$USER -o "%.18i %.14j %.9T %.10M %.28E"
-  ls results/v3/fm/n$N/seed20261001/ | wc -l        # counts up to 66 (22 arms x 3 props)
-  ls results/v3/equifm/n$N/seed20261001/ | wc -l    # counts up to 66
+  ls results/v3/fm/v3/n$N/seed20261001/ | wc -l       # headline: up to 21 (7 arms x 3 props)
+  ls results/v3/fm/v3abl/n$N/seed20261001/ | wc -l    # ablation: up to 51 (17 x 3)
+  ls results/v3/edm/v3/n$N/seed20261001/ | wc -l      # QM9 diffusion: up to 6 (2 x 3)
   grep -h '\[timing\]' logs/v3-*.out | tail -20     # real per-task cost
 
 read it:
-  docs/results/V3_RESULTS.md          both bases, side by side
-  docs/results/V3_RESULTS_fm.md       ours
-  docs/results/V3_RESULTS_equifm.md   EquiFM
+  docs/results/V3_RESULTS.md              every base, side by side
+  docs/results/V3_RESULTS_fm.md           ours
+  docs/results/V3_RESULTS_equifm.md       EquiFM
+  docs/results/V3_RESULTS_edm.md          QM9 diffusion
+  docs/results/V3_RESULTS_ABL*.md         the same, for the ablation
 
 if the table refuses, it names the gap. Finish the cells and re-run just it:
   sbatch --export=$EXPORTS,STAGE=table $JOB

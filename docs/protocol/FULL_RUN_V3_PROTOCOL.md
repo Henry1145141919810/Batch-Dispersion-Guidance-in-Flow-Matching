@@ -72,16 +72,20 @@ that is done it is a separate run and its numbers do not belong in a v3 table.
 >
 > | property | δ ours | δ TFG | ours / TFG | |
 > |---|---|---|---|---|
-> | mu | 0.136757 | 0.156754 | **0.87×** | ours **narrower** |
-> | alpha | 0.430463 | 0.164797 | **2.61×** | ours **wider** |
-> | gap | 0.005381 | 0.003736 | **1.44×** | ours **wider** |
+> | mu | 0.175407 | 0.156754 | **1.12×** | ours **wider** |
+> | alpha | 0.506184 | 0.164797 | **3.07×** | ours **wider** |
+> | gap | 0.007480 | 0.003736 | **2.00×** | ours **wider** |
 >
-> **The direction is not uniform.** Our oracle is the *better* one on mu, so
-> the band there is narrower; it is worse on alpha and gap. An earlier draft
-> of this section said our band was wider on all three ("~1.2× on mu, 3× on
-> alpha, 2× on gap"), quoting a table computed on a different split. That is
-> **withdrawn**: it is wrong on mu, and wrong in magnitude on the other two.
-> Quote the measured table, per property.
+> **Our band is wider on all three**, so `fm` and `edm` accept molecules
+> `equifm` would reject, before any base model or arm is considered.
+>
+> ⚠️ Each of our nets is scored on the half of the calibration pool it did
+> NOT train on — f_A (trained on `train_a`) on the `train_b` half, and vice
+> versa. Scoring them on the whole pool, which is right for TFG's external
+> pair, measures each partly on its own training data and flatters it by
+> ~19 %. A draft of this section did that and reported our mu band as
+> *narrower*; **withdrawn**. The held-out figures above land close to
+> `2 × val_mae` from the checkpoints, which is the independent check.
 >
 > **Never compare `in_band` between `fm` and `equifm`.** It was already true
 > that nothing is paired across backends (§3); this is stronger — the two
@@ -111,24 +115,35 @@ w = 1 is 20–100× it. Measured on our base at q50, mu, n = 512:
 
 | arm at w = 1 | in_band | mol_stab | validity |
 |---|---|---|---|
-| unguided | 0.0723 | 0.4023 | 0.75 |
-| plug | 0.0840 | 0.3730 | 0.731 |
-| tmpd | 0.0957 | 0.3906 | 0.746 |
-| lgd_mc | 0.0859 | 0.3770 | 0.766 |
-| **tfg** | **0.3828** | **0.2285** | **0.619** |
+| unguided | 0.072266 | 0.402344 | 0.785156 |
+| plug | 0.083984 | 0.373047 | 0.730469 |
+| tmpd | 0.095703 | 0.390625 | 0.746094 |
+| lgd_mc | 0.085938 | 0.376953 | 0.765625 |
+| **tfg** | **0.382812** | **0.228516** | **0.619141** |
 
-(On gap, tfg reaches 0.3164 at validity 0.4668.) These are **indicative, not the
-run**: single-seed at n = 512, where v3 is the operator's n × 3 seeds. They come from
-`transfer_sweep.py`'s and `v3_table.py`'s docstrings, which is the only place this
-project records them, and they are quoted here exactly as recorded — including
-unguided validity 0.75.
+(On gap, tfg reaches 0.316406 at validity 0.466797.) These are **indicative,
+not the run**: single-seed at n = 512, where v3 is the operator's n × 3 seeds.
 
-**Do not build anything on the precision of this table.** An earlier draft of this
-section "corrected" 0.750 to 0.78516 and cited "the constant at
-`transfer_sweep.py:262`". That string does not occur anywhere in that file; the
-citation was fabricated and the correction is withdrawn. The docstrings themselves
-disagree about the n these figures were taken at, and nothing in the repo resolves
-it. v3's own unguided cells supersede all of it in three properties × three seeds
+**Sourced from the cells, not from a docstring.** Every row is read from
+`results/sweep/mu__<arm>__q50__w1__tmin0.5__cmp.json` (and the `gap` cell for
+the last line), which is where this project actually records them.
+
+> **Two corrections, in opposite directions, both recorded here so the next
+> reader does not undo them again.**
+>
+> An early draft gave unguided validity as **0.75**, quoting a docstring. A
+> later draft corrected it to **0.78516** but cited "the constant at
+> `transfer_sweep.py:262`", which does not exist — so an anti-fabrication
+> pass withdrew *the whole correction* and reinstated 0.75.
+>
+> **The correction was right; only its citation was invented.** The cell says
+> `validity = 0.78515625` (402 of 512). 0.75 is withdrawn, 0.78516 restored,
+> and the table now cites the cells. Two further claims from that pass are
+> also withdrawn: the docstrings are **not** "the only place this project
+> records them" (the cells hold all of it), and they do **not** disagree about
+> n — both say 512, as do the cells.
+
+v3's own unguided cells supersede all of it in three properties × three seeds
 at the run's own n — that is what any published number must come from.
 
 So **an in-band leaderboard would crown the arm that destroyed the most
@@ -683,7 +698,7 @@ if the virtualenv is elsewhere); `submit_v3.sh` forwards both.
 |---|---|
 | the two stages | `transfer_sweep.py --stage v3` / `--stage v3abl` |
 | which backend gets which pair and arms | `transfer_sweep.V3_BACKENDS` |
-| gates (80, closed-form) | `proj1/tests/test_v3.py` |
+| gates (83, closed-form) | `proj1/tests/test_v3.py` |
 | the power table | `proj1/scripts/v3_power.py` → [V3_POWER.md](../results/V3_POWER.md) |
 | the batch measurement | `proj1/scripts/batch_memprobe.py` → [V3_BATCH_MEMORY.md](../results/V3_BATCH_MEMORY.md) |
 | the generator check | `proj1/scripts/verify_generator.py` |

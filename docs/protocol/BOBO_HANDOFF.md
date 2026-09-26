@@ -18,7 +18,7 @@ weight is *not* in the clone, this says so and says how to get it.
 | **Modality 2 model + data** | `proj1/m2/blade_bundle/` (15 MB) | ✅ **yes** |
 | **EquiFM generator + OC-Flow oracles** | `audit/equifm_20260922/` | ❌ fetch — see below |
 | **QM9 diffusion generator** (TFG's EDMsecond) | `weights/EDMsecond/` | ❌ fetch — see below |
-| **QM9 dataset** | `data/qm9.pt` (430 MB built) | ❌ build — ~35 min |
+| **QM9 dataset** | `data/qm9.pt` (136 MiB) | ❌ build — ~35 min |
 
 Three commands, all verified by hash, none needing cluster credentials:
 
@@ -155,14 +155,13 @@ calibration molecules ([V3_PAIR_DELTA.md](../results/V3_PAIR_DELTA.md)):
 
 | property | δ ours | δ TFG | ours / TFG |
 |---|---|---|---|
-| mu | 0.136757 | 0.156754 | **0.87×** — ours narrower |
-| alpha | 0.430463 | 0.164797 | **2.61×** — ours wider |
-| gap | 0.005381 | 0.003736 | **1.44×** — ours wider |
+| mu | 0.175407 | 0.156754 | **1.12×** — ours wider |
+| alpha | 0.506184 | 0.164797 | **3.07×** — ours wider |
+| gap | 0.007480 | 0.003736 | **2.00×** — ours wider |
 
-So an ours-pair backend is scored in a different band, **narrower on mu and
-wider on alpha and gap**, and its `in_band` moves for that reason alone —
-before any base model or any arm is considered. Do not say "ours is the wider
-band" without naming the property.
+So `fm` and `edm` are scored in a **wider band on every property** — they
+accept molecules `equifm` would reject — and their `in_band` is higher for
+that reason alone, before any base model or arm is considered.
 
 **Within one backend every arm shares one δ**, so the arm-against-arm
 comparison is completely unaffected. That is the comparison this project is
@@ -230,6 +229,6 @@ ones:
 | table: `REFUSING ... cells absent` | the run is incomplete; the message lists which (property, arm) |
 | table: `... disagree` on `pair`/`n`/`delta_mode` | you pooled two different configurations — check `--stage` and `--n` |
 
-The full gate suite is `python proj1/tests/test_v3.py` (80 closed-form checks,
+The full gate suite is `python proj1/tests/test_v3.py` (83 closed-form checks,
 no GPU needed). Run it after any edit to the protocol, the job or the planner;
 it is what keeps the three files in step.

@@ -78,11 +78,10 @@ WHAT DIFFERS FROM THE MAIN SWEEP, and must be disclosed with every number:
      so which was used can be checked after the fact.
 
      WHAT THAT COSTS. delta = k x MAE(f_B), so the pair sets the BAND WIDTH,
-     and the two oracles differ. MEASURED on the same calibration molecules
+     and the two oracles differ. MEASURED on held-out data
      (pair_delta_compare.py -> docs/results/V3_PAIR_DELTA.md), ours/TFG is
-     0.87x on mu -- ours NARROWER, our oracle is the better one there -- and
-     2.61x on alpha, 1.44x on gap. THE DIRECTION IS NOT UNIFORM, so a blanket
-     "ours is wider" is wrong; quote it per property.
+     1.12x on mu, 3.07x on alpha, 2.00x on gap -- OURS IS WIDER ON ALL THREE,
+     so an ours-pair backend accepts molecules a TFG-pair backend rejects.
 
      IN_BAND IS THEREFORE NOT COMPARABLE ACROSS BACKENDS THAT USE DIFFERENT
      PAIRS, in either direction. Within one backend every arm shares one
@@ -380,10 +379,11 @@ V3_COMPARE_ARMS = ["unguided", "plug", "tmpd", "lgd_mc", "tfg"]
 #
 # READ THIS BEFORE COMPARING in_band ACROSS BACKENDS. delta = k x MAE(f_B), so
 # the pair sets the BAND WIDTH. Our f_B is less accurate than TFG's on all
-# three properties. MEASURED (pair_delta_compare.py), ours/TFG delta is 0.87x
-# on mu, 2.61x on alpha, 1.44x on gap -- so ours is NARROWER on mu and wider
-# on the other two. The direction is NOT uniform and a blanket statement about
-# it is wrong; docs/results/V3_PAIR_DELTA.md has the table.
+# three properties. MEASURED on HELD-OUT data (pair_delta_compare.py), ours/TFG
+# delta is 1.12x on mu, 3.07x on alpha, 2.00x on gap -- ours is WIDER on all
+# three. (Each of our nets must be scored on the calibration half it did not
+# train on; scoring on the whole pool flatters them ~19 % and inverts mu.)
+# docs/results/V3_PAIR_DELTA.md has the table.
 #
 # That is a deliberate trade, not an oversight. Our pair is disjoint by
 # CONSTRUCTION (f_A and f_B trained on disjoint halves), where TFG's is
@@ -1050,9 +1050,36 @@ def build_pair_ours(prop, d, sel, dev, k_delta, sampler_scale,
     raw_guide = PhysicalProperty(ga_path, n_types, dev)
     raw_oracle = PhysicalProperty(gb_path, n_types, dev)
 
-    # Fit ONLY to check the scale (see the note above); the fit is not applied.
-    ag, bg, mae_g = fit_calibration(raw_guide, c, f, m, truth)
-    ao, bo, mae_o = fit_calibration(raw_oracle, c, f, m, truth)
+    # EACH NET IS SCORED ON THE SPLIT IT DID NOT TRAIN ON.
+    #
+    # `sel` pools train_a + train_b, which is right for TFG's pair -- those
+    # are external networks and our splits mean nothing to them. It is WRONG
+    # for ours: f_A was trained on train_a and f_B on train_b (the checkpoints
+    # record it), so scoring them on the pool measures each one partly on its
+    # own training data. Measured on mu, that made f_B's MAE 0.0684 against
+    # the 0.0840 its checkpoint records on held-out `val` -- optimistic by
+    # ~19 %, and delta = k x MAE(f_B), so the BAND came out ~19 % too tight.
+    #
+    # Splitting the pool by membership fixes it without touching `val` (which
+    # supplies the q50/q90 molecule sizes) or `test` (the `dist` targets):
+    # f_A is scored on the train_b half, f_B on the train_a half. Both halves
+    # are genuinely held out from the net being scored, and the disjointness
+    # our pair claims by construction is now actually used.
+    in_a = set(d["split"]["train_a"].tolist())
+    sel_l = sel.tolist()
+    m_b = torch.tensor([i for i, ix in enumerate(sel_l) if ix not in in_a],
+                       device=dev)          # train_b half -> scores f_A
+    m_a = torch.tensor([i for i, ix in enumerate(sel_l) if ix in in_a],
+                       device=dev)          # train_a half -> scores f_B
+    if m_a.numel() < 200 or m_b.numel() < 200:
+        raise SystemExit(
+            "%s: the calibration pool splits %d/%d between train_a and "
+            "train_b; too few on one side to score a net on held-out data."
+            % (prop, m_a.numel(), m_b.numel()))
+    ag, bg, mae_g = fit_calibration(raw_guide, c[m_b], f[m_b], m[m_b],
+                                    truth[m_b])
+    ao, bo, mae_o = fit_calibration(raw_oracle, c[m_a], f[m_a], m[m_a],
+                                    truth[m_a])
 
     y_std = float(truth.double().std())
     # slope 1, intercept 0: already physical. feat_scale converts the SAMPLER's
@@ -1096,7 +1123,11 @@ def build_pair_ours(prop, d, sel, dev, k_delta, sampler_scale,
               "guide_val_mae": _val_mae(ga_path),
               "oracle_val_mae": _val_mae(gb_path),
               "n_calibration": int(len(sel)),
-              "calibration_set": "train_a+train_b, seed %d" % CALIB_SEED,
+              "n_score_guide": int(m_b.numel()),
+              "n_score_oracle": int(m_a.numel()),
+              "calibration_set": "train_a+train_b, seed %d; each net scored "
+                                 "on the HALF it did not train on (f_A on "
+                                 "train_b, f_B on train_a)" % CALIB_SEED,
               "sampler_feat_scale": float(sampler_scale),
               "guide_input_multiplier": f_A.feat_scale,
               "oracle_input_multiplier": f_B.feat_scale,
@@ -1724,6 +1755,20 @@ def main():
                   "eqextend": EQ_TUNE_N, "eqfreeze": EQ_TUNE_N,
                   "basecmp": BASECMP_N, "basecmprefine": BASECMP_N,
                   "basecmpfull": 2000}.get(args.stage, 512)
+    # THE BATCH IS BDG'S ESTIMATOR, so n must divide by it -- a remainder
+    # batch is a second, far noisier controller pooled into the cell's
+    # diagnostics as an equal. The slurm and submit_v3.sh both refuse an
+    # indivisible pair, but three docs claimed THIS file did too and it did
+    # not: a hand-run `--stage v3 --n 777 --batch 500` was accepted and wrote
+    # a cell whose controller is not the one its name implies.
+    if (args.stage in ("v3", "v3abl") and not args.preflight
+            and args.batch and args.n % args.batch != 0):
+        raise SystemExit(
+            "--stage %s: --batch %d does not divide --n %d (remainder %d). "
+            "The batch IS BDG's estimator, not a speed knob, so the last "
+            "short batch would be a second controller with a far noisier "
+            "variance estimate, pooled in as an equal."
+            % (args.stage, args.batch, args.n, args.n % args.batch))
     if args.seed is None:
         if args.stage in ("full", "eqconfirm", "basecmpfull", "v3", "v3abl"):
             raise SystemExit("--stage %s needs --seed (one of %s)" % (

@@ -50,7 +50,7 @@ and coded, and the project still has an innovation to ablate rather than a hole.
 | 5 | SMG arms + 3 comparators | ablations coded; comparators to write |
 | 6 | Euler/Heun solver control (M-4) | code ready |
 | 7 | D (D-1 … D-3) | proved and specified; controller to wire in |
-| 8 | Modality 2 + write-up | not started |
+| 8 | Modality 2 + write-up | base model **done** (trained, validated, tracked); guidance sweep built but **not run**; write-up not started. See [MODALITY2_V3_PLAN.md](../protocol/MODALITY2_V3_PLAN.md) |
 
 **Done and checkable now:** 133,885 QM9 molecules processed with a four-way split; guide $f_A$ and
 evaluator $f_B$ trained on **disjoint halves** at 0.0897 and 0.0840 D validation MAE against a
