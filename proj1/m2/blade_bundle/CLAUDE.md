@@ -1,123 +1,76 @@
-# Read this first
+# Read this first — Modality 2 sweep
 
-You are picking up one narrow job from another Claude session running on the
-PARCC cluster. That session has the full project context; you do not need it.
+The base model is TRAINED and verified. This phase runs the **guidance sweep**.
 
-**Your job: train one model, report five numbers, stop.**
-
-Everything below is already decided and tested. Please do not relitigate it —
-if something looks wrong, say so in your report rather than fixing it silently,
-because the two sessions must stay in agreement about what was run.
-
----
-
-## The one thing to run
+**Job: run one command, report the table, stop.**
 
 ```bash
-nvidia-smi                 # pick a genuinely idle GPU
-python bench.py cuda       # 30-second probe — ALWAYS before the long run
-./train_blade.sh <gpu>     # benchmarks, then trains under nohup
-tail -f train.log
+python proj1/m2/run_sweep.py --device cuda --out-dir results/m2_dfb
 ```
 
-Read `HANDOFF.md` for the protocol. Read it before changing any flag.
+300 cells, resumable (re-run to continue; finished cells are skipped).
+Run from the REPO ROOT, not from this directory.
 
 ---
 
-## What this model is for, so you calibrate effort correctly
+## Do not re-derive these
 
-The project compares **guidance methods** — inference-time steering rules
-applied to a *frozen* generative model. This model is the frozen substrate.
-It is **not** the contribution and is not being compared against other
-generative models.
+The code in `proj1/m2/` is canonical. This directory holds **only data and the
+checkpoint** — earlier it also held copies of `simplex_fm.py` and `m2_sweep.py`,
+which were deleted because a stale copy is exactly how the bugs below survived.
 
-Every guidance method reads the same weights, same sampler, same seeds. So the
-comparison is internally valid at any base quality. **A better base changes
-absolute sample fidelity, not the ordering of arms.** Do not gold-plate it.
+- `dfb500.npz` — DeepFlyBrain official split, uint8 base indices, 12 MB.
+  `load_dfb()` falls back to it automatically when the 554 MB PARCC pickle is
+  absent. Verified identical: GC 0.45523/0.05521, CpG 0.04708/0.01475.
+- `fm_m2_dfb500.pt` — the frozen base. 1500 epochs, 126.0M sample-views,
+  val 0.06336. **Never retrain or fine-tune it.**
+- `../vf_table.json` — Var(f(x1)|x_t) MEASURED on the held-out split.
 
----
+## Settings that are load-bearing, with the reason
 
-## Decisions already made — do not undo
+Each of these was a bug that produced a complete but meaningless results table.
+Do not "tidy" them back.
 
-- **Epochs, not steps.** The loop reshuffles with `randperm` each epoch.
-  An older copy used `torch.randint` (i.i.d. with replacement), which left
-  ~37% of data unseen per epoch-equivalent. If you see `randint` in the
-  training loop, your copy is stale — `git pull`.
-- **489 epochs** = 328 steps/epoch x 256 batch = 41.1M sample-views, chosen to
-  match the published Linear FM budget (157,440 steps, 40.3M). Not arbitrary.
-- **Channel order is ACGT.** Verified Watson–Crick symmetric
-  (A .2728 ~ T .2720, C .2276 ~ G .2276). `gc_soft` reads channels 1:3.
-- **4 of 83,726 training sequences were dropped**, not imputed. They carried
-  ambiguous all-zero rows. A 0.25-filled row reads GC=0.5 under the
-  differentiable `gc_soft` but argmaxes to A (GC=0) under the evaluated
-  `gc_hard` — a 0.1 disagreement between the guided property and the scored
-  one. After dropping, they agree to exactly 0.0. Keep it that way.
-- **Cosine LR anneals over the full run.** Killing it early leaves LR
-  un-annealed. Change `--epochs`; do not ctrl-C at a step count you like.
+| setting | why |
+|---|---|
+| `t_min = 0.0` | The property is decided by t~0.5. M1's `t_min=0.5` steers AFTER the decision: 8.7% of the gap closed vs 75% at 0. |
+| `NFE = 400` | `gc_soft` (guided) and `gc_hard` (scored) differ 5.3% at NFE 100, 2.7% at 400. Confirmed over 3 runs. |
+| `n = 1024`, 3 seeds | in_band is a proportion; se = sqrt(p(1-p)/n) = 0.021 at n=512, but arms separate by ~0.03. n=512 cannot resolve its own metric. |
+| `sigma_mc = 0.35` | At 0.02, `tfg_mc` was mathematically identical to plug — a null arm from an unargued default. |
+| `v_f` from the table | M1's Tweedie `k=(1-t)^2/t` overstates the conditional variance 30x–20,000x here. It is derived for Gaussian VP diffusion with unit noise; our source is Dirichlet(1), variance 3/80. |
+| Dirichlet via `exponential_` | `torch.distributions.Dirichlet.sample()` takes NO generator and uses the GLOBAL RNG, so `--seed` did nothing and every cell started from different noise. |
 
----
+## The two properties
 
-## Sanity check on load — reproduce these or stop
+- **gc** — GC content. EXACTLY AFFINE (Hessian identically zero), so the Tweedie
+  second-moment corrections vanish and several M1 ablations coincide here.
+- **cpg** — CpG dinucleotide density. QUADRATIC, so they do not.
 
-```
-train (83722, 500, 4)   val (10505, 500, 4)   test (10434, 500, 4)
-GC mean 0.4552   sd 0.0552
-gc_soft == gc_hard: max|d| = 0.00e+00
-```
+The contrast is the point: it shows *when* the corrections matter. Report both;
+do not drop `gc` for being "degenerate".
 
-If any differs, something is wrong with the data. Report it; do not work around it.
+## Report
 
----
+Per (property, arm, w, target): `in_band_fraction` (the headline), `gc_sd`
+relative to unguided, `bias_delta`, `decode_conf`, `kmer_js`, `diversity`, and
+the `cost` dict. Mean over the 3 seeds with a seed-to-seed standard error.
 
-## Report these five, and nothing needs to be prettier than plain text
-
-1. final validation loss, and the step/epoch it was reached at
-2. whether early stopping fired, or it ran the full 489
-3. wall time, and the `bench.py` throughput in sample-views/sec
-4. **generated GC sd, against the real 0.0552** — this one matters most
-5. anything in the run that surprised you
-
-On (4): the guidance method controls the *spread* of GC across a batch. If the
-base cannot reproduce the data's spread, the setpoint grid is aimed at the
-wrong place, and the other session needs to know before it runs the sweep.
-
-Then hand back `fm_m2_dfb500.pt`. The guidance sweep runs elsewhere.
-
----
+Two checks that must hold, and are worth stating in the report:
+1. **`bdg` variant `e0t1` must equal `plug` at the same w bit-for-bit.** It is
+   BDG with the feedback switched off. If it does not, every BDG number is void.
+2. Guidance must move `in_band` well above unguided (~0.06 -> ~0.4 for gc at w=16).
 
 ## Do not
 
-- **Do not tune the base against guidance results.** The base is frozen before
-  any guidance is applied. Selecting it by downstream guidance performance
-  would leak the comparison and invalidate every arm. This is the one rule
-  that, if broken, silently destroys the project's main claim.
-- **Do not "improve" the method.** No new losses, no architecture search, no
-  extra tricks. A different model is worse than a modest expected one.
-- **Do not change the data, the split, or the crop.** The split is the
-  published one so the numbers sit on the same test set as the baselines.
-- **Do not run the guidance sweep here** unless explicitly asked.
+- Do not retrain, fine-tune, or swap the checkpoint.
+- Do not tune any setting to improve a result. The grid is fixed in advance; a
+  fidelity floor is set from the UNGUIDED cell, not after seeing arm results.
+- Do not add or drop arms. `plug`=DPS, `tmpd`=TMPD/PiGDM, `lgd_mc`=LGD,
+  `tfg_mc`=TFG's MC ingredient only (not full TFG), `bdg`=ours.
+- Do not run on CPU if a GPU is free; CPU is ~45x slower and this is 300 cells.
 
----
+## blade hazards
 
-## blade-specific hazards
-
-- **Shared box, no scheduler.** 6x RTX A6000. Nothing reserves a GPU and
-  nothing protects your process. Check `nvidia-smi` immediately before
-  launching, and again if throughput drops — someone may have landed on you.
-- As of 26 Sep 02:05, GPUs 0–1 and 4–5 were busy (two users), 2–3 free.
-  Do not trust that; re-check.
-- `nohup` survives logout but not OOM and not a reboot.
-- Checkpoints are written on **every validation improvement**, so a kill still
-  leaves a usable model. Early stopping ending before 489 epochs is correct
-  behaviour, not a failure.
-
----
-
-## If throughput disappoints
-
-The estimate was 1.5–6.5 h for the full run, from a CPU measurement of 170
-views/s and an assumption about GPU efficiency that was never verified. If
-`bench.py` comes in at the slow end, that is expected — report the number
-rather than compensating by cutting epochs. If it comes in fast and you have
-hours to spare, `--hidden 256 --layers 12` (4.87M params) is a sanctioned
-upgrade; anything else is not.
+Shared box, no scheduler. Check `nvidia-smi` before launching and pick an idle
+GPU; nothing reserves one. `nohup` survives logout but not OOM. The driver is
+resumable, so an interrupted run loses at most one cell.

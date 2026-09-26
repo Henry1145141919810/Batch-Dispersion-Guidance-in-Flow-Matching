@@ -67,6 +67,15 @@ DFB_PKL = ("/vast/projects/pranam/lab/nnori/hadsbm-hiv/MOG-DFM/dataset/"
            "enhancer_data/DeepFlyBrain_data.pkl")
 
 
+def load_npz(path="dfb500.npz", crop=500):
+    """Portable form of the DeepFlyBrain corpus: uint8 base indices [N, L] on
+    the official split, ambiguous sequences already dropped."""
+    import numpy as np
+    z = np.load(path)
+    return [F.one_hot(torch.from_numpy(z[k][:, :crop].astype("int64")), 4).float()
+            for k in ("train", "valid", "test")]
+
+
 def load_dfb(path=DFB_PKL, crop=500):
     """The FULL DeepFlyBrain corpus on its OFFICIAL split, already one-hot
     [N, 500, 4] int8 with channel order ACGT (verified: A .2728 ~ T .2720,
@@ -78,6 +87,19 @@ def load_dfb(path=DFB_PKL, crop=500):
     uniform 0.25 simplex point, the same convention one_hot() uses for the
     fasta path -- an honest unknown base, not a silent A."""
     import pickle
+    if not os.path.exists(path):
+        # Off-cluster (e.g. a GPU box) the 554 MB pickle is not there. Fall back
+        # to the portable 12 MB npz of the SAME official split, shipped in the
+        # repo. Identical content: uint8 base indices, ambiguous seqs dropped.
+        for cand in (os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                  "blade_bundle", "dfb500.npz"),
+                     os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                  "dfb500.npz"),
+                     "dfb500.npz"):
+            if os.path.exists(cand):
+                return load_npz(cand, crop=crop)
+        raise FileNotFoundError(
+            "neither %s nor a dfb500.npz fallback was found" % path)
     with open(path, "rb") as fh:
         d = pickle.load(fh)
     out = []
@@ -164,6 +186,32 @@ class SimplexFM(nn.Module):
             h = h + blk(h + te)
         return self.out(h).transpose(1, 2)
 
+
+
+def cpg_soft(x):
+    """CpG dinucleotide density: the fraction of adjacent positions holding a C
+    followed by a G. DIFFERENTIABLE, and unlike gc_soft it is QUADRATIC in x --
+    the Hessian is not zero, so the Tweedie second-moment corrections that
+    separate the guidance arms do not vanish here. Channels: A=0, C=1, G=2, T=3.
+
+    CpG is not a toy observable. CpG dinucleotides are strongly depleted in most
+    genomes and their local enrichment ("CpG islands") marks regulatory DNA, so
+    steering it is a thing someone would actually want to do."""
+    return (x[..., :-1, 1] * x[..., 1:, 2]).mean(-1)
+
+
+def cpg_hard(x):
+    """Exact CpG density of the argmax-decoded sequence -- the scored quantity,
+    the counterpart of gc_hard."""
+    tok = x.argmax(-1)
+    return ((tok[..., :-1] == 1) & (tok[..., 1:] == 2)).float().mean(-1)
+
+
+# The observables, by name. soft = what guidance steers (differentiable),
+# hard = what the write-up scores (exact, argmax-decoded). On real one-hot data
+# the two agree exactly; on generated samples they diverge until the sampler
+# converges, which is what the NFE study measures.
+PROPS = {"gc": (gc_soft, gc_hard), "cpg": (cpg_soft, cpg_hard)}
 
 def to_simplex(x):
     """Project back after an Euler step: clamp negatives, renormalise. The naive
