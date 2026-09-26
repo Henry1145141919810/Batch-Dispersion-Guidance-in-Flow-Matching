@@ -84,13 +84,24 @@ diversity_mean_pairwise  diversity_logdet  smiles_sample
 > `mol_stability` ≥ 0.9 × unguided**, at matched compute.
 > **Secondary, in the same row:** `|bias|` and `spread`, both in δ units.
 
-`δ = 2 × f_B's validation MAE` — the project's pre-registered acceptance tolerance
-(0.168 D for μ, 0.481 Bohr³ for α, 0.0076 Ha for gap).
+`δ = 2 × f_B's MAE` on its **calibration** set — 3000 molecules from
+`train_a + train_b` (`calibration_indices`), *not* `val`, which supplies the q50/q90
+molecule sizes. (Earlier wording here and in the v3 protocol said "validation MAE";
+that was wrong about the split.) Approximately 0.168 D for μ, 0.481 Bohr³ for α,
+0.0076 Ha for gap — each cell records its own δ, and no gate pins these constants.
 
 **Never rank on MAE alone.** Measured consequence: `plug` ranks **1st on MAE and 11th once
 the chemistry floor is required**. MAE is a fine statistic — in-band is a binomial with
 se ≈ 0.013 at n = 512 and separates little — but ignoring chemistry inverts the answer.
 Always show the chemistry-constrained column.
+
+> **The floor is not mandatory in protocol v3 (26 Sep).** v3 removes the hard
+> 0.9 × unguided gate and **reports** chemistry instead. The lesson above is
+> unchanged — it is the *mechanism* that differs. v3 meets it by refusing to rank
+> on in-band alone: `v3_table.py` prints stability, validity, uniqueness and yield
+> beside every in-band figure, attaches the chemistry its best arm spent, and names
+> the best arm that lost no chemistry against unguided. A v3 result is **not** a
+> violation of this page; a v3 in-band leaderboard would be.
 
 ### 2.2 Why chemistry must be in the same row
 
@@ -343,7 +354,7 @@ python proj1/scripts/dist_report.py --dir "results/full/n5000/seed*"
 
 | failure | the check that catches it |
 |---|---|
-| ranking on MAE and inverting the answer | chemistry floor in the rubric (§2.1) |
+| ranking on MAE and inverting the answer | chemistry floor in the rubric (§2.1) — or, where no floor is used (v3), chemistry printed beside every in-band figure and no in-band ranking |
 | "better" that is really "stronger" | frontier / frozen strengths (§5.2, §6) |
 | an arm silently running unguided | `schedule_used`, strength-varies gate (§2.3, §3) |
 | reading the clip instead of the arm | `clipped_sample_steps` (§2.3) |

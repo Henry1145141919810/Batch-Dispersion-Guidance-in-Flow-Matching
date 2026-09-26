@@ -1780,6 +1780,29 @@ def guidance_field(f_net, post_fn, coords, feats, mask, y, s,
             "bdg_w_eff": (1.0 + bdg_eta * e).detach().expand_as(fval).clone(),
             "bdg_batch": torch.full_like(fval, float(B)),
         }
+        # THE STEP MEAN IS THE SECOND HALF OF THE SAME BUG. The keys above are
+        # exact per step -- e is one scalar for the batch -- but the sampler then
+        # takes a MEAN OVER GUIDED STEPS, and w_eff is not mean-like: the review
+        # measured it changing sign up to 34 times in a 50-step window, spanning
+        # [-2.64, +10.35], and sitting at 0 +- 0.19 near the setpoint. A run-mean
+        # of that reads ~0 for an arm that was violently active, which is the
+        # same unfalsifiability `dev`/`disp` were fixed for above.
+        #
+        # A per-step diag cannot hold state across steps, so a sign-CHANGE count
+        # is not available here. These two are stateless and together with the
+        # signed mean they separate the cases that matter:
+        #
+        #   signed ~0, rms large, neg ~0.5  ->  flipping, not settling
+        #   signed 13, rms 13,    neg 0     ->  held high
+        #   signed ~0, rms ~0               ->  genuinely inert
+        #
+        # sqrt(mean(bdg_w_eff_sq)) is the RMS over guided steps; the mean of
+        # bdg_w_eff_neg is the FRACTION of guided steps on which the deviation
+        # term reversed. Both are free and neither is recoverable after the run.
+        w_eff_t = (1.0 + bdg_eta * e).detach()
+        bdg_diag["bdg_w_eff_sq"] = (w_eff_t ** 2).expand_as(fval).clone()
+        bdg_diag["bdg_w_eff_neg"] = (
+            (w_eff_t < 0).to(fval.dtype).expand_as(fval).clone())
 
     scale = (num / den).view(-1, 1, 1)
     w_c, w_f = scale * g_c, scale * g_f

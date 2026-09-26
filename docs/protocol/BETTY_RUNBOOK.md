@@ -7,6 +7,11 @@ fixed — do not improvise around it.
 
 `PROJ = /vast/projects/ajw/wharton/hyhuang/cgm`
 
+**The current run is [Protocol v3](#protocol-v3-26-sep--the-current-headline--the-same-five-steps)**
+(26 Sep). The campaign sections after it — the transfer, the base-model
+comparison, the TFG arm — are historical: their trees still exist, but nothing in
+them is scheduled.
+
 ---
 
 ## Rule 0 — the two lines that start every session
@@ -290,6 +295,160 @@ compare the overlap, then merge. Claude does this step.
 
 ---
 
+## Protocol v3 (26 Sep) — the current headline — the same five steps
+
+**This is the run to drive.** Protocol:
+[FULL_RUN_V3_PROTOCOL.md](FULL_RUN_V3_PROTOCOL.md). Everything below it on this
+page — the transfer, the base-model comparison, the TFG arm — is **historical**,
+kept because those trees still exist, not because they are scheduled. The
+`basecmp` chain was cancelled on 26 Sep; its protocol differs from v3 on target,
+strength and arm set, so its cells cannot be pooled with v3's.
+
+Own job file `proj1/cluster/v3_run.slurm`, own tree `results/v3/<backend>/`. It
+touches nothing under `results/sweep`, `results/full`, `results/basecmp` or the
+transfer tree.
+
+| | |
+|---|---|
+| headline | 7 arms × 3 properties × 3 seeds × 2 bases = **126 cells**, array `0-17`, tree `n2000/` |
+| ablation | 17 BDG arms × 3 properties × 1 seed × 2 bases = **102 cells**, array `0-5`, its **own** tree `n1000/` |
+| per cell | headline n = **2000** in **4 batches of 500**; ablation n = **1000** in 2. w = 1, q50, t ≥ 0.5 |
+| BDG | headline η = 4 × τ_mult ∈ **{0.5, 1.0}**; ablation η ∈ {0,1,2,4,8} × τ_mult ∈ {0.5,0.75,1,1.5} |
+| floor | **none** — nothing is excluded for chemistry; chemistry is reported |
+| cost | headline ≈ **12.8 GPU-h**, ablation ≈ **4.2**, both ≈ **17.0**; longest task ≈ 75 min against the 4 h wall |
+
+**The two stages must keep DIFFERENT n.** `n` is the only thing separating their
+trees, and `v3_table.py` refuses if the ablation's single-seed arms land in the
+headline's table. Do not set `V3_ABL_N=2000`.
+
+### Step 1 — ship the code (laptop)
+
+**Only the code.** `proj1/checkpoints/` is deliberately NOT in the tarball, so
+shipping code never disturbs the weights already on Betty.
+
+```
+tar --exclude='__pycache__' -czf code_v17.tgz proj1/scripts proj1/src proj1/tests proj1/cluster results/v3_batch_memory.json
+scp code_v17.tgz betty:/vast/projects/ajw/wharton/hyhuang/cgm/
+```
+
+`results/v3_batch_memory.json` travels with the code on purpose: it is the
+measurement that chose `--batch`, and `test_v3.py` gates the job's batch against
+it. Without it the gates cannot run.
+
+### Step 2 — verify (Betty)
+
+```
+cd /vast/projects/ajw/wharton/hyhuang/cgm
+source .venv/bin/activate
+export SLURM_CONF=/cm/shared/apps/slurm/etc/slurm/slurm.conf
+
+md5sum code_v17.tgz
+tar xzf code_v17.tgz
+md5sum proj1/checkpoints/fm_last.pt
+python proj1/tests/test_v3.py
+python proj1/tests/test_bdg.py
+```
+
+Want: `fm_last.pt` = `a190ac8394902027d4a951f8d30e8c5c` (the slurm FATALs in
+seconds on any other generator — every cell in this project used that one, and a
+different one would make v3's two halves incomparable to each other and to v2),
+`ALL PASS (54 gates)`, `22/22 checks pass`.
+
+**Then confirm the batch on a GPU node, with the real checkpoint.** This is the
+one number the laptop cannot settle: the slope was measured on a 16 GB card with
+`weights/fm_ema.pt`, and the run uses a 45 GB slice with `fm_last.pt`.
+
+```
+srun --partition=b200-mig45 --gpus=1 --cpus-per-task=6 --mem=48G --time=00:25:00 \
+  python proj1/scripts/batch_memprobe.py --confirm 500 \
+    --json-out results/v3_batch_memory_betty.json \
+    --md-out docs/results/V3_BATCH_MEMORY_BETTY.md
+```
+
+Want roughly `fm ~20 GiB`, `equifm ~28 GiB`, both inside the 33.5 GiB budget. If
+EquiFM lands above ~33 GiB, submit with `V3_BATCH=250` (still divides 5000; 20
+controllers; 9 % standard error on the variance) rather than pressing on. **A
+batch that does not divide `V3_N` is refused** by both the submit script and the
+job: a remainder batch is a second, far noisier BDG controller pooled in as an
+equal.
+
+> ⚠️ **`V3_BATCH` can only be changed BEFORE the first cell is written.** The batch
+> is part of every cell's filename (`…_b500_…`) and is in `v3_table.py`'s
+> `SAME_KEYS`. Change it mid-run and you get a tree holding two batch sizes: the
+> old cells are not resumed (different names), arms are no longer paired on the same
+> initial noise, and the table **refuses** on every page. If you must change it
+> after cells exist, move `results/v3` aside and start the tree again.
+
+### Step 3 — submit (one command)
+
+```
+bash proj1/cluster/submit_v3.sh
+```
+
+Five chained jobs: headline array → insurance → ablation array → insurance →
+table. `afterany`, not `afterok`, because a task that runs out of its 4-hour
+window exits non-zero with its finished cells on disk and the next link must
+still run. The ablation is chained **after** the headline rather than beside it
+because they share one tree — run at once, two jobs would write the same three
+BDG cells at the same instant. Ordered, the headline's cells exist first and the
+ablation skips them (≈ 8 GPU-h saved).
+
+Overrides, both forwarded through `--export`: `V3_N=...` lowers n, `V3_BATCH=...`
+changes the controller size.
+
+### Step 4 — check
+
+```
+squeue -u $USER -o "%.18i %.14j %.9T %.10M %.28E"
+grep -h '[timing]' logs/v3-*.out | tail -20
+ls results/v3/fm/n2000/seed20261001/ | wc -l        # headline: counts up to 21 (7 arms x 3 props)
+ls results/v3/equifm/n2000/seed20261001/ | wc -l    # same
+ls results/v3/fm/n1000/seed20261001/ | wc -l        # ablation: counts up to 51 (17 arms x 3 props)
+```
+
+**Read the `[timing]` lines after the first few tasks land.** EquiFM's per-cell
+cost is the one unmeasured number in the budget: both bases run the *same* 350
+network passes per guided cell, so EquiFM's extra cost is per pass only (it is
+the bigger net, nf = 256, 9 layers), but the 1.83× in the budget is **borrowed**
+from the TFG/EDMsecond backend, not measured on EquiFM. The split is sized for
+2.5×. If `[timing]` shows worse than that, lower `V3_N` before the ablation's 36
+tasks queue.
+
+### Step 5 — collect
+
+The table job writes these on Betty; it **refuses** rather than warns if the run
+is incomplete, and names the missing seed or cell.
+
+```
+docs/results/V3_RESULTS.md          both bases side by side
+docs/results/V3_RESULTS_fm.md       ours
+docs/results/V3_RESULTS_equifm.md   EquiFM
+```
+
+Re-run just the table after filling a gap:
+
+```
+sbatch --export=ALL,V3_N=5000,V3_BATCH=500,STAGE=table proj1/cluster/v3_run.slurm
+```
+
+### Reading v3 — three things that travel with every number
+
+1. **`at w = 1`.** Equal `w` is not equal force: the measured correction share at
+   w = 1 spans 10× across arms, 5.8× across the v3 arms it covers, and `tfg` has
+   no share to measure at all. v3 is "what does each method do at one dial
+   setting", not "which method is best".
+2. **No in-band leaderboard.** With no floor, the arm furthest above its own best
+   strength looks strongest on in-band while destroying the most chemistry — at
+   w = 1, `tfg` takes the highest in-band on all three properties at validity
+   0.62. `v3_table.py` refuses to rank on in-band alone, by design.
+3. **BDG's ladder is a strength ladder at q50.** `w_eff = 1 + η(1/τ_mult² − 1)`
+   exactly, so the headline's three BDG arms sit at `w_eff` of **13.0 / 4.11 /
+   1.00** — `bdg_e4t1` *is* plug at onset — and τ_mult 1.5 **reverses** the deviation
+   term. Order BDG rows by `w_eff`, never by τ_mult, and state the strength
+   confound with any BDG gain. See FULL_RUN_V3_PROTOCOL.md §4.1.
+
+---
+
 ## The transfer (borrowed FM model: EquiFM) — the same five steps
 
 Its own job file, `proj1/cluster/transfer_run.slurm`, and its own results tree,
@@ -400,6 +559,166 @@ each arm's in_band at the chemistry floor) is inside
 `results/transfer_equifm/eqchem/frozen_eqtune.json` under `"frontier"`, and
 was printed in the log of the first eqconfirm task. **`--backend equifm` is
 not optional** for `dist_report.py`.
+
+---
+
+## The base-model comparison (25 Sep) — the same five steps
+
+Our base model against EquiFM, both through ONE external property pair, all
+seven arms, screening strength **and** guidance start-time jointly; then the v2
+full run on EquiFM at both picks. Its own job file,
+`proj1/cluster/basecmp_run.slurm`, its own submit script, and its own results
+tree `results/basecmp/`. It never touches `results/sweep/`, `results/full/`,
+`results/tune/` or `results/transfer_equifm/`, so it can run beside anything.
+Protocol: [BASECMP_PROTOCOL.md](BASECMP_PROTOCOL.md).
+
+**The whole thing is one command in Step 3.** Seven stages are queued at once
+and chained with `--dependency`; nothing needs resubmitting.
+
+### Step 1 — ship the code and the assets (laptop)
+
+Same assets as the transfer (EquiFM + TFG's pair + OC-Flow), already built.
+`code_v14` is taken; this tarball has its own name so it cannot collide with
+another session's:
+
+```
+cd "C:/Users/mooooonesy/Downloads/pennstuff/cis 6270/Project 1"
+tar --exclude='__pycache__' -czf code_v15_basecmp.tgz proj1/scripts proj1/src proj1/tests proj1/cluster
+scp code_v15_basecmp.tgz fm_transfer_assets_v1.tgz betty:/vast/projects/ajw/wharton/hyhuang/cgm/
+```
+
+`fm_transfer_assets_v1.tgz` may already be on Betty from the transfer work; it is
+55 MB and re-copying it is harmless.
+
+### Step 2 — verify (Betty, login node, seconds)
+
+Rule 0 first, then:
+
+```
+tar tzf code_v15_basecmp.tgz | head -3
+tar xzf code_v15_basecmp.tgz
+tar xzf fm_transfer_assets_v1.tgz
+python proj1/scripts/fetch_tfg_assets.py --verify --models ""
+python proj1/scripts/fetch_equifm_assets.py --verify
+md5sum proj1/checkpoints/fm_last.pt
+python proj1/tests/test_basecmp.py
+python proj1/tests/test_transfer_protocol.py
+python proj1/scripts/transfer_sweep.py --stage basecmp --backend fm --dry-run
+python proj1/scripts/transfer_sweep.py --stage basecmp --backend equifm --dry-run
+python proj1/scripts/transfer_sweep.py --stage compare --backend edm --dry-run
+```
+
+Expect, in order: paths starting `proj1/`; **`READY`** twice; md5
+**`a190ac8394902027d4a951f8d30e8c5c`**; **`ALL PASS (30 gates)`**;
+**`ALL PASS (22 gates)`**; then
+**`cells total 363 | done 0 | to run 363`** twice — once per base model — and
+finally **`cells total 330 | done 216 | to run 114`**.
+
+That last line is the regression check, and it is the important one: it proves
+the per-cell guidance window did not change any existing cell's filename. **If
+it says `done 0`, stop** — every finished cell in the project has just been
+orphaned and nothing should be submitted.
+
+Do **not** run `--preflight` here. Each job runs it inside itself, on a GPU,
+before sampling anything.
+
+### Step 3 — submit (one command)
+
+```
+bash proj1/cluster/submit_basecmp.sh
+```
+
+It prints a line per stage with its job id and dependency, then what to read
+when it lands. To see what it would do without submitting:
+
+```
+DRY=1 bash proj1/cluster/submit_basecmp.sh
+```
+
+To change the compute budget — this is the one knob, and it decides `n` for both
+the screen and the full run:
+
+```
+BUDGET_GPUH=30 bash proj1/cluster/submit_basecmp.sh
+```
+
+The default is 96 GPU-hours. On the cost model's current estimate that buys the
+screen at **n = 500** and the full run at **n = 1000** (~79 GPU-h); the screen at
+the full n = 1000 needs **`BUDGET_GPUH=130`**. The exact choice is made from the
+probe's own measurements, so read `results/basecmp/plan.json` rather than
+trusting these numbers.
+
+The chain refuses to run a full run below n = 1000 whatever the budget, because
+below that the differences v2 calls verdicts sit inside their own standard error.
+It also prints the most expensive single array task against the 225-minute guard,
+so you can see whether the array will leave work for the sweepers.
+
+### Step 4 — check
+
+```
+squeue -u $USER -o "%.10i %.16j %.8T %.10M %.22E"
+cat results/basecmp/plan.json
+grep -h "cells to run\|preflight passed\|CHOSEN\|STOP\|INCOMPLETE\|REFUSING\|frozen" logs/basecmp-*.out | tail -40
+```
+
+`plan.json` appears after the `size` stage and is the first thing to read: it
+records the measured per-cell cost on **both** base models, the cost surface, and
+which `n` the rule picked. The probe exists because EquiFM had never had a single
+cell run on it, so this is the first real measurement of what it costs.
+
+Per-task cell counts to expect on the screen, across its 96 tasks: **10** for the
+42 two-arm tasks, **5** for the 48 single-arm ones (`btvg` and `btvg_var` get a
+task each — at `t_start = 0.05` about 95 of the 100 steps are guided, so they are
+the expensive ones), and **11** for the six that also carry their property's
+single unguided cell. 726 cells in total across both base models.
+
+A stage that logs `STOP ... INCOMPLETE` started before its input finished. That
+is not a failure of the run — resubmit just that stage's sweeper once the stage
+before it reports `to run 0`:
+
+```
+sbatch --export=ALL,BUDGET_GPUH=96,STAGE=screen proj1/cluster/basecmp_run.slurm
+```
+
+### Step 5 — collect
+
+On Betty:
+
+```
+ls results/basecmp/fm/screen/*.json | wc -l
+ls results/basecmp/equifm/screen/*.json | wc -l
+ls results/basecmp/*/screen/*.failed 2>/dev/null | wc -l
+ls results/basecmp/equifm/full/n*/seed*/*__full.json | wc -l
+tar -czf basecmp.tgz results/basecmp docs/results/BASECMP_SCREEN_*.md
+```
+
+Want at least **363** screen cells per base model (more once the refine stage has
+added cells), **0** failed, and up to **117** full-run cells (fewer where an
+arm's two picks coincided — those are computed once and reported under both).
+
+On the laptop:
+
+```
+scp betty:/vast/projects/ajw/wharton/hyhuang/cgm/basecmp.tgz "C:/Users/mooooonesy/Downloads/pennstuff/cis 6270/Project 1/"
+```
+
+Then read, in this order:
+
+```
+docs/results/BASECMP_SCREEN_fm.md          our base: the picks, then every cell
+docs/results/BASECMP_SCREEN_equifm.md      EquiFM: the same
+results/basecmp/<base>/frozen_basecmp.json the frozen (w, t), both sets, + statuses
+results/basecmp/<base>/screen_table.csv    the same table, machine-readable
+docs/results/BASECMP_FULL_equifm.md        the full run under v2's V4-V8
+```
+
+**Read the statuses before the numbers.** `floor_limited` means the arm never
+cleared the chemistry floor anywhere on the grid — it is a result, not a win.
+`grid_edge` means its best cell sits at the edge of the screened strengths, so
+the optimum may be outside them. `collapse_contaminated` means v2's distinctness
+guard fired. All three are in the frozen file, the csv and both markdown tables.
+
+Claude extracts into a scratch folder, checks nothing overlaps, and merges.
 
 ---
 

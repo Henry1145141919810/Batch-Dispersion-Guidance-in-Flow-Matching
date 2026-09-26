@@ -6,7 +6,43 @@ restricted to **Modality 1 (QM9) with the flow-matching generator**. The
 diffusion generator and Modality 2 (DNA simplex) are explicitly out of scope of
 this document and are listed as not-started in §10.
 
-Status as of **2026-09-24**. Submission **29 Sep 08:30**, defence **30 Sep**.
+Status as of **2026-09-24**, except for the v3 block immediately below.
+Submission **29 Sep 08:30**, defence **30 Sep**.
+
+> ## The live plan is protocol v3 (26 Sep) — read this before anything dated 24 Sep
+>
+> [FULL_RUN_V3_PROTOCOL.md](../protocol/FULL_RUN_V3_PROTOCOL.md) is the headline
+> run; the runbook section that drives it is
+> [BETTY_RUNBOOK.md](../protocol/BETTY_RUNBOOK.md) → "Protocol v3". Everything
+> below this box that describes a *plan* is superseded; everything that describes a
+> *measurement* still stands.
+>
+> | | |
+> |---|---|
+> | target | **q50** for every property (v2 used q90) |
+> | strength | **w = 1 for every arm** |
+> | chemistry floor | **removed** — nothing is excluded; chemistry is reported |
+> | arms | unguided, plug, tmpd, lgd_mc, tfg + **BDG** (the innovation target). `btvg`/`btvg_var` **dropped** |
+> | base models | **both** — ours and EquiFM, same external guide/oracle (TFG's) |
+> | n | **2000** per cell in **batches of 500** = 4 BDG controllers per cell (revised 26 Sep from 5000) |
+> | BDG τ_mult | headline **{0.5, 1.0}** (0.75 dropped 26 Sep; it runs in the ablation). This is the SETPOINT knob, not the t ≥ 0.5 window |
+> | size | **126** headline cells (`n2000/`) + **102** ablation (`n1000/`, 1 seed); ≈ **12.8** / **17.0 GPU-h** |
+> | power cost of the n cut | pooled n per arm 15,000 → 6,000, every binomial se ×1.58. A ~1 pp in-band contrast no longer clears a Bonferroni threshold — **pre-registered in FULL_RUN_V3_PROTOCOL.md §6.1**, because that is the size a BDG-vs-plug effect is expected to be |
+>
+> **Cancelled 26 Sep:** the `basecmp` (base-model-comparison) chain queued 25 Sep.
+> Its target, strength rule and arm set differ from v3, so its cells could not be
+> pooled with v3's.
+>
+> **Three things established on 26 Sep that constrain how BDG may be written up:**
+>
+> 1. `w_eff`, BDG's weight on the deviation term, run-means at **111–1019** on real
+>    trajectories, not the 13.00/4.11/1.00/−1.22 a closed form predicted — that form
+>    is **withdrawn** ([BDG_LADDER_MEASURED.md](../results/BDG_LADDER_MEASURED.md)).
+> 2. The BDG arms are **clip-saturated** (2516 clipped steps against plug's 884), so
+>    a BDG null is at least as likely to be the clip as the controller.
+> 3. The controller's sign flips — at τ_mult 1.5, **62 %** of guided steps push the
+>    wrong way — so cells now record `bdg_w_eff_sq` and `bdg_w_eff_neg` as well as
+>    the signed mean, which alone was unfalsifiable.
 
 **Latest BTVG decision (23 Sep, after both chemistry guards):** the registered
 full run is negative against LGD-MC; BTVG2 has no demonstrated incremental
@@ -1834,6 +1870,55 @@ draft of this subsection said "isolates"; withdrawn.)
 - **Cost:** generator passes are 3× unguided for `lgd_mc`/`btvg2` and 5× for
   `btvg2_xproj`; guide passes are equal across the three.
 
+### Removing the velocity clip — a null, and the clip is load-bearing (25 Sep, pilot)
+
+**Source:** [../results/CLIP_PILOT.md](../results/CLIP_PILOT.md), script
+`proj1/scripts/clip_pilot_table.py`. Cells: `results/pilot_clip/{clip1,noclip}/`,
+26 cells = mu × {unguided, plug, btvg, lgd_mc} × w ∈ {0.25, 1, 4, 16} × two clip
+settings, v2's fixed q90 target, n = 256, one seed (20261001), paired.
+
+**Why asked.** The clip caps guidance at 1 × the base velocity, and BTVG
+saturates it on 32 % of guided steps at w = 4 (0.024 / 0.114 / 0.323 / 0.522
+over the grid). If the clip were throttling the aiming term, removing it should
+help.
+
+**It does not, on any reading.**
+- **Sample divergence is the decisive finding.** 222 non-finite samples across
+  4 of the 12 guided no-clip cells; **0** in all 13 clipped cells. `btvg` at
+  w = 16 loses 187 of 256 samples and keeps 0.031 molecule stability.
+- **No frontier improves.** In-band at equal chemistry, unclipped is higher in
+  **0 of 8** comparisons under the convex-hull reading and **0 of 8** under the
+  frozen-single-cell reading.
+- **Only `lgd_mc` carries the direction.** Its clipped w = 4 reaches in_band
+  0.1016 against 0.0352 unclipped at the same floor. Paired at w = 4:
+  −0.0664, z −3.01 — the only comparison at |z| ≥ 3. Under the frozen reading
+  `plug` is an **exact tie** at all three levels and `btvg`'s gaps are one
+  molecule wide; read both as null.
+- **Unclipping frees both terms, and spread wins.** `btvg` w = 4 on the 239
+  rows finite in both: residual sd 6.49 → 11.11 δ while bias improves
+  −7.63 → −7.02. Aiming does get better; the spread grows faster.
+
+**Caveats that must travel.** One seed, n = 256, mu only. No frontier gap
+reaches the 0.053 needed for a difference of two independent cells, so the
+direction is what carries it, not any single gap. The 12 fixed-strength
+comparisons are 3 correlated strength curves on one molecule set. The mechanism
+behind the divergence is not established — only that it happens without the
+clip and not with it.
+
+**Consequence.** The clip is not what limits guidance; it is load-bearing. No
+full run is warranted. **Withdrawn:** the earlier chat reading that the clip
+"makes the terms compete so removing it frees aiming" — it frees whichever term
+is larger, which for BTVG is the variance term.
+
+**Two method defects the adversarial check caught here, worth reusing.**
+(1) An in-band-vs-stability frontier must be the **convex hull** of measured
+cells, not a chain through stability-sorted points: stability is non-monotone
+in w, so a chain routes through dominated cells and understated `lgd_mc` by up
+to 46 %. (2) Residual bias/sd are computed over finite rows, so a cell that
+lost samples is graded on its survivors — `btvg` no-clip w = 16 reads bias
+−1.12 δ, but the clipped cell on the same 69 rows is already −3.82 δ. Always
+state the denominator split and give the like-for-like restriction.
+
 ---
 
 ## 10e. BDG (batch-dispersion guidance) — reviewed 25 Sep
@@ -1875,6 +1960,94 @@ Use in the paper:
 
 Any §4.4 row first needs a second replay seed pair, a signed-w plug control and paired
 tests. The required changes are in BDG_REVIEW.md §5.
+
+### BDG full metrics, and the workshop verdict (26 Sep)
+
+**Source:** [../results/BDG_FULL_METRICS.md](../results/BDG_FULL_METRICS.md), generated by
+`proj1/scripts/bdg_full_metrics.py` from the port's 64 cells: n = 256, seed 20260925, one
+batch, RTX 5080, **w = 1 for every BDG cell** (η = 4 ladder, τ_mult 0.5–1.5). Every cell is
+paired molecule-for-molecule against plug w1 and unguided. Three independent recomputes agree.
+Two verifier rounds found 1 major and 8 minor defects, all in prose, all fixed; the third round
+was clean.
+
+- **No floor-clearing BDG cell beats plug w1 at either target.**
+  - 72 paired in-band tests; max |z| 3.07, Šidák p 0.14.
+  - That one test is a *loss*, on a below-floor cell: gap q50 τ 1.5, −0.0625.
+  - At q50 the floor-clearing cells trail plug w1 (mu −0.027 to −0.039; gap τ 1 −0.059, z −2.56).
+  - At q90, 0 of 15 ladder cells clear their own floor (0.9 × own unguided = 0.3902). Bias of −7 to −14 δ dwarfs the spread knob.
+- **The knob works:** sd/unguided runs from 0.65 to 1.03–1.20, monotone. This widening is BDG's
+  only region that plug's positive-w sweep (0.635–1.015) does not reach.
+- **Caveat:** this run's unguided stability (0.4336) is high, so plug w1 fails the run's own floor
+  in 6 of 6 blocks and most verdicts are knife-edge.
+- **BDG was run at a single centring strength (w = 1).** At q90, where bias binds, a w sweep of
+  BDG is needed before any comparison with plug w4.
+
+**Workshop verdict** (11-agent workflow: a math re-derivation, 3 literature angles with ~100
+queries, and 3 reviewer lenses):
+
+| framing | p_accept (3 lenses) | reading |
+|---|---|---|
+| A: BDG as a method paper | 0.10 / 0.15 / 0.12 | do not submit; provably plug with two gains, never beats plug |
+| B: why variance-targeted guidance fails | 0.38 / 0.45 / 0.55 | at the line; the contribution is the diagnosis |
+| C: B with BDG as the instrument | 0.45 / 0.50 / 0.45 | at the line; too big for 4 pages |
+
+- **BDG's proofs** are correct but elementary: the gradient, the reduction (which argues against novelty), V* for a 1-D surrogate, the one-line bound and the first-order sign. Two handoff arguments are **invalid**: "V_b does not vanish, so the loop is stable" and "irreducible to a schedule" (exact replay reproduces it to 5e-16).
+- **New prior art the review missed:** Range-Aware BO arXiv 2606.11574 (the bias/spread tolerance decomposition), MatAgent 2504.00741 (a tolerance hit-rate metric), 2608.08770 and 2605.07456 (inference-time distribution control), Stein Diffusion Guidance 2507.05482.
+- **Venues:** every NeurIPS 2026 workshop deadline has passed. Targets are ICBINB (2027 cycle), ICLR 2027 workshops (~Feb 2027), SPIGM@ICML 2027 and TMLR.
+- **Corrections to the BTVG story:**
+  - The widening likelihood coefficient belongs to the moment-matched likelihood S = s² + V_F(x), not to plug/DPS.
+  - The rigorous V_F point is a calibration failure: E[V_F] exceeds Var f_B by 3–18× at t = 0.5.
+  - "Per-molecule guidance has no separate spread lever" is false; aiming at y + c halves the spread at unchanged bias.
+  - "Gate back to baseline, never past it" is empirical for the tested gate family only.
+- **The two experiments that decide the paper:**
+  1. the signed-w plug control at equal chemistry (the review's pre-registered drop rule);
+  2. a q50 test that the variance term's in-band effect reverses sign, as the interval lemma predicts.
+
+  Separately, VARIANCE_DECOMPOSITION.md must be rewritten before framing B can cite it.
+
+### Why TFG at w = 1 gets high in-band and low stability (26 Sep, diagnostic, NOT YET CITABLE)
+
+**Sources:**
+- cells in `results/bdg_local/` (n = 256, seed 20260925, one batch, RTX 5080);
+- a 14-cell instrumented GPU run with final coordinates and features saved, whose driver and outputs are in the session scratchpad `tfg_why/gpu_diag/` (not in the repo yet);
+- a 5-agent workflow with an adversarial verifier, which reproduced every number quoted below.
+
+**Before any of this goes in the paper**, the driver must be moved into `proj1/scripts/` and a script-generated page written under docs/results.
+
+**What does not explain it:**
+- **Equal w is not equal strength.** Three unnormalised multipliers stack:
+  - plug's `w(1−t)/t` collapses 99× across the window, while TFG's `k_0/h` rises from 51 to 100;
+  - TFG's energy `−((f−y)/mad)²` is 2.9–3.4× steeper;
+  - `strength_scale` returns 1.0 for tfg.
+
+  The realised push ratio tfg/plug runs from 1.7× early to ~40× late. TFG w1 beats plug's best in-band anywhere on plug's 8-point grid, in 6 of 6 cells.
+- **The atom-type channel does not break chemistry.** Final features are 99.3 % top channel, with 0.3 % of atoms ambiguous. The coordinates-only ablation is the worst arm on stability (0.145); features-only is near plug (0.281).
+  - The feature channel inflates the continuous metric: 29 % of tfg's continuous hits do not survive decoding, against 4–8 % for other arms, and the shift is directional.
+- **The velocity clip and rescale_grad are not causes.** The clip binds on 0.7 % of mu steps and never at t ≥ 0.9; rescale_grad fires on 0.04–0.07 %.
+
+**What survives the strength confound: timing.**
+- At **equal chemistry** (mol stab 0.168, mu q90), tfg w1 reaches in-band **0.316 against plug w8's 0.082** (decoded 0.242 vs 0.090), with the same total coordinate displacement (0.50 vs 0.49 Å).
+- The difference is where the displacement lands: 17 % of tfg's is after t = 0.9, against 3.5 % of plug w8's. TFG's push does not decay: 9 % of the base velocity at the last step, against plug's 0.1 %. It peaks at t ≈ 0.90–0.95.
+- For mu the mean piece D0 carries the arm: 83–92 % of the correction norm. D0-only gives in-band 0.285 against the full 0.316; variance-only is indistinguishable from unguided.
+- At q50 the gain is spread narrowing, not bias removal (86 / 85 / 52 %). tfg re-targets rather than nudges: its paired slope on the unguided error is 0.03–0.05, against plug's 0.41–0.46.
+
+**Stability:**
+- **Late edits are geometry-only and unrepairable.** Guidance in only the last 9 steps gives stability 0.160, against 0.168 for the full run, and 69 of its 70 broken molecules keep their atom types. Per Å of displacement, late steps cost about 15× more stability than early ones.
+- **The failure mode is lost bonds and fragmentation.**
+  - Under-valent atoms rise from 3.9 % to 11.7 % (O from 4.1 % to 23.4 %).
+  - Fragmented molecules rise from 10.2 % to 42.6 %, and clashes from 1.6 % to 12.1 %.
+  - Bonded C–O pairs lengthen by 3.1 pm, against the evaluator's 3–10 pm bond-order margins.
+- **Total displacement sets the level.** plug w8 reaches the same 0.168 from the same displacement, by reorganising molecules instead (78 of 86 broken with a type change).
+- **Compounding with clustering.** Atom stability falls from 0.94 to 0.83, and failures cluster at 3.7 bad atoms per unstable molecule against 1.9.
+- **TFG's own tuning:**
+  - its QM9 hyperparameters were chosen on RDKit validity only;
+  - "increase" was chosen on CIFAR/ImageNet and transferred unchanged;
+  - it never reported molecule stability, although its evaluator computes it (arXiv 2409.15761; TFG-Flow 2501.14822).
+
+**Open, and load-bearing:**
+1. TFG's released script uses `mu_schedule=decrease` for mu, while the port follows the paper's "increase". Under "decrease" the late mean-guidance mass largely disappears.
+2. One seed, and the equal-chemistry advantage is shown on mu q90 only.
+3. f_B_dec rises 0.53 D at 0.028 Å RMSD on 58 same-SMILES molecules, so part of the late gain may be evaluator sensitivity.
 
 ## 11. Known defects and corrections — carry these into the write-up
 

@@ -191,6 +191,15 @@ class _Base:
                  "bdg_e", "bdg_e_raw", "bdg_e_measured", "bdg_V_b",
                  "bdg_V_over_tau2",
                  "bdg_tau", "bdg_dev_rms", "bdg_disp_rms", "bdg_w_eff",
+                 # ...and because THIS accumulator is a mean over guided steps,
+                 # `bdg_w_eff` alone is still unfalsifiable: w_eff was measured
+                 # changing sign up to 34 times in a 50-step window and sitting
+                 # at 0 +- 0.19 near the setpoint, so its run-mean reads ~0 for
+                 # an arm that was violently active. sqrt(mean(bdg_w_eff_sq)) is
+                 # its RMS over steps and mean(bdg_w_eff_neg) is the fraction of
+                 # guided steps on which the deviation term REVERSED. This list
+                 # is a whitelist, so a key absent here is silently dropped.
+                 "bdg_w_eff_sq", "bdg_w_eff_neg",
                  "bdg_batch")
 
     def _accumulate_diag(self, diag):

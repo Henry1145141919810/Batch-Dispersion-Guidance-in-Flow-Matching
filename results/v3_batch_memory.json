@@ -1,0 +1,76 @@
+{
+  "arm": "bdg_e4t0.5",
+  "budget_gib": 33.52761268615723,
+  "confirm": {},
+  "fits": {
+    "equifm": {
+      "alloc_gib": {
+        "intercept": 0.04147076606750488,
+        "per_mol": 0.03944761944668634
+      },
+      "largest_divisor_of_n": 500,
+      "one_batch_resv_gib": 279.88978794642856,
+      "resv_gib": {
+        "intercept": -0.037109375,
+        "per_mol": 0.05597795758928571
+      }
+    },
+    "fm": {
+      "alloc_gib": {
+        "intercept": 0.04331827163696289,
+        "per_mol": 0.02143282762595585
+      },
+      "largest_divisor_of_n": 625,
+      "one_batch_resv_gib": 200.52228655133928,
+      "resv_gib": {
+        "intercept": -0.1298828125,
+        "per_mol": 0.040104457310267856
+      }
+    }
+  },
+  "headroom": 0.8,
+  "n": 5000,
+  "points": [
+    {
+      "alloc_gib": 0.7279996871948242,
+      "backend": "fm",
+      "batch": 32,
+      "resv_gib": 1.146484375
+    },
+    {
+      "alloc_gib": 1.4167728424072266,
+      "backend": "fm",
+      "batch": 64,
+      "resv_gib": 2.447265625
+    },
+    {
+      "alloc_gib": 2.786135673522949,
+      "backend": "fm",
+      "batch": 128,
+      "resv_gib": 5.0
+    },
+    {
+      "alloc_gib": 1.3053021430969238,
+      "backend": "equifm",
+      "batch": 32,
+      "resv_gib": 1.755859375
+    },
+    {
+      "alloc_gib": 2.563857078552246,
+      "backend": "equifm",
+      "batch": 64,
+      "resv_gib": 3.54296875
+    },
+    {
+      "alloc_gib": 5.091519832611084,
+      "backend": "equifm",
+      "batch": 128,
+      "resv_gib": 7.12890625
+    }
+  ],
+  "prop": "mu",
+  "recommended_batch": 500,
+  "steps": 10,
+  "vram_gb": 45.0,
+  "vram_gib": 41.90951585769653
+}

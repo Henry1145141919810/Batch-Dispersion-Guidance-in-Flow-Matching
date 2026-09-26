@@ -1,5 +1,14 @@
 # Full run v2: fixed-target protocol
 
+> **SUPERSEDED, 26 September 2026.** v3 is now the headline —
+> [FULL_RUN_V3_PROTOCOL.md](FULL_RUN_V3_PROTOCOL.md). v2 ran and
+> [its results stand](../results/FULL_RUN_V2_RESULTS.md); by the same rule this
+> document states below, it is **not deleted and not hidden**, and the paper keeps
+> its report of v2. But where this document and v3 disagree — on the target (q90
+> vs q50), the strength rule (per-arm freeze vs w = 1) and above all the
+> **chemistry floor (mandatory here, removed in v3)** — v3 governs the v3 tree and
+> this one governs nothing new. Do not start a run from this page.
+
 **24 September 2026. Pre-registration. Nothing here has been run.** Henry's
 decisions of 24 Sep are folded in; the one remaining choice is §6.
 

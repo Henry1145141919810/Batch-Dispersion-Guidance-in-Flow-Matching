@@ -240,6 +240,181 @@ BASELINE = ["unguided"]
 COMPARE_ARMS = ["plug", "tmpd", "lgd_mc", "tfg"]
 OUR_ARMS = ["btvg", "btvg_var"]
 TRANSFER_SET = BASELINE + COMPARE_ARMS + OUR_ARMS
+
+# --------------------------------------------------------------------------
+# PROTOCOL v3 (26 Sep 2026): docs/protocol/FULL_RUN_V3_PROTOCOL.md
+# --------------------------------------------------------------------------
+# Henry's decisions, folded in verbatim:
+#   target      q50 for EVERY property -- not v2's q90
+#   strength    w = 1 for EVERY arm. NOT each arm's best, and NOT equal force
+#   seeds       three, the same three v2 used, so noise is comparable
+#   n           2000 per cell in batches of 500 -- 4 controllers per cell
+#   floor       NONE. There is no chemistry gate. Stability, validity and
+#               uniqueness are REPORTED beside in-band, never used to exclude
+#   arms        the full comparison set, btvg dropped, BDG added as the
+#               innovation target
+#   BDG         eta = 4, tau_mult in {0.5, 1.0}; guidance start stays 0.5.
+#               tau_mult is the SETPOINT knob, not the guidance window
+#   bases       both -- ours (`fm`) and EquiFM, identical code, one flag
+#
+# WHY NO FLOOR CHANGES HOW THIS IS READ. At q50, w = 1 is far above some arms'
+# floor-clearing strength: tfg froze at 0.01-0.05 under v2, so w = 1 is 20-100x
+# it. Measured on our base at q50, n = 512, tfg at w = 1 reaches the HIGHEST
+# in-band of any arm on all three properties (mu 0.3828 against plug's 0.0840)
+# at molecule stability 0.2285 and validity 0.62, against unguided's 0.4023 and
+# 0.75. So an in-band ranking on its own would name tfg the winner for wrecking
+# chemistry. That is exactly what v2's floor existed to prevent, and it is why
+# `v3_table.py` refuses to rank on in-band alone and prints the chemistry block
+# in the same row. The run is a Pareto picture, not a leaderboard.
+#
+# BDG'S KNOB IS NOT delta. tau = tau_mult * f_A.y_std, so delta never enters
+# BDG's sampling -- only its scoring. v3 therefore scores with the
+# PRE-REGISTERED delta (2 x f_B's val MAE, target-independent). The 25-Sep
+# local delta was measured in q90's neighbourhood and does not apply at q50.
+V3_ROOT = os.path.join(ROOT, "results", "v3")
+V3_TARGET = "q50"
+V3_W = 1.0
+V3_T_START = 0.5                     # guidance on for t in [0.5, 1)
+V3_SEEDS = (20261001, 20261002, 20261003)
+# n = 2000, down from 5000 (Henry, 26 Sep). Three seeds are UNCHANGED. Batch
+# stays 500, so a cell runs 4 controllers instead of 10 -- controller COUNT is
+# what shrank, not controller quality (each still estimates V_b from 500).
+# The power this costs is pre-registered in FULL_RUN_V3_PROTOCOL.md section 6:
+# pooled n per (arm, property) falls 15000 -> 6000, every binomial SE rises
+# 1.58x, and a ~1pp contrast -- the size a BDG-vs-plug effect is expected to
+# be -- no longer clears a multiplicity-corrected threshold.
+V3_N = 2000                          # the headline; the ablation runs smaller
+V3_BDG_ETA = 4.0
+# tau_mult {0.5, 1.0} -- 0.75 dropped (Henry, 26 Sep). This is BDG's SETPOINT
+# knob, tau = tau_mult * f_A.y_std; it is NOT the t >= 0.5 guidance window,
+# which is unchanged. Dropping the MIDDLE rung costs no w_eff span (measured
+# 1019 at 0.5 and 253 at 1.0, a 4.03x span set by the endpoints) but it does
+# reduce the headline ladder to two points, which cannot show monotonicity or
+# curvature. The third point survives in the ablation, which keeps all four
+# tau_mults -- read it there, never off the headline's two rungs.
+V3_BDG_TAU_MULTS = (0.5, 1.0)
+# The ablation's two axes.
+#
+# eta = 0 is in the grid on purpose: it is BDG's identity gate, bit-identical
+# to plug, so it appears as a row rather than only as a unit test. But at
+# eta = 0 the dispersion term is multiplied by zero, so tau_mult cannot change
+# the samples: all four tau_mults would be ONE computation under four names,
+# and averaging them would look like four independent measurements of the same
+# thing. The planner emits eta = 0 exactly once, at the reference tau_mult.
+V3_ABL_ETAS = (0.0, 1.0, 2.0, 4.0, 8.0)
+V3_ABL_TAU_MULTS = (0.5, 0.75, 1.0, 1.5)
+V3_ABL_ETA0_REF_TAU = 1.0
+# The ablation is SMALLER THAN THE HEADLINE, by Henry's decision of 26 Sep:
+# ONE seed against the headline's three, and n = 1000 against the headline's
+# 2000. It costs 4.2 GPU-h; the 51.3 it is sometimes compared against was the
+# ablation's OWN first plan (14 grid arms in a shared n5000 tree), NOT the
+# headline, which is 12.8. What that buys and what it gives up is
+# pre-registered in docs/protocol/ABLATION_V3_PROTOCOL.md; the short version is
+# that an ablation row is NOT comparable to a headline row (different n,
+# different seed count, 2 controllers per cell instead of 4), and the grid is
+# read only against itself. An earlier decision the same day had them equal,
+# and test_v3.py gated that equality; the gate now asserts the difference
+# instead, so neither value can drift silently.
+#
+# WHY 1000 AND NOT 2000. When the headline moved to n = 2000 the two stages
+# would have written the SAME tree under the SAME stage label, so v3_table.py
+# would have globbed the ablation's 15 single-seed arms into the headline's
+# table and refused (it requires every (prop, arm) at all three seeds). 1000
+# also keeps ablation_is_smaller_than_headline true. It must stay divisible by
+# the batch, 500 -- 1000 / 500 = 2 controllers per cell.
+V3_ABL_N = 1000
+V3_ABL_SEEDS = (V3_SEEDS[0],)
+# n = 1000 writes to results/v3/<backend>/n1000/, a different tree from the
+# headline's n2000/, so there are no headline BDG cells to reuse and the grid
+# runs ALL 17 arms rather than the 14 that excluded them. That makes it
+# self-contained, which is what lets it be read against itself.
+V3_COMPARE_ARMS = ["unguided", "plug", "tmpd", "lgd_mc", "tfg"]
+
+
+def bdg_arm(eta, tau_mult):
+    """The arm name that carries BDG's two settings.
+
+    They ride in the NAME rather than in the cell tuple because every planner,
+    cell_name and resume check in this file is built on 5-tuples
+    (prop, arm, target, w, t_start), and the previous session verified that
+    every pre-existing cell name is byte-identical under that shape. Widening
+    the tuple to carry a variant would have re-derived all of those names and
+    orphaned 216 finished EquiFM cells. `%g` keeps 4.0 -> "4" and 0.75 ->
+    "0.75", so the names match guidance_sweep's own e<eta>t<mult> convention.
+    """
+    return "bdg_e%gt%g" % (float(eta), float(tau_mult))
+
+
+def parse_bdg_arm(arm):
+    """(eta, tau_mult) for a bdg arm name, or None for any other arm."""
+    if not arm.startswith("bdg_e"):
+        return None
+    body = arm[len("bdg_e"):]
+    if "t" not in body:
+        raise SystemExit("bdg arm %r must look like bdg_e<eta>t<tau_mult>" % arm)
+    a, b = body.split("t", 1)
+    try:
+        return float(a), float(b)
+    except ValueError:
+        raise SystemExit("bdg arm %r has a non-numeric eta or tau_mult" % arm)
+
+
+def base_mode(arm):
+    """The sampler `mode=` string for an arm name.
+
+    Only bdg carries a suffix; every other arm's name IS its mode. Without this
+    the sampler would be handed mode="bdg_e4t0.5", which is not in KNOWN_MODES
+    and would raise -- after loading the generator and the dataset.
+    """
+    return "bdg" if arm.startswith("bdg_e") else arm
+
+
+def v3_arms(etas=None, tau_mults=None, compare=True):
+    """v3's arm list: the comparison set, then one arm per (eta, tau_mult).
+
+    eta = 0 collapses to a single arm whatever tau_mults is, because the
+    dispersion term is multiplied by zero and tau_mult then changes nothing
+    about the samples (see V3_ABL_ETA0_REF_TAU).
+    """
+    etas = V3_BDG_ETA if etas is None else etas
+    etas = (etas,) if isinstance(etas, (int, float)) else tuple(etas)
+    tms = V3_BDG_TAU_MULTS if tau_mults is None else tuple(tau_mults)
+    out = list(V3_COMPARE_ARMS) if compare else []
+    for e in etas:
+        ts = (V3_ABL_ETA0_REF_TAU,) if float(e) == 0.0 else tms
+        for tm in ts:
+            a = bdg_arm(e, tm)
+            if a not in out:
+                out.append(a)
+    return out
+
+
+def plan_v3_cells(props, arms, target=None, w=None, t_start=None):
+    """One cell per (property, arm). No strength sweep, no window sweep.
+
+    v3 fixes w and t_start, so there is exactly one cell per (property, arm)
+    per seed -- unlike the basecmp stages, which screen a grid and then freeze.
+    `unguided` is planned first, because it is every comparison's reference and
+    a job cut short must not be the one that lacks it.
+    """
+    tgt = V3_TARGET if target is None else target
+    ww = V3_W if w is None else float(w)
+    ts = V3_T_START if t_start is None else float(t_start)
+    seen, cells = set(), []
+
+    def add(c):
+        if c not in seen:
+            seen.add(c)
+            cells.append(c)
+    for prop in props:
+        if "unguided" in arms:
+            add((prop, "unguided", tgt, ww, ts))
+    for prop in props:
+        for arm in arms:
+            if arm == "unguided":
+                continue
+            add((prop, arm, tgt, ww, ts))
+    return cells
 # Arms a backend cannot run. Empty for both: `tfg`, a sampler-level arm, was
 # ported to EquiFM's two clocks on 23 Sep (equifm_backend.EquiFMSampler).
 # `fm` runs every arm by construction: these arms were written against
@@ -363,6 +538,16 @@ def arm_kwargs(arm, delta):
     itself: a centred Gaussian with sd = delta covers only 68.3% of the band.
     """
     kw = {}
+    bdg = parse_bdg_arm(arm)
+    if bdg is not None:
+        # BDG's setpoint is tau = tau_mult * f_A.y_std, NOT delta: it is a
+        # fraction of the guide's own property scale, so it is resolved in
+        # run_cell once `s` is known. Stashed under a private key that
+        # guidance_field never sees.
+        eta, tau_mult = bdg
+        kw["bdg_eta"] = eta
+        kw["_bdg_tau_mult"] = tau_mult
+        return kw
     if arm in ("btvg", "btvg_var", "btvg_mean") or arm in SHG_SCHEDULES:
         # An SHG schedule containing a btvg phase needs tau for the same
         # reason a standalone btvg arm does.
@@ -1154,7 +1339,8 @@ def main():
     ap.add_argument("--stage", default="compare",
                     choices=["compare", "extend", "freeze", "full",
                              "eqtune", "eqextend", "eqfreeze", "eqconfirm",
-                             "basecmp", "basecmprefine", "basecmpfull"])
+                             "basecmp", "basecmprefine", "basecmpfull",
+                             "v3", "v3abl"])
     ap.add_argument("--backend", default="equifm", choices=sorted(BACKENDS),
                     help="which generator: equifm (the borrowed FM base), fm "
                          "(OURS, run through this file's external pair for the "
@@ -1247,7 +1433,12 @@ def main():
 
     props = [p for p in args.props.split(",") if p]
     arms = [a for a in args.arms.split(",") if a] or backend_arms(args.backend)
-    unknown = [a for a in arms if a not in ARM_CLASS]
+    # bdg arms carry (eta, tau_mult) in the name, so they cannot be listed in
+    # ARM_CLASS. parse_bdg_arm validates the suffix and raises on a typo, which
+    # is what would otherwise reach the sampler as an unknown mode.
+    for a in arms:
+        parse_bdg_arm(a)
+    unknown = [a for a in arms if a not in ARM_CLASS and not a.startswith("bdg_e")]
     if unknown:
         raise SystemExit("unknown arm(s) %s; known: %s"
                          % (unknown, ", ".join(ARM_CLASS)))
@@ -1255,13 +1446,15 @@ def main():
         args.n = {"full": 5000, "eqconfirm": EQ_CONFIRM_N, "eqtune": EQ_TUNE_N,
                   "eqextend": EQ_TUNE_N, "eqfreeze": EQ_TUNE_N,
                   "basecmp": BASECMP_N, "basecmprefine": BASECMP_N,
-                  "basecmpfull": 2000}.get(args.stage, 512)
+                  "basecmpfull": 2000,
+                  "v3": V3_N, "v3abl": V3_ABL_N}.get(args.stage, 512)
     if args.seed is None:
-        if args.stage in ("full", "eqconfirm", "basecmpfull"):
+        if args.stage in ("full", "eqconfirm", "basecmpfull", "v3", "v3abl"):
             raise SystemExit("--stage %s needs --seed (one of %s)" % (
                 args.stage, ", ".join(map(str, {
                     "full": FULL_SEEDS, "eqconfirm": EQ_CONFIRM_SEEDS,
-                    "basecmpfull": BASECMP_FULL_SEEDS}[args.stage]))))
+                    "basecmpfull": BASECMP_FULL_SEEDS,
+                    "v3": V3_SEEDS, "v3abl": V3_SEEDS}[args.stage]))))
         args.seed = (EQ_TUNE_SEED if args.stage in ("eqtune", "eqextend", "eqfreeze")
                      else BASECMP_SEED if args.stage in ("basecmp", "basecmprefine")
                      else COMPARE_SEED)
@@ -1304,9 +1497,28 @@ def main():
         # our generator integrates flow time 0 -> 1 on a uniform grid; the
         # EDM schedule choice does not apply and must not be recorded as if it did
         args.grid = "flow"
-    root_out = BASECMP_ROOT if basecmp else OUT_ROOTS[args.backend]
+    v3stage = args.stage in ("v3", "v3abl")
+    root_out = (V3_ROOT if v3stage else
+                BASECMP_ROOT if basecmp else OUT_ROOTS[args.backend])
     if not args.out_dir:
-        if basecmp:
+        if v3stage:
+            # v3 keeps its own tree, split by backend and by stage, so it can
+            # never be read into v2's freeze, the transfer's freeze or basecmp's
+            # table -- all of which assume a chemistry floor v3 does not use.
+            # NOT split by stage -- split by n, which now does the same job.
+            # The headline is n = 2000 and the ablation n = 1000, so the two
+            # land in n2000/ and n1000/ and cannot be globbed into one table.
+            # That separation is load-bearing and it is why the ablation is not
+            # 2000: at equal n the two stages write byte-identical paths under
+            # one stage label, and v3_table.py -- which requires every
+            # (prop, arm) at all three seeds -- would pull the ablation's 15
+            # single-seed arms into the headline's table and refuse.
+            # Consequence: nothing is shared, so the ablation recomputes its
+            # own eta = 4 rungs. That is the cost of the split, and it is
+            # small (the ablation is 4.2 GPU-h entire).
+            args.out_dir = os.path.join(root_out, args.backend,
+                                        "n%d" % args.n, "seed%d" % args.seed)
+        elif basecmp:
             # the comparison keeps its OWN tree, per backend, so it can never be
             # read into the transfer's freeze or the main sweep's
             args.out_dir = (
@@ -1337,10 +1549,29 @@ def main():
                   # refine cells ARE screen cells, at more strengths -- the same
                   # convention `extend` already follows, so one glob reads both
                   "basecmp": "basecmp", "basecmprefine": "basecmp",
-                  "basecmpfull": "basecmpfull"}[args.stage]
+                  "basecmpfull": "basecmpfull",
+                  # Both v3 stages write the SAME label: they are one protocol
+                  # at one (target, w, t_start, n, seed set), and the headline's
+                  # bdg arms are a subset of the ablation's grid. Labelling them
+                  # apart would make the same cell carry a different `stage`
+                  # depending on which job happened to write it first.
+                  "v3": "v3", "v3abl": "v3"}[args.stage]
 
     frozen = None
-    if args.stage == "basecmp":
+    if args.stage in ("v3", "v3abl"):
+        # v3 fixes w and t_start, so there is no screen and no freeze: one cell
+        # per (property, arm) per seed. --arms overrides the default arm set,
+        # which is how the cluster splits the run across array tasks.
+        if args.arms:
+            v3set = arms
+        elif args.stage == "v3":
+            v3set = v3_arms()
+        else:
+            v3set = v3_arms(etas=V3_ABL_ETAS, tau_mults=V3_ABL_TAU_MULTS,
+                            compare=False)
+        arms = v3set
+        cells = plan_v3_cells(props, v3set)
+    elif args.stage == "basecmp":
         cells = plan_basecmp_cells(props, arms, t_starts)
     elif args.stage == "basecmprefine":
         # The cells to add are decided by basecmp_freeze.py --emit-refine, so
@@ -1446,7 +1677,10 @@ def main():
     # Every stage's cells are (prop, arm, tgt, w, t_start) from here down. The
     # pre-basecmp stages take the single global window, so their names and their
     # behaviour are byte-for-byte what they were.
-    if not basecmp:
+    # v3 is excluded for the same reason basecmp is: plan_v3_cells already
+    # returns 5-tuples, carrying v3's own fixed t_start rather than the global
+    # --tau-max-guide window.
+    if not basecmp and not v3stage:
         cells = with_t(cells, 1.0 - args.tau_max_guide)
     # VALIDATE EVERY PATH, not just --t-starts. t_start also arrives as
     # 1 - tau_max_guide (any pre-basecmp stage), from a refine plan, and from a
@@ -1657,6 +1891,13 @@ def main():
             target = TARGETS[prop][tgt]
             y_t = torch.full((args.n,), target, device=dev)
         gen = torch.Generator(device=dev).manual_seed(args.seed)
+        # BDG's setpoint in property units, now that `s` is known. tau is a
+        # fraction of the GUIDE's output scale, so it is the same physical
+        # request on either backend even though the two generators have
+        # different state scales. Popped before `extra` reaches the sampler,
+        # which knows `bdg_tau` and not `_bdg_tau_mult`.
+        if "_bdg_tau_mult" in extra:
+            extra["bdg_tau"] = float(extra.pop("_bdg_tau_mult")) * float(s)
 
         cs, fs, calls = [], [], 0
         cost = {k: 0 for k in ("gen_fwd", "gen_vjp", "gen_jvp",
@@ -1665,7 +1906,8 @@ def main():
         for i in range(0, args.n, args.batch):
             m = mask_c[i:i + args.batch]
             skw = dict(f_net=(None if arm == "unguided" else f_A),
-                       y=y_t[i:i + m.shape[0]], s=s, mode=arm, w=w_applied,
+                       y=y_t[i:i + m.shape[0]], s=s, mode=base_mode(arm),
+                       w=w_applied,
                        clip=clip, n_probe=args.n_probe, n_mc=args.n_mc,
                        sigma_mc=args.sigma_mc, **extra)
             # ONE window, expressed on each family's own clock. Flow time runs

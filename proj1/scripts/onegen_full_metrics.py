@@ -41,7 +41,6 @@ import numpy as np
 import torch
 
 CELLS = "results/bdg_local/*.json"
-N_GRID = 5
 COLS = ["sel", "plugeq", "grid", "in_bd", "d_ung", "in_bdD", "MAE/d", "bias/d",
         "sd/d", "sd/ung", "ceil", "rm/mae", "mstab", "valid", "astab", "uvps",
         "gap/d", "divers", "clip"]
@@ -79,7 +78,11 @@ def metrics(d, usd, uin):
         b, sd = float(r.mean()), float(r.std(ddof=1))
     else:
         b = d["f_B_mean"] - d["target"]
-        sd = math.sqrt(max(d["prop_rmse_eval"] ** 2 - b * b, 0.0))
+        n = d["n"]                       # rmse uses ddof=0; match the sidecar's ddof=1
+        sd = math.sqrt(max(d["prop_rmse_eval"] ** 2 - b * b, 0.0) * n / (n - 1.0))
+        if d.get("target_name") == "dist":
+            raise ValueError("the rmse fallback assumes a constant target; "
+                             "`dist` cells vary y per molecule -- pass sidecars")
     g = d.get
     we = (d.get("diag") or {}).get("bdg_w_eff")
     return {
@@ -117,8 +120,9 @@ def main():
     md.append("`fm_ema.pt` e19ccc06 | n=256 | seed 20260925 | window 0.5 | 100-step Euler "
               "| RTX 5080. Best strength per arm, **no chemistry floor**. "
               "se(in_band) ~ 0.019; nothing under ~0.05 is resolvable. "
-              "`plugeq` = w x mean(w_eff) for BDG: where the pick really sits on "
-              "plug's scale. Comparator grid stops at w=4, so plugeq > 4 is "
+              "`plugeq` = w x mean(w_eff) for BDG: where the pick sits on plug's "
+              "FIELD-MAGNITUDE scale. BDG's centring gain on (y - F_i) is still "
+              "exactly w, so this is NOT 'BDG = plug at w=plugeq'. Comparator grid stops at w=4, so plugeq > 4 is "
               "outside it.\n")
     for tgt in ("q50", "q90"):
         for prop in ("mu", "alpha", "gap"):
@@ -129,12 +133,17 @@ def main():
             um = metrics(u, 1.0, 0.0)
             usd, uin = um["_sd"], u["in_band_fraction"]
             um = metrics(u, usd, uin)
-            rows = [("unguided", "-", 1, um)]
+            rows = [("unguided", "-", 0, um)]
+            ngrid = 0
             for (kk, arm), ws in arms.items():
                 if kk != k:
                     continue
-                bw, bc = max(ws.items(), key=lambda kv: kv[1]["in_band_fraction"])
+                # tie-break on the SMALLER strength, not on dict/filename order.
+                # max() keeps the FIRST maximal element, so sort ascending by w.
+                bw, bc = max(sorted(ws.items(), key=lambda kv: kv[0]),
+                             key=lambda kv: kv[1]["in_band_fraction"])
                 nstr = len({w for w, _ in ws} if arm == "bdg" else set(ws))
+                ngrid = max(ngrid, nstr)
                 sel = ("w=%g,t=%g" % bw) if arm == "bdg" else "w=%g" % bw
                 rows.append((arm, sel, nstr, metrics(bc, usd, uin)))
             rows = [rows[0]] + sorted(rows[1:], key=lambda r: -r[3]["in_bd"])
@@ -146,7 +155,8 @@ def main():
             md.append("| arm | " + " | ".join(COLS) + " |")
             md.append("|" + "---|" * (len(COLS) + 1))
             for arm, sel, nstr, m in rows:
-                m = dict(m, sel=sel, grid=("%d/5" % nstr) if nstr < N_GRID else "5/5")
+                m = dict(m, sel=sel,
+                         grid=("-" if arm == "unguided" else "%d/%d" % (nstr, ngrid)))
                 line = "%-9s " % arm + " ".join(
                     fmt(m[c], 7, 3 if c in ("sd/ung", "rm/mae", "divers", "plugeq") else 4)
                     for c in COLS)

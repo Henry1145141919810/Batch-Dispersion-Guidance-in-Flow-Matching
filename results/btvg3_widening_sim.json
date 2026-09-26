@@ -1,7 +1,7 @@
 {
  "prov": {
   "script": "proj1/scripts/btvg3_widening_sim.py",
-  "script_md5": "3492dbb37258c35cfecc42bbf80a84a4",
+  "script_md5": "226bc6cb97d5335042a29cb92f2b467a",
   "glob": "results/full/v2/n5000/seed*/*.permol.pt",
   "n_cells": 45,
   "cell_fm_md5": [
@@ -10,7 +10,7 @@
   "numpy": "2.5.3",
   "torch": "2.11.0+cu128",
   "python": "3.12.14",
-  "git_head": "902aafa1ea0331c8b1ef28477cbe2e45959da01e"
+  "git_head": "34e296144788db77ad7d13175e84a52549f91210"
  },
  "pooled": [
   {
