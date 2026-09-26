@@ -38,9 +38,18 @@
 # in order inside one 225-min budget and finishes whatever the array left.
 #   sbatch --dependency=afterany:<ARRAY_ID> --export=ALL,STAGE=<stage> proj1/cluster/tfg_run.slurm
 #
-# COST (estimated from the measured compare-stage counters, not yet measured
-# on Betty): ~14 min per n=5000 cell on a 1g slice, so a full task (3 cells)
-# ~45 min; a compare task (14 cells at n=512) ~25 min.
+# COST. Measured: 45 s per n=512 cell on the local RTX 5080 (9 pilot cells).
+# Per guided step tfg costs 1.5 generator forwards + 1 VJP + 5 guide passes
+# (plug: 2 forwards + 1 VJP + 1 guide pass). Betty is not measured yet; from
+# the counters, 12-25 min per n=5000 cell on a 1g slice, so a full task (3
+# cells) <= ~75 min and a compare task (14 cells at n=512) <= ~35 min, far
+# under the 225-min guard either way.
+#
+# DECODED VIEW. Every cell also carries *_dec metrics (atom types decoded by
+# argmax). tfg's clean-space step writes on the continuous features the soft
+# metrics read, so tfg is never quoted without them. The full cells also save
+# the final coordinates and types (--save-coords), so their chemistry can be
+# re-scored by an independent rule.
 set -uo pipefail
 export PATH="/cm/local/apps/slurm/current/bin:$PATH"
 
@@ -126,10 +135,10 @@ task_args() {
         echo "--stage compare --arms tfg --props ${PROPS[$t]} --n 512"
     elif [ "$t" -lt 3 ]; then
         local seed=${SEEDS[$t]}
-        echo "--stage full --frozen $FROZEN --arms tfg --props mu,alpha,gap --sets primary --n $N --seed $seed --out-dir $RUNDIR/seed$seed --per-mol"
+        echo "--stage full --frozen $FROZEN --arms tfg --props mu,alpha,gap --sets primary --n $N --seed $seed --out-dir $RUNDIR/seed$seed --per-mol --save-coords"
     else
         local seed=${SEEDS[0]}
-        echo "--stage full --frozen $FROZEN --arms tfg --props mu,alpha,gap --sets mae --exclude-sets primary --n $N --seed $seed --out-dir $RUNDIR/seed$seed --per-mol"
+        echo "--stage full --frozen $FROZEN --arms tfg --props mu,alpha,gap --sets mae --exclude-sets primary --n $N --seed $seed --out-dir $RUNDIR/seed$seed --per-mol --save-coords"
     fi
 }
 

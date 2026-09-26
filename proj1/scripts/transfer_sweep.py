@@ -98,6 +98,29 @@ transfer cell existed -- TRANSFER_EXPERIMENT_PLAN.md section 9):
                     under <out>/seed<seed>/ so full_run_table.py and
                     dist_report.py (--backend tfg) read them unchanged.
 
+FAIR TUNING ON EquiFM (23 Sep, before any EquiFM cell; plan section 11):
+  * all seven arms, tfg included (ported to EquiFM's two clocks);
+  * the screen grid is the main sweep's 7 strengths plus 0.1 and 0.15, for
+    EVERY arm (TRANSFER_STRENGTHS);
+  * --stage extend: an arm whose FR3a pick on that grid is at an edge gets two
+    more q90 strengths beyond it (x4, x16 or /4, /16); freeze refuses until
+    they exist. Same rule for every arm;
+  * strengths are chosen on the DECODED molecule's MAE (SELECT_METRIC).
+
+THE EQUAL-CHEMISTRY-COST COMPARISON (the "PROPOSED" section of
+SCOPE_FM_GUIDANCE_STATUS.md, on EquiFM):
+  --stage eqtune     every arm on `dist` over EQ_STRENGTHS (0.05 ... 16) on the
+                     fresh block test[10000:12000], n = 2000, seed 20261001
+  --stage eqextend   the same edge rule on the tune grid (an edge pick gets x4,
+                     x16 or /4, /16); eqfreeze waits for those cells
+  --stage eqfreeze   FR3a on that block (decoded MAE, floor 0.9 x unguided) ->
+                     frozen json, plus the per-arm frontier (in_band against
+                     mol_stability across w) and in_band AT the floor
+  --stage eqconfirm  the frozen strengths on test[5000:10000], n = 5000, seeds
+                     20261004-6, per-molecule sidecars (full_run_table reads it)
+All three test blocks (full run 0:5000, confirm 5000:10000, tune 10000:12000)
+are disjoint.
+
 Resumable: one JSON per cell, written atomically, completed cells are skipped;
 a cell that raises leaves a `.failed` note and is retried by the next run.
 """
@@ -122,6 +145,9 @@ from external.tfg_assets import (Calibrated, EDMGenerator, PROP_INDEX,  # noqa: 
                                  PROP_UNITS, QM9_MAD, TFGGuide, TFGOracle,
                                  fit_calibration, metadata)
 from sampling import VPSampler, initial_noise, integrate     # noqa: E402
+from external.equifm_backend import (EQUIFM_ARGS, EQUIFM_WEIGHTS,  # noqa: E402
+                                     EquiFMGenerator, EquiFMSampler,
+                                     OCFlowOracle)
 
 sys.path.insert(0, os.path.join(ROOT, "proj1", "scripts"))
 # The grid, targets and frozen-file reader are IMPORTED, not copied, so the
@@ -134,6 +160,14 @@ DATA = os.path.join(ROOT, "data", "qm9.pt")
 TFG_ROOT = os.path.join(ROOT, "audit", "fa_fb_search", "TFG")
 OUT = os.path.join(ROOT, "results", "transfer")
 BACKEND = "TFG/EDMsecond"
+# --backend: which borrowed generator. The property pair is TFG's for both.
+# EDMsecond (diffusion) was the first transfer target and was dropped on
+# 23 Sep when FM was chosen as the project's base model; EquiFM is the
+# borrowed FM model (docs/protocol/EQUIFM_USABILITY_AUDIT.md,
+# proj1/src/external/equifm_backend.py).
+BACKENDS = {"equifm": "EquiFM", "edm": "TFG/EDMsecond"}
+OUT_ROOTS = {"equifm": os.path.join(ROOT, "results", "transfer_equifm"),
+             "edm": OUT}
 
 # --------------------------------------------------------------------------
 # the arms under test
@@ -157,6 +191,13 @@ BASELINE = ["unguided"]
 COMPARE_ARMS = ["plug", "tmpd", "lgd_mc", "tfg"]
 OUR_ARMS = ["btvg", "btvg_var"]
 TRANSFER_SET = BASELINE + COMPARE_ARMS + OUR_ARMS
+# Arms a backend cannot run. Empty for both: `tfg`, a sampler-level arm, was
+# ported to EquiFM's two clocks on 23 Sep (equifm_backend.EquiFMSampler).
+NOT_PORTED = {"equifm": (), "edm": ()}
+
+
+def backend_arms(backend):
+    return [a for a in TRANSFER_SET if a not in NOT_PORTED[backend]]
 # The 22-Sep plan's other arms stay runnable through --arms, as a labelled
 # post-hoc analysis (R5). `tfg_mc` is the one R3 (the home-turf test) needs.
 LEGACY_COMPARE = ["tfg_mc", "osc"]
@@ -173,6 +214,26 @@ FR1_SIGMA, FR1_BEATEN_ON = 3.0, 2
 COMPARE_SEED = 20260922             # the transfer's pre-registered screen seed
 FULL_SEEDS = (20261001, 20261002, 20261003)
 CALIB_SEED, N_CALIB = 4242, 3000
+
+# ---- fair tuning (see the module docstring) ------------------------------
+# The fill-in is where TFG's floor-clearing strengths sat on our own model
+# (0.05-0.25). Giving it to one arm only would bias the best-of-grid choice
+# toward that arm, so every arm gets it.
+FILL_IN = (0.1, 0.15)
+TRANSFER_STRENGTHS = sorted({float(w) for w in STRENGTHS} | set(FILL_IN))
+# The main run's lgd_mc best sat at w = 4 and still cleared the floor at
+# w = 8: the grid, not the method, set its strength. One round, same factors
+# for every arm.
+EXT_FACTORS = (4.0, 16.0)
+# Soft type channels can move without moving the molecule; choosing strengths
+# on them would reward an arm for that (measured for tfg on our own model).
+SELECT_METRIC, SELECT_RMSE = "prop_mae_eval_dec", "prop_rmse_eval_dec"
+
+# ---- the equal-chemistry-cost comparison ---------------------------------
+EQ_STRENGTHS = [0.05, 0.1, 0.15, 0.25, 0.5, 1.0, 2.0, 4.0, 8.0, 16.0]
+EQ_TUNE_START, EQ_TUNE_N, EQ_TUNE_SEED = 10000, 2000, 20261001
+EQ_CONFIRM_START, EQ_CONFIRM_N = 5000, 5000
+EQ_CONFIRM_SEEDS = (20261004, 20261005, 20261006)
 
 
 def file_md5(path, chunk=1 << 20):
@@ -205,9 +266,10 @@ def config_tag(args):
     batch 64 and batch 128 give every molecule different starting noise. Two
     arms are paired (same noise, same targets) only at the same batch.
     """
-    return "__n%d_s%d_%s_%s_win%g_b%d_seed%d" % (
+    return "__n%d_s%d_%s_%s_win%g_b%d_seed%d%s" % (
         args.n, args.steps, args.solver, args.grid, args.tau_max_guide,
-        args.batch, args.seed)
+        args.batch, args.seed,
+        ("_blk%d" % args.block_start) if args.block_start else "")
 
 
 def flow_to_vp_schedule(sched):
@@ -286,8 +348,21 @@ def plan_compare_cells(props, arms, targets=SCREEN_TARGETS):
         for prop in props:
             for arm in arms:
                 if arm != "unguided":
-                    for w in STRENGTHS:
+                    for w in TRANSFER_STRENGTHS:
                         add((prop, arm, tgt, float(w)))
+    return cells
+
+
+def plan_eqtune_cells(props, arms, strengths=None):
+    """Every arm on `dist` over one grid (unguided once), on the tune block."""
+    ws = EQ_STRENGTHS if strengths is None else strengths
+    cells = []
+    for prop in props:
+        for arm in arms:
+            if arm == "unguided":
+                cells.append((prop, arm, DIST_TARGET, float(DEFAULT_W)))
+            else:
+                cells += [(prop, arm, DIST_TARGET, float(w)) for w in ws]
     return cells
 
 
@@ -430,61 +505,266 @@ def build_pair(prop, d, sel, dev, k_delta, sampler_scale):
 # --------------------------------------------------------------------------
 
 def _se_mae(r):
-    v = max(r["prop_rmse_eval"] ** 2 - r["prop_mae_eval"] ** 2, 0.0)
+    v = max(r[SELECT_RMSE] ** 2 - r[SELECT_METRIC] ** 2, 0.0)
     return math.sqrt(v / r["n"])
+
+
+def _load_stage(args, props, stage_label, targets, grid):
+    """(rows, present, meta) for this backend's `stage_label` cells, or an int
+    exit code (2) with the reason printed. `grid` is the set of (arm, w) that
+    must ALL be present at every target -- a best-of-partial-grid is never
+    taken. A cell that ran but diverged counts as present and is excluded
+    only from being anyone's best."""
+    rows = {t: [] for t in targets}
+    present = {t: set() for t in targets}
+    meta = set()
+    if not os.path.isdir(args.out_dir):
+        print("no cells: %s does not exist" % args.out_dir)
+        return 2
+    for fn in os.listdir(args.out_dir):
+        if not (fn.startswith("tr__") and fn.endswith(".json")):
+            continue
+        r = json.load(open(os.path.join(args.out_dir, fn)))
+        if (r.get("stage") != stage_label or r.get("target_name") not in rows
+                or r.get("prop") not in props):
+            continue
+        if r.get("backend") != BACKENDS[args.backend]:
+            print("REFUSING: %s is a %r cell; this is --backend %s"
+                  % (fn, r.get("backend"), args.backend))
+            return 2
+        t = r["target_name"]
+        present[t].add((r["prop"], r["arm"], float(r["w"])))
+        meta.add((r["n"], r["seed"], (r.get("prov") or {}).get("fm_md5"),
+                  r.get("grid"), r.get("tau_max_guide"), r.get("batch"),
+                  tuple(r.get("dist_block") or ())))
+        if r.get("n_nonfinite", 0) > 0 or not math.isfinite(
+                float(r.get(SELECT_METRIC, float("nan")))):
+            continue
+        rows[t].append(r)
+    if len(meta) != 1:
+        print("INCONSISTENT %s cells in %s: (n, seed, fm_md5, grid, window, "
+              "batch, block) = %s" % (stage_label, args.out_dir,
+                                      sorted(map(str, meta))))
+        return 2
+    for t in targets:
+        holes = sorted((p, a, w) for p in props for (a, w) in grid
+                       if (p, a, w) not in present[t])
+        if holes:
+            print("INCOMPLETE -- %d of %d %s cells missing at %s, e.g. %s"
+                  % (len(holes), len(grid) * len(props), stage_label, t,
+                     ", ".join("%s/%s/w%g" % h for h in holes[:6])))
+            return 2
+    return rows, present, meta
+
+
+def _fr3a(rows, p, a, floor):
+    """(row, fell_back): best SELECT_METRIC among strengths with mol_stability
+    >= floor (tie -> smaller w); none clears it -> the most stable (tie ->
+    smaller w). check_fullrun_go.py's rule, on the decoded MAE."""
+    c = [r for r in rows if r["prop"] == p and r["arm"] == a]
+    if not c:
+        return None, False
+    ok = [r for r in c if r["mol_stability"] >= floor - 1e-12]
+    if ok:
+        return min(ok, key=lambda r: (r[SELECT_METRIC], float(r["w"]))), False
+    return max(c, key=lambda r: (r["mol_stability"], -float(r["w"]))), True
+
+
+def _base_grid(arms, strengths=None):
+    ws = TRANSFER_STRENGTHS if strengths is None else strengths
+    return {("unguided", float(DEFAULT_W))} | {
+        (a, float(w)) for a in arms if a != "unguided" for w in ws}
+
+
+def extension_plan(rows, props, arms, strengths=None, target=FREEZE_TARGET):
+    """The edge rule's cells: decided on the BASE grid only, so the plan is the
+    same before and after the extension cells exist. Used for the compare
+    screen (q90, TRANSFER_STRENGTHS) and the equal-chemistry tune block
+    (dist, EQ_STRENGTHS) alike."""
+    ws = TRANSFER_STRENGTHS if strengths is None else strengths
+    base = [r for r in rows if (r["arm"], float(r["w"])) in _base_grid(arms, ws)]
+    lo, hi = min(ws), max(ws)
+    plan = []
+    for p in props:
+        u = [r for r in base if r["prop"] == p and r["arm"] == "unguided"]
+        if not u:
+            continue
+        floor = FLOOR * u[0]["mol_stability"]
+        for a in arms:
+            if a == "unguided":
+                continue
+            r, _ = _fr3a(base, p, a, floor)
+            if r is None:
+                continue
+            w = float(r["w"])
+            if w == hi:
+                plan += [(p, a, target, hi * f) for f in EXT_FACTORS]
+            elif w == lo:
+                plan += [(p, a, target, lo / f) for f in EXT_FACTORS]
+    return plan
+
+
+def in_band_at_floor(points, floor):
+    """Equal-chemistry-cost in_band for one arm. `points` are (w, mol_stab,
+    in_band) sorted by w. Where the stability curve FIRST drops below the
+    floor, in_band is interpolated linearly in stability between the two
+    strengths that bracket the crossing. If it never drops below on the grid
+    the value is the last strength's in_band, a lower bound ("not_reached");
+    if it is below from the smallest strength there is no value."""
+    if not points:
+        return {"value": None, "kind": "no_points"}
+    if points[0][1] < floor:
+        return {"value": None, "kind": "below_floor"}
+    for (w0, s0, b0), (w1, s1, b1) in zip(points, points[1:]):
+        if s1 < floor:
+            f = (s0 - floor) / (s0 - s1) if s0 != s1 else 0.0
+            return {"value": b0 + f * (b1 - b0), "kind": "interpolated",
+                    "between_w": [w0, w1]}
+    return {"value": points[-1][2], "kind": "not_reached",
+            "at_w": points[-1][0]}
+
+
+def eqfreeze(args, props, arms):
+    """FR3a on the tune block, plus the equal-chemistry frontier. 0 / 2."""
+    if sorted(arms) != sorted(backend_arms(args.backend)):
+        print("REFUSING to freeze arms %s: must be the whole arm set %s"
+              % (arms, backend_arms(args.backend)))
+        return 2
+    grid = {("unguided", float(DEFAULT_W))} | {
+        (a, float(w)) for a in arms if a != "unguided" for w in EQ_STRENGTHS}
+    loaded = _load_stage(args, props, "eqtune", (DIST_TARGET,), grid)
+    if isinstance(loaded, int):
+        return loaded
+    rows, present, meta = loaded
+    rd = rows[DIST_TARGET]
+    ext = extension_plan(rd, props, arms, EQ_STRENGTHS, DIST_TARGET)
+    missing = [c for c in ext
+               if (c[0], c[1], float(c[3])) not in present[DIST_TARGET]]
+    if missing:
+        print("EXTENSION INCOMPLETE -- %d edge-rule tune cell(s) missing, e.g. %s; "
+              "run --stage eqextend" % (len(missing), ", ".join(
+                  "%s/%s/w%g" % (c[0], c[1], c[3]) for c in missing[:6])))
+        return 2
+    frozen, stab, floor, fell_back, frontier = {}, {}, {}, [], {}
+    for p in props:
+        u = [r for r in rd if r["prop"] == p and r["arm"] == "unguided"]
+        if not u:
+            print("no clean unguided cell for %s" % p)
+            return 2
+        floor[p] = FLOOR * u[0]["mol_stability"]
+        frontier[p] = {}
+        for a in arms:
+            r, fb = _fr3a(rd, p, a, floor[p])
+            if r is None:
+                print("NO CLEAN CELL at any strength for %s/%s" % (a, p))
+                return 2
+            frozen.setdefault(a, {})[p] = r["w"]
+            stab.setdefault(a, {})[p] = r["mol_stability"]
+            if fb:
+                fell_back.append("%s/%s" % (a, p))
+            c = sorted((x for x in rd if x["prop"] == p and x["arm"] == a),
+                       key=lambda x: float(x["w"]))
+            pts = [(float(x["w"]), x["mol_stability"], x["in_band_fraction_dec"])
+                   for x in c]
+            frontier[p][a] = {
+                "points": [{"w": float(x["w"]), "mol_stability": x["mol_stability"],
+                            "in_band_dec": x["in_band_fraction_dec"],
+                            "in_band_soft": x["in_band_fraction"],
+                            "mae_dec": x[SELECT_METRIC]} for x in c],
+                "in_band_at_floor": in_band_at_floor(pts, floor[p])}
+    print("EQUAL-CHEMISTRY FRONTIER on test[%d:%d] (decoded in_band at the "
+          "floor, mol_stability >= %.1f x unguided)" % (
+              args.block_start, args.block_start + args.n, FLOOR))
+    for p in props:
+        print("\n  %s  floor %.3f" % (p, floor[p]))
+        print("  %-10s %9s %14s   frozen w (stab)" % ("arm", "at floor", "kind"))
+        for a in arms:
+            ib = frontier[p][a]["in_band_at_floor"]
+            v = ib["value"]
+            print("  %-10s %9s %14s   %g (%.3f)" % (
+                a, "-" if v is None else "%.4f" % v, ib["kind"],
+                frozen[a][p], stab[a][p]))
+    if fell_back:
+        print("no strength clears the floor for: %s -> most stable used"
+              % ", ".join(fell_back))
+    (n, seed, md5, grid_, win, batch, blk), = meta
+    out = {"backend": BACKENDS[args.backend], "gen_md5": md5, "arms": list(arms),
+           "frozen_w": frozen,
+           "rule": "FR3a on the tune block: best %s among strengths with "
+                   "mol_stability >= %.1f x unguided" % (SELECT_METRIC, FLOOR),
+           "select_metric": SELECT_METRIC, "floor": floor,
+           "fell_back": fell_back, "frontier": frontier,
+           "eq_strengths": EQ_STRENGTHS, "extension": ext,
+           "tfg_post_hoc": False,
+           "source_stage": "eqtune", "target": DIST_TARGET,
+           "source_seed": seed, "source_n": n, "source_batch": batch,
+           "source_block": list(blk), "source_dir": args.out_dir,
+           "grid": grid_, "tau_max_guide": win}
+    if args.json_out:
+        os.makedirs(os.path.dirname(os.path.abspath(args.json_out)), exist_ok=True)
+        tmp = args.json_out + ".tmp"
+        with open(tmp, "w") as fh:
+            json.dump(out, fh, indent=1)
+        os.replace(tmp, args.json_out)
+        print("\nwrote %s" % args.json_out)
+    return 0
+
+
+def load_eq_frozen(path, props, arms, backend):
+    with open(path) as fh:
+        fz = json.load(fh)
+    if (fz.get("source_stage") != "eqtune" or fz.get("target") != DIST_TARGET
+            or fz.get("backend") != BACKENDS[backend]):
+        raise SystemExit("%s is not an eqtune freeze on %s (stage=%r target=%r "
+                         "backend=%r)" % (path, BACKENDS[backend],
+                                          fz.get("source_stage"), fz.get("target"),
+                                          fz.get("backend")))
+    miss = ["%s/%s" % (a, p) for a in arms for p in props
+            if p not in (fz.get("frozen_w") or {}).get(a, {})]
+    if miss:
+        raise SystemExit("%s has no frozen strength for %s" % (path, ", ".join(miss)))
+    return fz
 
 
 def freeze(args, props, arms):
     """Apply FR3a / FR3 to the finished compare stage; exit 0 ok, 2 incomplete.
 
-    Same rule, same tie-breaks and same json keys as check_fullrun_go.py, so
-    guidance_sweep.load_frozen and full_run_table.py read the result
-    unchanged. It is re-implemented rather than imported because that script
-    judges the main sweep's COMPARE_SET, which contains dflow.
+    check_fullrun_go.py's rule, tie-breaks and json keys -- so
+    guidance_sweep.load_frozen and full_run_table.py read the result unchanged
+    -- with ONE deliberate difference: strengths are chosen on the DECODED
+    MAE (SELECT_METRIC), where the main sweep chose on the soft one. The two
+    sweeps therefore select on different metrics; say so wherever they are
+    compared. Also: the edge rule's cells must exist (extension_plan).
     """
-    if sorted(arms) != sorted(TRANSFER_SET):
+    if sorted(arms) != sorted(backend_arms(args.backend)):
         # the frozen file IS the full run's arm set (load_frozen only checks
         # the arms it is asked about), so a reduced --arms here would produce
         # a reduced headline table without a word of protest
         print("REFUSING to freeze arms %s: the frozen file must cover the whole "
-              "TRANSFER_SET %s. A post-hoc arm is a separate analysis (R5)."
-              % (arms, TRANSFER_SET))
+              "arm set for --backend %s, %s. A post-hoc arm is a separate "
+              "analysis (R5)." % (arms, args.backend, backend_arms(args.backend)))
         return 2
-    rows = {t: [] for t in SCREEN_TARGETS}
-    present = {t: set() for t in SCREEN_TARGETS}
-    meta = set()
-    for fn in os.listdir(args.out_dir):
-        if not (fn.startswith("tr__") and fn.endswith(".json")):
-            continue
-        r = json.load(open(os.path.join(args.out_dir, fn)))
-        if r.get("stage") != "compare" or r.get("target_name") not in rows:
-            continue
-        t = r["target_name"]
-        present[t].add((r["prop"], r["arm"], float(r["w"])))
-        meta.add((r["n"], r["seed"], (r.get("prov") or {}).get("edm_md5"),
-                  r.get("grid"), r.get("tau_max_guide"), r.get("batch")))
-        if r.get("n_nonfinite", 0) > 0 or not math.isfinite(
-                float(r.get("prop_mae_eval", float("nan")))):
-            continue                # a diverged cell may not be anyone's best
-        rows[t].append(r)
-    if len(meta) != 1:
-        print("INCONSISTENT compare cells in %s: (n, seed, edm_md5, grid, "
-              "window, batch) = %s" % (args.out_dir, sorted(map(str, meta))))
+    loaded = _load_stage(args, props, "compare", SCREEN_TARGETS,
+                         _base_grid(arms))
+    if isinstance(loaded, int):
+        return loaded
+    rows, present, meta = loaded
+    # the edge rule's cells must exist before anything is frozen
+    ext = extension_plan(rows[FREEZE_TARGET], props, arms)
+    missing = [c for c in ext
+               if (c[0], c[1], float(c[3])) not in present[FREEZE_TARGET]]
+    if missing:
+        print("EXTENSION INCOMPLETE -- %d edge-rule cell(s) missing, e.g. %s; "
+              "run --stage extend" % (len(missing), ", ".join(
+                  "%s/%s/w%g" % (c[0], c[1], c[3]) for c in missing[:6])))
         return 2
-    grid = {("unguided", float(DEFAULT_W))} | {
-        (a, float(w)) for a in arms if a != "unguided" for w in STRENGTHS}
-    for t in SCREEN_TARGETS:
-        holes = sorted((p, a, w) for p in props for (a, w) in grid
-                       if (p, a, w) not in present[t])
-        if holes:
-            print("INCOMPLETE -- %d of %d cells missing at %s, e.g. %s"
-                  % (len(holes), len(grid) * len(props), t,
-                     ", ".join("%s/%s/w%g" % h for h in holes[:6])))
-            return 2
+    if ext:
+        print("edge rule: %d extra q90 cell(s) included: %s" % (len(ext), ", ".join(
+            "%s/%s/w%g" % (c[0], c[1], c[3]) for c in ext)))
 
     def best(rs, p, a):
         c = [r for r in rs if r["prop"] == p and r["arm"] == a]
-        return min(c, key=lambda r: (r["prop_mae_eval"], float(r["w"]))) if c else None
+        return min(c, key=lambda r: (r[SELECT_METRIC], float(r["w"]))) if c else None
 
     # FR1, for the record only (see the module docstring)
     comps = [a for a in arms if ARM_CLASS.get(a) == "COMPARE"]
@@ -496,12 +776,12 @@ def freeze(args, props, arms):
             cs = [x for x in (best(rows[t], p, a) for a in comps) if x]
             if b is None or not cs:
                 continue
-            c = min(cs, key=lambda r: r["prop_mae_eval"])
-            z = (b["prop_mae_eval"] - c["prop_mae_eval"]) / math.sqrt(
+            c = min(cs, key=lambda r: r[SELECT_METRIC])
+            z = (b[SELECT_METRIC] - c[SELECT_METRIC]) / math.sqrt(
                 _se_mae(b) ** 2 + _se_mae(c) ** 2)
             beaten += z > FR1_SIGMA
             lines.append("  %-6s best comp %-7s %.4f  btvg %.4f  z %+.2f%s"
-                         % (p, c["arm"], c["prop_mae_eval"], b["prop_mae_eval"],
+                         % (p, c["arm"], c[SELECT_METRIC], b[SELECT_METRIC],
                             z, "  BEATEN" if z > FR1_SIGMA else ""))
         fr1[t] = {"beaten_on": beaten, "pass": beaten < FR1_BEATEN_ON}
         print("FR1 (record only) at %s: btvg beaten on %d of %d -> %s"
@@ -524,11 +804,8 @@ def freeze(args, props, arms):
                 print("NO CLEAN CELL at any strength for %s/%s" % (a, p))
                 return 2
             frozen_mae.setdefault(a, {})[p] = best(rq, p, a)["w"]
-            ok = [r for r in c if r["mol_stability"] >= floor[p] - 1e-12]
-            if ok:
-                r = min(ok, key=lambda r: (r["prop_mae_eval"], float(r["w"])))
-            else:
-                r = max(c, key=lambda r: (r["mol_stability"], -float(r["w"])))
+            r, fb = _fr3a(rq, p, a, floor[p])
+            if fb:
                 fell_back.append("%s/%s" % (a, p))
             frozen.setdefault(a, {})[p] = r["w"]
             stab.setdefault(a, {})[p] = r["mol_stability"]
@@ -543,8 +820,8 @@ def freeze(args, props, arms):
     if fell_back:
         print("no strength clears the floor for: %s -> most stable used"
               % ", ".join(fell_back))
-    (n, seed, md5, grid_, win, batch), = meta
-    out = {"backend": BACKEND, "edm_md5": md5, "arms": list(arms),
+    (n, seed, md5, grid_, win, batch, _blk), = meta
+    out = {"backend": BACKENDS[args.backend], "gen_md5": md5, "arms": list(arms),
            "fr1_record_only": fr1,
            "frozen_w": frozen, "frozen_w_mae": frozen_mae,
            "rule": "frozen_w = FR3a: best MAE among strengths with "
@@ -554,7 +831,11 @@ def freeze(args, props, arms):
            "source_stage": "compare", "target": FREEZE_TARGET,
            "source_seed": seed, "source_n": n, "source_batch": batch,
            "source_dir": args.out_dir,
-           "grid": grid_, "tau_max_guide": win}
+           "grid": grid_, "tau_max_guide": win,
+           "grid_strengths": TRANSFER_STRENGTHS, "extension": ext,
+           "select_metric": SELECT_METRIC,
+           # every arm, tfg included, was fixed before any EquiFM cell ran
+           "tfg_post_hoc": False}
     if args.json_out:
         os.makedirs(os.path.dirname(os.path.abspath(args.json_out)), exist_ok=True)
         tmp = args.json_out + ".tmp"
@@ -572,9 +853,13 @@ def freeze(args, props, arms):
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--stage", default="compare",
-                    choices=["compare", "freeze", "full"])
+                    choices=["compare", "extend", "freeze", "full",
+                             "eqtune", "eqextend", "eqfreeze", "eqconfirm"])
+    ap.add_argument("--backend", default="equifm", choices=sorted(BACKENDS),
+                    help="the borrowed generator: equifm (the FM transfer) or "
+                         "edm (TFG's EDMsecond, dropped 23 Sep)")
     ap.add_argument("--edm-dir", default=os.path.join(ROOT, "weights", "EDMsecond"),
-                    help="directory holding generative_model_ema.npy + args.pickle")
+                    help="--backend edm: directory holding generative_model_ema.npy + args.pickle")
     ap.add_argument("--props", default="mu,alpha,gap")
     ap.add_argument("--targets", default=",".join(SCREEN_TARGETS),
                     help="--stage compare: which screen targets to run (to "
@@ -605,6 +890,13 @@ def main():
     ap.add_argument("--n-calib", type=int, default=N_CALIB)
     ap.add_argument("--seed", type=int, default=None,
                     help="default %d for compare; REQUIRED for full" % COMPARE_SEED)
+    ap.add_argument("--block-start", type=int, default=None,
+                    help="`dist` molecules are test[start : start + n]; default "
+                         "0 (full), %d (eqtune), %d (eqconfirm)"
+                         % (EQ_TUNE_START, EQ_CONFIRM_START))
+    ap.add_argument("--strengths", default="",
+                    help="run only these strengths (comma list) of the planned "
+                         "cells -- splits a stage across jobs; unguided is kept")
     ap.add_argument("--frozen", default="",
                     help="--stage full: the json --stage freeze wrote")
     ap.add_argument("--sets", default="primary",
@@ -627,25 +919,51 @@ def main():
     args = ap.parse_args()
 
     props = [p for p in args.props.split(",") if p]
-    arms = [a for a in args.arms.split(",") if a] or list(TRANSFER_SET)
+    arms = [a for a in args.arms.split(",") if a] or backend_arms(args.backend)
     unknown = [a for a in arms if a not in ARM_CLASS]
     if unknown:
         raise SystemExit("unknown arm(s) %s; known: %s"
                          % (unknown, ", ".join(ARM_CLASS)))
     if args.n is None:
-        args.n = 5000 if args.stage == "full" else 512
+        args.n = {"full": 5000, "eqconfirm": EQ_CONFIRM_N, "eqtune": EQ_TUNE_N,
+                  "eqextend": EQ_TUNE_N, "eqfreeze": EQ_TUNE_N}.get(args.stage, 512)
     if args.seed is None:
-        if args.stage == "full":
-            raise SystemExit("--stage full needs --seed (one of %s)"
-                             % ", ".join(map(str, FULL_SEEDS)))
-        args.seed = COMPARE_SEED
+        if args.stage in ("full", "eqconfirm"):
+            raise SystemExit("--stage %s needs --seed (one of %s)" % (
+                args.stage, ", ".join(map(str, FULL_SEEDS if args.stage == "full"
+                                          else EQ_CONFIRM_SEEDS))))
+        args.seed = (EQ_TUNE_SEED if args.stage in ("eqtune", "eqextend", "eqfreeze")
+                     else COMPARE_SEED)
+    if args.block_start is None:
+        args.block_start = {"eqtune": EQ_TUNE_START, "eqextend": EQ_TUNE_START,
+                            "eqfreeze": EQ_TUNE_START,
+                            "eqconfirm": EQ_CONFIRM_START}.get(args.stage, 0)
+    if args.backend == "equifm":
+        # EquiFM integrates its own native tau grid (1 -> 0, uniform); the
+        # --grid choice belongs to the EDM schedule and is recorded as such
+        args.grid = "native"
+    root_out = OUT_ROOTS[args.backend]
     if not args.out_dir:
-        args.out_dir = (os.path.join(OUT, "full", "n%d" % args.n,
-                                     "seed%d" % args.seed)
-                        if args.stage == "full" else os.path.join(OUT, "compare"))
+        if args.stage == "full":
+            args.out_dir = os.path.join(root_out, "full", "n%d" % args.n,
+                                        "seed%d" % args.seed)
+        elif args.stage == "eqconfirm":
+            args.out_dir = os.path.join(root_out, "eqchem", "confirm",
+                                        "n%d" % args.n, "seed%d" % args.seed)
+        elif args.stage in ("eqtune", "eqextend", "eqfreeze"):
+            args.out_dir = os.path.join(root_out, "eqchem", "tune")
+        else:
+            args.out_dir = os.path.join(root_out, "compare")
 
     if args.stage == "freeze":
         return freeze(args, props, arms)
+    if args.stage == "eqfreeze":
+        return eqfreeze(args, props, arms)
+    # the label a cell carries: extension cells ARE compare cells (at more
+    # strengths), eqconfirm cells are full-scale `dist` cells
+    cell_stage = {"compare": "compare", "extend": "compare", "full": "full",
+                  "eqtune": "eqtune", "eqextend": "eqtune",
+                  "eqconfirm": "full"}[args.stage]
 
     frozen = None
     if args.stage == "full":
@@ -658,17 +976,52 @@ def main():
         # load_frozen checks stage/target; it cannot tell the MAIN sweep's
         # frozen file from this one, and those strengths were chosen on a
         # different generator. Refuse it.
-        if frozen.get("backend") != BACKEND:
+        if frozen.get("backend") != BACKENDS[args.backend]:
             raise SystemExit("%s was not frozen on %s (backend=%r) -- the main "
                              "sweep's strengths do not transfer; run "
                              "--stage freeze on the transfer compare cells"
-                             % (args.frozen, BACKEND, frozen.get("backend")))
+                             % (args.frozen, BACKENDS[args.backend],
+                                frozen.get("backend")))
         for k in ("grid", "tau_max_guide"):
             if frozen.get(k) != getattr(args, k):
                 raise SystemExit("frozen strengths were chosen at %s=%r, this "
                                  "run uses %r" % (k, frozen.get(k),
                                                   getattr(args, k)))
         cells = plan_full_cells(props, arms, frozen, sets, excl)
+    elif args.stage == "eqconfirm":
+        if not args.frozen:
+            raise SystemExit("--stage eqconfirm needs --frozen (the json "
+                             "`--stage eqfreeze --json-out` wrote)")
+        frozen = load_eq_frozen(args.frozen, props, arms, args.backend)
+        for k in ("grid", "tau_max_guide"):
+            if frozen.get(k) != getattr(args, k):
+                raise SystemExit("frozen strengths were chosen at %s=%r, this "
+                                 "run uses %r" % (k, frozen.get(k), getattr(args, k)))
+        cells = [(p_, a, DIST_TARGET, float(frozen["frozen_w"][a][p_]))
+                 for p_ in props for a in arms]
+    elif args.stage == "extend":
+        loaded = _load_stage(args, props, "compare", SCREEN_TARGETS,
+                             _base_grid(backend_arms(args.backend)))
+        if isinstance(loaded, int):
+            print("extend needs the finished compare stage")
+            return loaded
+        cells = [c for c in extension_plan(loaded[0][FREEZE_TARGET], props,
+                                           backend_arms(args.backend))
+                 if c[1] in arms]
+    elif args.stage == "eqextend":
+        eq_grid = {("unguided", float(DEFAULT_W))} | {
+            (a, float(w)) for a in backend_arms(args.backend) if a != "unguided"
+            for w in EQ_STRENGTHS}
+        loaded = _load_stage(args, props, "eqtune", (DIST_TARGET,), eq_grid)
+        if isinstance(loaded, int):
+            print("eqextend needs the finished eqtune stage")
+            return loaded
+        cells = [c for c in extension_plan(loaded[0][DIST_TARGET], props,
+                                           backend_arms(args.backend),
+                                           EQ_STRENGTHS, DIST_TARGET)
+                 if c[1] in arms]
+    elif args.stage == "eqtune":
+        cells = plan_eqtune_cells(props, arms)
     else:
         tg = [t for t in args.targets.split(",") if t]
         bad = [t for t in tg if t not in SCREEN_TARGETS]
@@ -677,6 +1030,9 @@ def main():
                              % (bad, ",".join(SCREEN_TARGETS)))
         cells = plan_compare_cells(props, arms, tg)
 
+    if args.strengths:
+        keep = {float(x) for x in args.strengths.split(",") if x}
+        cells = [c for c in cells if c[1] == "unguided" or float(c[3]) in keep]
     dev = (("cuda" if torch.cuda.is_available() else "cpu")
            if args.device == "auto" else args.device)
     out = args.out_dir
@@ -693,7 +1049,7 @@ def main():
     cfg = config_tag(args)
 
     def name(c):
-        return cell_name(*c, cfg=cfg, stage=args.stage)
+        return cell_name(*c, cfg=cfg, stage=cell_stage)
 
     todo = cells if args.preflight else [
         c for c in cells if not os.path.exists(os.path.join(out, name(c)))]
@@ -710,15 +1066,23 @@ def main():
 
     d = torch.load(DATA, weights_only=True)
     types = d["types"]
-    net, prov = load_backend(args.edm_dir, dev)
-    prov.update({"fm_md5": prov["edm_md5"],   # the generator key full_run_table checks
+    if args.backend == "equifm":
+        net = EquiFMGenerator(device=dev)
+        prov = {"gen": "EquiFM (Song et al. 2023), released EMA",
+                "gen_md5": file_md5(str(EQUIFM_WEIGHTS)),
+                "gen_args": str(EQUIFM_ARGS),
+                "path": "HB_path: coords linear+aligned, types VP (beta 0.1-20)"}
+    else:
+        net, prov = load_backend(args.edm_dir, dev)
+        prov["gen_md5"] = prov["edm_md5"]
+        prov.update({"noise_schedule": net.args["diffusion_noise_schedule"],
+                     "diffusion_steps": net.args["diffusion_steps"]})
+    prov.update({"fm_md5": prov["gen_md5"],   # the generator key full_run_table checks
                  "torch": torch.__version__, "cuda": torch.version.cuda,
                  "device": (torch.cuda.get_device_name(0)
                             if dev == "cuda" and torch.cuda.is_available()
                             else "cpu"),
-                 "norm_values": net.norm_values,
-                 "noise_schedule": net.args["diffusion_noise_schedule"],
-                 "diffusion_steps": net.args["diffusion_steps"]})
+                 "norm_values": net.norm_values})
     if frozen is not None:
         prov.update({"frozen_path": os.path.abspath(args.frozen),
                      "frozen_md5": file_md5(args.frozen),
@@ -727,13 +1091,14 @@ def main():
                      "frozen_source_seed": frozen.get("source_seed"),
                      "frozen_sets": args.sets,
                      "frozen_exclude_sets": args.exclude_sets})
-    print("base model: EDMsecond  md5 %s  nf=%d layers=%d  schedule=%s  grid=%s"
-          % (prov["edm_md5"][:12], net.args["nf"], net.args["n_layers"],
-             prov["noise_schedule"], args.grid))
+    print("base model: %s  md5 %s  nf=%d layers=%d  grid=%s"
+          % (BACKENDS[args.backend], prov["gen_md5"][:12], net.args["nf"],
+             net.args["n_layers"], args.grid))
 
     calib_sel = calibration_indices(d, args.n_calib)
     sampler_scale = float(net.norm_values[1])
-    assert sampler_scale == generator_feat_scale(args.edm_dir)
+    if args.backend == "edm":
+        assert sampler_scale == generator_feat_scale(args.edm_dir)
     guides, evals, deltas, reports = {}, {}, {}, {}
     for prop in props:
         f_A, f_B, delta, rep = build_pair(prop, d, calib_sel, dev, args.k_delta,
@@ -744,15 +1109,39 @@ def main():
               "slope/MAD %.3f (guide) %.3f (oracle)"
               % (prop, rep["guide_mae"], PROP_UNITS[prop], rep["oracle_mae"],
                  delta, rep["slope_over_mad_guide"], rep["slope_over_mad_oracle"]))
+    oracle2 = {}
+    if args.backend == "equifm":
+        # A SECOND oracle: OC-Flow's clean EGNN, different weights, same
+        # (first) half as evaluate_<p>, disjoint from the guide. Calibrated
+        # exactly like the first, on the same molecules. Supplementary: it
+        # tells whether a gain is a quirk of one network.
+        idx_cal = calib_sel
+        for prop in props:
+            pi = PROP_INDEX[prop]
+            c = d["coords"][idx_cal].to(dev)
+            f = d["feats"][idx_cal].to(dev)
+            m = d["mask"][idx_cal].to(dev)
+            raw2 = OCFlowOracle(prop, device=dev)
+            a2, b2, mae2 = fit_calibration(raw2, c, f, m, d["y"][idx_cal, pi].to(dev))
+            if not 0.9 < a2 / QM9_MAD[prop] < 1.1:
+                raise SystemExit("%s OC-Flow oracle slope/MAD %.3f" % (prop, a2 / QM9_MAD[prop]))
+            f_B2 = Calibrated(raw2, a2, b2, prop, guides[prop].y_std,
+                              feats_are_normalised=False, feat_scale=sampler_scale)
+            oracle2[prop] = (f_B2, choose_delta(mae2, args.k_delta),
+                             {"oracle2": "OC-Flow exp_class_%s/best_checkpoint.npy" % prop,
+                              "slope": a2, "intercept": b2, "mae": mae2})
+            print("  %-6s oracle2 (OC-Flow) MAE %.5f | delta2 %.5f"
+                  % (prop, mae2, oracle2[prop][1]))
 
     # q50/q90: sizes from val[:n], exactly as the main sweep's compare stage.
     # dist: sizes AND targets from the SAME test molecules test[:n], exactly
     # as the main sweep's full stage (see guidance_sweep.run_cell for why the
     # two must come from one molecule).
     va = d["split"]["val"][: args.n]
-    te = d["split"]["test"][: args.n]
-    if args.stage == "full" and te.numel() < args.n:
-        raise SystemExit("--n %d exceeds the test split (%d)" % (args.n, te.numel()))
+    te = d["split"]["test"][args.block_start: args.block_start + args.n]
+    if any(c[2] == DIST_TARGET for c in todo) and te.numel() < args.n:
+        raise SystemExit("test[%d:%d] has only %d molecules" % (
+            args.block_start, args.block_start + args.n, te.numel()))
     mask_v, mask_t = d["mask"][va].to(dev), d["mask"][te].to(dev)
     clip = None if args.clip < 0 else args.clip
 
@@ -788,14 +1177,18 @@ def main():
         clipped, guided, diag_log, sched_log = 0, 0, {}, {}
         for i in range(0, args.n, args.batch):
             m = mask_c[i:i + args.batch]
-            c0, f0 = initial_noise(m, len(types), gen)
-            smp = VPSampler(
-                net, m, tau_min=args.tau_min, noise_schedule=net.schedule,
-                tau_max_guide=args.tau_max_guide, grid=args.grid,
-                f_net=(None if arm == "unguided" else f_A),
-                y=y_t[i:i + m.shape[0]], s=s, mode=arm, w=w_applied, clip=clip,
-                n_probe=args.n_probe, n_mc=args.n_mc, sigma_mc=args.sigma_mc,
-                **extra)
+            skw = dict(f_net=(None if arm == "unguided" else f_A),
+                       y=y_t[i:i + m.shape[0]], s=s, mode=arm, w=w_applied,
+                       clip=clip, n_probe=args.n_probe, n_mc=args.n_mc,
+                       sigma_mc=args.sigma_mc, **extra)
+            if args.backend == "equifm":
+                c0, f0 = initial_noise(m, 6, gen)     # 5 one-hot + charge
+                smp = EquiFMSampler(net, m, tau_max_guide=args.tau_max_guide, **skw)
+            else:
+                c0, f0 = initial_noise(m, len(types), gen)
+                smp = VPSampler(
+                    net, m, tau_min=args.tau_min, noise_schedule=net.schedule,
+                    tau_max_guide=args.tau_max_guide, grid=args.grid, **skw)
             c, f, nc = integrate(smp, c0, f0, args.steps, args.solver)
             cs.append(c)
             fs.append(f)
@@ -823,6 +1216,10 @@ def main():
         # Denormalising here instead would silently feed f_A features 8x too
         # large, and its predictions would be wrong while nothing raised.
         C, F = torch.cat(cs), torch.cat(fs)
+        if args.backend == "equifm":
+            # the charge channel is not an atom type: every consumer below
+            # (stability, SMILES, f_A, f_B, the decoded view) reads types only
+            F = F[..., :5]
         # hot_value: the decoded-type view must be in the SAMPLER's space too
         # (one-hot / sampler_scale), because that is what f_A/f_B take
         r = evaluate_samples(C, F, mask_c, types, f_A, f_B, y_t, delta,
@@ -833,11 +1230,33 @@ def main():
             # which real molecule each row took its size (and, for dist, its
             # target) from -- the key that pairs rows across arms and seeds
             r["_per_mol"]["mol_idx"] = idx_c.clone().cpu()
+        if prop in oracle2:
+            from evaluation import decode_types, _chunked
+            f_B2, delta2, rep2 = oracle2[prop]
+            ok = torch.isfinite(C).all((1, 2)) & torch.isfinite(F).all((1, 2))
+            with torch.no_grad():
+                b2 = _chunked(f_B2, C, F, mask_c)
+                b2d = _chunked(f_B2, C, decode_types(F, mask_c, 1.0 / sampler_scale),
+                               mask_c)
+            e2, e2d = (b2 - y_t).abs(), (b2d - y_t).abs()
+            r["oracle2"] = dict(rep2, delta=delta2,
+                                prop_mae=float(e2[ok].mean()),
+                                prop_mae_dec=float(e2d[ok].mean()),
+                                in_band=float(((e2 <= delta2) & ok).float().mean()),
+                                in_band_dec=float(((e2d <= delta2) & ok).float().mean()))
+            if args.per_mol:
+                r["_per_mol"]["f_B2"] = b2.detach().float().cpu()
+                r["_per_mol"]["f_B2_dec"] = b2d.detach().float().cpu()
         r.update({
             "prop": prop, "arm": arm, "target_name": tgt, "target": target,
-            "stage": args.stage, "variant": args.stage,
+            "stage": cell_stage, "variant": args.stage,
+            "study": ("eqchem" if args.stage in ("eqtune", "eqextend", "eqconfirm")
+                      else "headline"),
+            "extension": args.stage in ("extend", "eqextend"),
+            "dist_block": ([args.block_start, args.block_start + args.n]
+                           if tgt == DIST_TARGET else None),
             "arm_class": ARM_CLASS.get(arm, "?"),
-            "backend": BACKEND, "prov": prov,
+            "backend": BACKENDS[args.backend], "prov": prov,
             "guide": reports[prop]["guide"], "oracle": reports[prop]["oracle"],
             "calibration": reports[prop],
             "w": w, "w_applied": w_applied, "w_scale": w_scale,
@@ -849,7 +1268,7 @@ def main():
             "guide_time": "zero", "tau_min": args.tau_min,
             "tau_max_guide": args.tau_max_guide,
             "t_min_guide": 1.0 - args.tau_max_guide,   # the flow-time image
-            "fm": "EDMsecond",
+            "fm": "EquiFM" if args.backend == "equifm" else "EDMsecond",
             "cost": cost, "field_evals": calls,
             "guided_steps": guided, "clipped_sample_steps": clipped,
             "schedule_used": sched_log,

@@ -1,0 +1,110 @@
+[
+  {
+    "property": "mu",
+    "arm": "unguided",
+    "w": 1,
+    "n": 2048,
+    "odd_valence_sum": 860,
+    "table_stable": 798,
+    "odd_and_table_stable": 0
+  },
+  {
+    "property": "mu",
+    "arm": "lgd_mc",
+    "w": 16,
+    "n": 2048,
+    "odd_valence_sum": 848,
+    "table_stable": 740,
+    "odd_and_table_stable": 0
+  },
+  {
+    "property": "mu",
+    "arm": "lgd_mc_chem",
+    "w": 16,
+    "n": 2048,
+    "odd_valence_sum": 814,
+    "table_stable": 825,
+    "odd_and_table_stable": 0
+  },
+  {
+    "property": "mu",
+    "arm": "lgd_mc_chemn",
+    "w": 16,
+    "n": 2048,
+    "odd_valence_sum": 838,
+    "table_stable": 786,
+    "odd_and_table_stable": 0
+  },
+  {
+    "property": "alpha",
+    "arm": "unguided",
+    "w": 1,
+    "n": 2048,
+    "odd_valence_sum": 860,
+    "table_stable": 798,
+    "odd_and_table_stable": 0
+  },
+  {
+    "property": "alpha",
+    "arm": "lgd_mc",
+    "w": 16,
+    "n": 2048,
+    "odd_valence_sum": 875,
+    "table_stable": 759,
+    "odd_and_table_stable": 0
+  },
+  {
+    "property": "alpha",
+    "arm": "lgd_mc_chem",
+    "w": 16,
+    "n": 2048,
+    "odd_valence_sum": 862,
+    "table_stable": 791,
+    "odd_and_table_stable": 0
+  },
+  {
+    "property": "alpha",
+    "arm": "lgd_mc_chemn",
+    "w": 16,
+    "n": 2048,
+    "odd_valence_sum": 850,
+    "table_stable": 780,
+    "odd_and_table_stable": 0
+  },
+  {
+    "property": "gap",
+    "arm": "unguided",
+    "w": 1,
+    "n": 2048,
+    "odd_valence_sum": 860,
+    "table_stable": 798,
+    "odd_and_table_stable": 0
+  },
+  {
+    "property": "gap",
+    "arm": "lgd_mc",
+    "w": 16,
+    "n": 2048,
+    "odd_valence_sum": 884,
+    "table_stable": 670,
+    "odd_and_table_stable": 0
+  },
+  {
+    "property": "gap",
+    "arm": "lgd_mc_chem",
+    "w": 16,
+    "n": 2048,
+    "odd_valence_sum": 880,
+    "table_stable": 723,
+    "odd_and_table_stable": 0
+  },
+  {
+    "property": "gap",
+    "arm": "lgd_mc_chemn",
+    "w": 16,
+    "n": 2048,
+    "odd_valence_sum": 874,
+    "table_stable": 736,
+    "odd_and_table_stable": 0
+  }
+]

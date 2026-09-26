@@ -501,6 +501,35 @@ def main():
         r_s["prop_mae_eval_dec"] - r_s["prop_mae_eval"]) > 1e-6 else 1.0
     R["T17_decode_masks_padding"] = float(ev.decode_types(soft, mq)[:, -2:].abs().max())
 
+    # ---- T18 full_run_table: tfg's own frozen file must not block the readout
+    import full_run_table as frt
+    base_arms = frt.ARMS
+
+    def fake(arms_md5, seeds=("1",)):
+        cells = {}
+        for s in seeds:
+            cells[s] = {}
+            for a, md5 in arms_md5.items():
+                cells[s][("mu", a, 1.0)] = ({"arm": a, "seed": s, "target_name": "dist",
+                                            "n": 5000, "prov": {"fm_md5": "G",
+                                                                "frozen_md5": md5}}, "side")
+        return cells
+    Wt = {a: {"mu": 1.0} for a in base_arms + ("tfg", "btvg2")}
+    try:
+        frt.ARMS = base_arms[:4] + ("tfg",) + base_arms[4:]
+        ok = frt.check(fake({**{a: "A" for a in base_arms}, "tfg": "B"}), ["mu"], ["1"], Wt)
+        R["T18_tfg_own_frozen_file_accepted"] = float(bool(ok))
+        bad = frt.check(fake({**{a: "A" for a in base_arms}, "plug": "C", "tfg": "B"}),
+                        ["mu"], ["1"], Wt)
+        R["T18_mixed_base_frozen_still_refused"] = 0.0 if any(
+            "the other arms" in p for p in bad) else 1.0
+        frt.ARMS = base_arms
+        ok2 = frt.check(fake({**{a: "A" for a in base_arms}, "tfg": "B", "btvg2": "Z"}),
+                        ["mu"], ["1"], Wt)
+        R["T18_unreported_arms_do_not_block"] = float(bool(ok2))
+    finally:
+        frt.ARMS = base_arms
+
     # ---------------------------------------------------------------- report
     bad = {k: v for k, v in R.items() if not (v <= TOL)}
     width = max(len(k) for k in R)

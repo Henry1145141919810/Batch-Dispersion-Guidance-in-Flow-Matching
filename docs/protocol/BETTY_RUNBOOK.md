@@ -65,10 +65,13 @@ python proj1/tests/test_dflow.py
 python proj1/tests/test_full_run.py
 ```
 ```
+python proj1/tests/test_btvg2_xproj.py
+```
+```
 python -c "import sys; sys.path[:0]=['proj1/scripts','proj1/src']; import guidance_sweep as g; print(g.COMPARE_SET); print(len(g.plan_compare_cells(['mu','alpha','gap'])),'compare cells')"
 ```
 
-Expect `ALL PASS` three times, then the arm list and **`258 compare cells`**.
+Expect `ALL PASS` four times, then the arm list and **`258 compare cells`**.
 The arm list must include `btvg` and `btvg_var`. If it doesn't, Betty has an
 old tarball — go back to Step 1.
 
@@ -161,6 +164,30 @@ fail, 2 incomplete, 3 crash.
 
 ---
 
+### The geometry-repair re-test: one job + one insurance link
+
+`xproj_run.slurm` re-tests one claim: that BTVG-2's variance term adds nothing.
+The old comparison was confounded, because BTVG-2 imposed its invariants before
+the generator pullback and neither survived it (measured leak 3.59 against the
+repaired arm's 3.9e-7). Twelve cells, both arms, n = 2048, ~2 h. Nothing it
+writes can touch `results/full`, `results/sweep` or `frozen_q90.json`.
+
+```
+XP=$(sbatch --parsable --export=ALL proj1/cluster/xproj_run.slurm)
+```
+```
+sbatch --dependency=afterany:$XP --export=ALL proj1/cluster/xproj_run.slurm
+```
+
+The second job is the insurance link, the same pattern as everywhere else: the
+script is resumable (a cell with a JSON is skipped), so the link finishes
+whatever the 4-hour window cut off and exits in minutes if there is nothing
+left. **The job's own exit code is trustworthy here:** it counts the 12 cells
+at the end and returns 1 if any are missing, so `INCOMPLETE` in the log means
+resubmit. `guidance_sweep.py` alone would have exited 0 in that case.
+
+---
+
 ## Step 4 — CHECK IT IS DOING THE RIGHT THING
 
 ```
@@ -191,6 +218,7 @@ property, a third of the stage total:
 | v2 | 114 | 342 |
 | compare | 86 | 258 |
 | full | 6 per primary task, 3-4 per secondary | 64 (54 primary + 10 secondary) |
+| xproj | 6 per strength (w=16, then w=8) | 12 |
 
 **A wrong number here means `STAGE` did not export** — cancel those jobs and
 resubmit. The `stage : v2` line in the log header is a hardcoded string; ignore
@@ -262,102 +290,116 @@ compare the overlap, then merge. Claude does this step.
 
 ---
 
-## The transfer (TFG's EDMsecond) — the same five steps
+## The transfer (borrowed FM model: EquiFM) — the same five steps
 
 Its own job file, `proj1/cluster/transfer_run.slurm`, and its own results tree,
-`results/transfer/`. It never touches `results/sweep/` or `results/full/`, so
+`results/transfer_equifm/`. It never touches `results/sweep/` or `results/full/`, so
 it can run beside the main full run. Protocol:
-[TRANSFER_EXPERIMENT_PLAN.md](TRANSFER_EXPERIMENT_PLAN.md) §9.
+[TRANSFER_EXPERIMENT_PLAN.md](TRANSFER_EXPERIMENT_PLAN.md) §10. `BACKEND=equifm`
+is the default. The EDMsecond (diffusion) transfer of §9 was dropped on 23 Sep
+when FM was chosen; it still runs with `BACKEND=edm` but is not scheduled.
 
 ### Step 1 — ship the code AND the TFG assets (laptop)
 
-The transfer needs files the main sweep never did: the EDMsecond checkpoint
-and TFG's six property networks (plus two network-definition files from the
-OC-Flow tree). They travel in their own bundle, built once:
+The transfer needs files the main sweep never did: the EquiFM checkpoint and
+its network definitions, TFG's guide and oracle networks, and OC-Flow's three
+property networks (the second oracle). They travel in their own bundle:
 
 ```
 cd "C:/Users/mooooonesy/Downloads/pennstuff/cis 6270/Project 1"
-tar --exclude='__pycache__' -czf code_v11.tgz proj1/scripts proj1/src proj1/tests proj1/cluster
-scp code_v11.tgz tfg_assets_v1.tgz betty:/vast/projects/ajw/wharton/hyhuang/cgm/
+tar --exclude='__pycache__' -czf code_v13.tgz proj1/scripts proj1/src proj1/tests proj1/cluster
+scp code_v13.tgz fm_transfer_assets_v1.tgz betty:/vast/projects/ajw/wharton/hyhuang/cgm/
 ```
 
-`tfg_assets_v1.tgz` is already built in the project root (47 MB, 32 files).
-Next code change: `code_v12.tgz`, never `v11` again.
+`fm_transfer_assets_v1.tgz` is already built in the project root (55 MB, 42
+files, md5 `7eb4ab32…`).
+`code_v11` and `code_v12` are already taken (v12 shipped the TFG arm). Next
+code change: `code_v14.tgz`, never `v13` again.
 
 ### Step 2 — verify (Betty, login node, seconds)
 
 Rule 0 first, then:
 
 ```
-tar tzf code_v11.tgz | head -3
-tar xzf code_v11.tgz
-tar xzf tfg_assets_v1.tgz
-python proj1/scripts/fetch_tfg_assets.py --verify
+tar tzf code_v13.tgz | head -3
+tar xzf code_v13.tgz
+tar xzf fm_transfer_assets_v1.tgz
+python proj1/scripts/fetch_tfg_assets.py --verify --models ""
+python proj1/scripts/fetch_equifm_assets.py --verify
+python proj1/tests/test_transfer_protocol.py
 python proj1/scripts/transfer_sweep.py --dry-run
+python proj1/scripts/transfer_sweep.py --stage eqtune --dry-run
 ```
 
-Expect paths starting `proj1/`, then **`READY`** at the end of the hash
-table (every md5 matches the one pinned on the laptop), then
-**`cells total 258 | done 0 | to run 258`** (216 before `tfg` joined the
-set on 23 Sep; a `216` means Betty has an old tarball). `HASH MISMATCH` or
-`NOT READY` means stop.
+Expect paths starting `proj1/`, then **`READY`** twice (TFG networks, then
+EquiFM + OC-Flow files), then **`ALL PASS (22 gates)`**, then
+**`cells total 330 | done 0 | to run 330`** (7 arms × 9 strengths × q50/q90)
+and **`cells total 183 | done 0 | to run 183`** (the equal-chemistry tune
+block). Anything else: stop and send the output.
 
-### Step 3 — submit the compare stage (n = 512)
+### Step 3 — submit both chains
+
+Two independent chains; they can run side by side. Each stage waits
+(`afterany`) for the previous stage's last insurance sweeper, and every stage
+refuses to start if its input is incomplete, so nothing is computed from a
+partial grid.
+
+**Chain 1 — the headline: compare → extend (edge rule) → full.**
 
 ```
 CMP=$(sbatch --parsable --array=0-11 --export=ALL,STAGE=compare proj1/cluster/transfer_run.slurm)
-S1=$(sbatch --parsable --dependency=afterany:$CMP --export=ALL,STAGE=compare proj1/cluster/transfer_run.slurm)
-S2=$(sbatch --parsable --dependency=afterany:$S1 --export=ALL,STAGE=compare proj1/cluster/transfer_run.slurm)
-echo $CMP $S1 $S2
+C1=$(sbatch --parsable --dependency=afterany:$CMP --export=ALL,STAGE=compare proj1/cluster/transfer_run.slurm)
+C2=$(sbatch --parsable --dependency=afterany:$C1 --export=ALL,STAGE=compare proj1/cluster/transfer_run.slurm)
+EXT=$(sbatch --parsable --dependency=afterany:$C2 --array=0-2 --export=ALL,STAGE=extend proj1/cluster/transfer_run.slurm)
+E1=$(sbatch --parsable --dependency=afterany:$EXT --export=ALL,STAGE=extend proj1/cluster/transfer_run.slurm)
+FT=$(sbatch --parsable --dependency=afterany:$E1 --array=0-23 --export=ALL,STAGE=full proj1/cluster/transfer_run.slurm)
+F1=$(sbatch --parsable --dependency=afterany:$FT --export=ALL,STAGE=full proj1/cluster/transfer_run.slurm)
+F2=$(sbatch --parsable --dependency=afterany:$F1 --export=ALL,STAGE=full proj1/cluster/transfer_run.slurm)
+echo $CMP $C1 $C2 $EXT $E1 $FT $F1 $F2
 ```
 
-Twelve array tasks (property × target × arm group, 29 or 14 cells each, ~1–1.5 h)
-plus two insurance sweepers that finish anything a task's time guard left.
-Group A is unguided, plug, tmpd, lgd_mc, tfg; group B is btvg, btvg_var.
+**Chain 2 — the equal-chemistry comparison: eqtune → eqextend (edge rule) → eqconfirm.**
+
+```
+EQT=$(sbatch --parsable --array=0-56 --export=ALL,STAGE=eqtune proj1/cluster/transfer_run.slurm)
+Q1=$(sbatch --parsable --dependency=afterany:$EQT --export=ALL,STAGE=eqtune proj1/cluster/transfer_run.slurm)
+Q2=$(sbatch --parsable --dependency=afterany:$Q1 --export=ALL,STAGE=eqtune proj1/cluster/transfer_run.slurm)
+EQX=$(sbatch --parsable --dependency=afterany:$Q2 --array=0-2 --export=ALL,STAGE=eqextend proj1/cluster/transfer_run.slurm)
+X1=$(sbatch --parsable --dependency=afterany:$EQX --export=ALL,STAGE=eqextend proj1/cluster/transfer_run.slurm)
+EQC=$(sbatch --parsable --dependency=afterany:$X1 --array=0-17 --export=ALL,STAGE=eqconfirm proj1/cluster/transfer_run.slurm)
+R1=$(sbatch --parsable --dependency=afterany:$EQC --export=ALL,STAGE=eqconfirm proj1/cluster/transfer_run.slurm)
+R2=$(sbatch --parsable --dependency=afterany:$R1 --export=ALL,STAGE=eqconfirm proj1/cluster/transfer_run.slurm)
+echo $EQT $Q1 $Q2 $EQX $X1 $EQC $R1 $R2
+```
+
+Cost at 5080 speed (plan §11.4): chain 1 ≈ 60 GPU-h, chain 2 ≈ 80 GPU-h.
 
 ### Step 4 — check
 
 ```
-grep -h "cells to run\|preflight passed\|STOP" logs/transfer-*.out
+grep -h "cells to run\|preflight passed\|STOP\|frozen\|refused" logs/transfer-*.out | tail -40
 python proj1/scripts/transfer_sweep.py --dry-run
+python proj1/scripts/transfer_sweep.py --stage eqtune --dry-run
 ```
 
-`to run 0` means the compare stage is done.
-
-### Then the full stage (dist, n = 5000, 3 seeds)
-
-Only once the compare stage says `to run 0`. First the freeze, by hand, to
-read the table (seconds; reads JSONs only):
-
-```
-python proj1/scripts/transfer_sweep.py --stage freeze
-```
-
-A table ending in `FR3a strengths ...` means ready. `INCOMPLETE` means wait.
-Then:
-
-```
-FT=$(sbatch --parsable --array=0-23 --export=ALL,STAGE=full proj1/cluster/transfer_run.slurm)
-F1=$(sbatch --parsable --dependency=afterany:$FT --export=ALL,STAGE=full proj1/cluster/transfer_run.slurm)
-F2=$(sbatch --parsable --dependency=afterany:$F1 --export=ALL,STAGE=full proj1/cluster/transfer_run.slurm)
-echo $FT $F1 $F2
-```
-
-Twenty-four tasks (18 primary: property × seed × arm group; 6 secondary). The
-first task freezes the strengths once into
-`results/transfer/full/n5000/frozen_q90.json`; every other task reuses it.
+`to run 0` on both means the two screening stages are done. If a later stage
+logged `STOP ... refused` because its input was not finished when it
+started, resubmit just that stage's line once the input says `to run 0`.
 
 ### Step 5 — collect (laptop)
 
 ```
-scp -r betty:/vast/projects/ajw/wharton/hyhuang/cgm/results/transfer results/
-python proj1/scripts/full_run_table.py --root results/transfer/full/n5000
-python proj1/scripts/dist_report.py --backend tfg --dir "results/transfer/full/n5000/seed*" --frozen results/transfer/full/n5000/frozen_q90.json
+scp -r betty:/vast/projects/ajw/wharton/hyhuang/cgm/results/transfer_equifm results/
+python proj1/scripts/full_run_table.py --root results/transfer_equifm/full/n5000
+python proj1/scripts/full_run_table.py --root results/transfer_equifm/eqchem/confirm/n5000 --seeds 20261004,20261005,20261006 --frozen results/transfer_equifm/eqchem/frozen_eqtune.json
+python proj1/scripts/dist_report.py --backend equifm --dir "results/transfer_equifm/full/n5000/seed*" --frozen results/transfer_equifm/full/n5000/frozen_q90.json
 ```
 
-**`--backend tfg` is not optional.** Without it `dist_report.py` builds its
-ladder with OUR f_B and OUR δ; it now refuses transfer cells rather than
-mis-scoring them, but the flag is what makes it work.
+The equal-chemistry frontier (in_band against mol_stability across w, and
+each arm's in_band at the chemistry floor) is inside
+`results/transfer_equifm/eqchem/frozen_eqtune.json` under `"frontier"`, and
+was printed in the log of the first eqconfirm task. **`--backend equifm` is
+not optional** for `dist_report.py`.
 
 ---
 
@@ -392,7 +434,7 @@ ls results/full/n5000/frozen_q90.json
 python proj1/scripts/guidance_sweep.py --stage compare --arms tfg --dry-run
 ```
 
-Expect paths starting `proj1/`, then **`68 gates, 0 failed`**, then
+Expect paths starting `proj1/`, then **`71 gates, 0 failed`**, then
 **`ALL PASS`**, then md5 **`a190ac8394902027d4a951f8d30e8c5c`**, then the
 frozen file listed (not "No such file"), then
 **`cells total 42 | already done 0 | to run 42`**. Anything else: stop.

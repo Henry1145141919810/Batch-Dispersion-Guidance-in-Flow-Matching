@@ -219,12 +219,12 @@ V2_REFERENCES = ["unguided", "plug", "tmpd", "smg"]
 # only 68.3% band coverage, and 95% needs sd ~ delta/1.96. The multiplier
 # brackets that choice so the pre-registered value can be checked rather than
 # assumed.
-# COLLAPSED TO THE PRE-REGISTERED VALUE. The tau sweep cannot answer its own
-# question as parameterised: after the (tau/s)^2 strength normalisation the
-# btvg coefficient is w*b = -0.5w/s^2 * (1 - tau^2/V), and the measured
-# tau^2/V ~ 1e-5, so a 16x range in tau^2 moves the field by 1.5e-5 relative.
-# Twelve cells were reproducing their own siblings. Restore the list only if
-# the normalisation changes.
+# Retain the historical frozen value. After (tau/s)^2 normalization the
+# coefficient is -0.5w/s^2 * (1 - tau^2/V)_+ for positive V. Early screen
+# measurements were nearly saturated, but do not establish tau-invariance
+# over a trajectory: audit_btvg_tolerance.py records threshold activation
+# late in sampling. A future tau intervention needs its own outcome protocol;
+# it must not silently change this historical grid.
 TAU_MULT = [1.0]                    # x (delta / 1.96)
 
 # Arms whose strength curve reads the CLIP rather than the arm on the standard
@@ -749,6 +749,12 @@ def main():
     ap.add_argument("--sets", default="primary",
                     help="--stage full: comma-separated strength sets to run "
                          "(primary = FR3a headline, mae = FR3 as registered)")
+    ap.add_argument("--full-target", default=DIST_TARGET,
+                    help="--stage full: which target the full run uses. "
+                         "'dist' (default) is v1's per-molecule protocol; a "
+                         "TARGETS key such as 'q90' is v2's fixed target "
+                         "(FULL_RUN_V2_PROTOCOL.md). The target is part of "
+                         "every cell name, so the two never collide.")
     ap.add_argument("--exclude-sets", default="",
                     help="--stage full: drop cells that also belong to these "
                          "sets (so secondary tasks never duplicate primary ones)")
@@ -885,7 +891,12 @@ def main():
         sets = [s for s in args.sets.split(",") if s]
         excl = [s for s in args.exclude_sets.split(",") if s]
         frozen = load_frozen(args.frozen, props, arms, sets + excl)
-        cells += plan_full_cells(props, arms, frozen, sets, excl)
+        if args.full_target != DIST_TARGET and args.full_target not in TARGETS[props[0]]:
+            raise SystemExit("--full-target %r is neither %r nor a TARGETS key (%s)"
+                             % (args.full_target, DIST_TARGET,
+                                ", ".join(sorted(TARGETS[props[0]]))))
+        cells += plan_full_cells(props, arms, frozen, sets, excl,
+                                 target=args.full_target)
     if args.stage in ("v2", "all"):
         v2 = V1_MISSING + V2_ARMS + SHG_ARMS if args.stage == "all" else arms
         cells += plan_v2_cells(props, v2)

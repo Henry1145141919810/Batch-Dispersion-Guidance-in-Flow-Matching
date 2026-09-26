@@ -28,6 +28,12 @@ FR3a (amended 23 Sep, after the screen, before any full-run cell). At q90 the
     every downstream reader pairs at); "frozen_w_mae" = FR3 as registered
     (run as a secondary, one seed).
 
+COMPETITORS NOW INCLUDE tfg, NOT dflow (23 Sep, after the full run was read).
+The registered FR1 verdict -- with dflow -- is the recorded
+results/full/n5000/fr1_q50.json; this script no longer recomputes it
+(REGISTERED_COMPETITORS is kept as the record of that set). FR1 printed with
+tfg is post hoc and report-only.
+
 Costs seconds of CPU and no GPU: it only reads the cell JSONs. It does not
 import torch: the grid it checks against is read out of guidance_sweep.py's
 source, so the two cannot drift apart and this stays safe on a login node.

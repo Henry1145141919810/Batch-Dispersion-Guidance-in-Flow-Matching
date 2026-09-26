@@ -5,10 +5,21 @@ pre-registration, not a report — it is written before any transfer cell has ru
 and the decision rules below are fixed now so that they cannot be chosen after
 seeing the numbers.
 
-**Status as of 2026-09-23.** Checkpoint downloaded (md5 `6abbd010…`), hard gate
+**Status, 23 Sep night: the borrowed model is EquiFM (flow matching); all seven
+arms, fair-tuning rules and the equal-chemistry study are in §11 — read §10-§11 first.** EDMsecond (below and §9) was dropped when FM was chosen as the
+project's base model; its harness is kept (`--backend edm`).
+
+**Status as of 2026-09-23 (EDMsecond).** Checkpoint downloaded (md5 `6abbd010…`), hard gate
 passed, harness re-cut to the main sweep's compare → freeze → full protocol,
 gated (**74/74**), rehearsed end to end at toy scale, independently audited.
-Zero real cells run. **Read §9 first**: it amends §4 before any cell existed
+**Update, 23 Sep evening:** the EDMsecond compare stage then ran on Betty
+(216 cells, n = 512, seed 20260922, `results/transfer/compare/`, without
+`tfg`, which joined the set afterwards). The full stage never ran. Readout,
+one-seed screen only: [../results/FULL_RUN_RESULTS.md](../results/FULL_RUN_RESULTS.md) §4.
+Counted across all three properties, lgd_mc is the only arm that clears the
+chemistry floor at almost every strength (6-7 of 7; single arms manage it on
+single properties, e.g. btvg_var 5 of 7 on alpha), and it has the largest MAE
+cut on gap. **Read §9 first**: it amends §4 before any cell existed
 and records a silent feature-scale defect that was found and fixed. §8 is the
 22-Sep review.
 
@@ -555,3 +566,188 @@ guard on a slice — so `transfer_run.slurm` splits every task by arm group
 ≈ 14 GPU-h, full ≈ 30–40 GPU-h. A B200 MIG slice's speed relative to the 5080
 is not measured, so treat these as estimates until the first compare task's
 log reports its own minutes per cell.
+
+---
+
+## 10. Amendment, 23 Sep (evening) — the borrowed model is EquiFM, not EDMsecond
+
+**Why.** The project chose flow matching as its base model, so the transfer's
+point — *does the guidance survive on someone else's generator?* — is now
+asked of a borrowed **flow-matching** model. The EDMsecond harness (§9) is
+kept and still runs with `--backend edm`, but nothing is scheduled on it.
+Written before any EquiFM cell existed.
+
+### 10.1 Which model, and why this one
+
+A survey of every QM9 3D flow-matching release (23 Sep; sources checked live):
+
+| model | usable QM9 weights | atom types | why it is / is not used |
+|---|---|---|---|
+| **EquiFM** (Song et al., NeurIPS 2023) | ✅ pinned SHA-256 `47b40ae6…` | continuous | runs today through our own code and torch 2.11; the canonical FM row in EDM-style tables |
+| FlowMol v1/v2 `qm9_gaussian` | ✅ (MIT) | continuous | needs torch 2.2 / CUDA 12.1 / DGL 2.0 — no build for the RTX 5080 or the B200 (both need CUDA ≥ 12.8); per-modality schedules need the same per-block work |
+| Megalodon-flow, SemlaFlow, PropMolFlow, TFG-Flow | ✅ | **discrete** | our arms could steer coordinates only |
+| GOAT, equivariant VFM, FlowMol3-QM9 | ❌ no weights | — | — |
+
+**Every** released QM9 FM checkpoint aligns its coordinate noise to the data
+(Kabsch + Hungarian). None has the plain independent-Gaussian path our
+covariance identity assumes, so the choice is not "exact vs approximate" —
+it is which approximation, stated.
+
+### 10.2 The property functions, and the isolation that is possible
+
+| role | network | trained on | held-out MAE (μ / α / gap) |
+|---|---|---|---|
+| guide f_A | TFG `tf_predict_<p>`, time 0 | QM9 **second** half | 0.044 D / 0.092 / 0.0025 Ha |
+| oracle f_B | EDM's classifier (TFG `evaluate_<p>`) | QM9 **first** half | ~0.07 D / 0.08 / 0.0019 Ha on our test |
+| oracle 2 | OC-Flow's clean EGNN (different weights) | QM9 **first** half | 0.052 D / 0.096 / 0.0024 Ha |
+
+Guide and oracles are **disjoint** — each fits its own half far better than
+the other, on all three properties (EQUIFM_USABILITY_AUDIT §3). f_B is the
+network EDM, EEGSDE and EquiFM report property MAE with, and the `dist`
+ladder built through it reproduces EDM's published reference rows (§9.3).
+The generator trained on **both** halves; per the project decision
+(23 Sep) that contamination is accepted and disclosed, because every arm
+stands on the same generator. Oracle 2 is reported beside f_B in every cell.
+
+### 10.3 How the arms run on EquiFM (`proj1/src/external/equifm_backend.py`)
+
+EquiFM's released path (training code, supplement `cnflows.py`): coordinates
+on a near-linear path with aligned noise, atom types on a VP path (β 0.1 →
+20), in native time τ (1 = noise). Per block, derived from the regression
+targets:
+
+| | coordinates | atom types |
+|---|---|---|
+| posterior mean | `(1−ε) x − s_x q_x` | `a h + q_h / a` |
+| covariance scalar | `s_x² / (1−τ)` — **approximate** (aligned noise) | `(1−a²)/a` — exact for the path |
+| guidance → velocity | `−s_x/(1−τ) · G` | `−β/2 · G` |
+
+The velocity shift is defined as the model's own velocity map at the guided
+mean `m + K G` minus at `m`, so it is consistent with the checkpoint's
+parametrisation by construction. **`plug` uses no covariance and is exact;
+tmpd, lgd_mc, btvg and btvg_var all inherit the same coordinate-block
+surrogate.** The per-block covariance is delivered without editing
+`guidance.py`: a custom autograd op scales forward-mode tangents per block
+and leaves reverse-mode gradients exact.
+
+**36 gates** (`proj1/tests/test_equifm_backend.py`): native-sampler parity,
+the mean formulas inverting the sampler's own velocity (to 1e-16), exact
+recovery of x₀/h₀ from the regression targets, Σv = K·Jv per block, VJPs
+unchanged, BTVG's reverse-over-forward variance gradient against a
+hand-written per-block reference (error 0), the velocity shift, padding.
+
+**Independent audit (23 Sep):** all seven claims confirmed, including a
+concrete sign check on real molecules (one guided step moves f(m) toward the
+target); no defect that changes a number. It found that a fresh clone could
+not run the backend (`audit/` is git-ignored) — fixed by
+`proj1/scripts/fetch_equifm_assets.py`, which fetches the 12 files from the
+pinned OC-Flow commit and checks each SHA-256 — plus two hygiene items (dead
+code, an address-keyed cache), both removed. Two caveats it asked to state:
+EquiFM's own path keeps a 1e-4 noise floor, so its native endpoint at τ = 0
+is data + O(1e-4), reproduced faithfully rather than replaced by a jump to the
+posterior mean; and the coordinate covariance is an approximation (above).
+
+### 10.4 What differs from the main sweep, and must travel with the numbers
+
+1. *(Superseded by §11.1: tfg is ported.)* **`tfg` did not run on EquiFM at first.** TFG's schedules and step geometry
+   assume one noise curve; EquiFM has two at every τ. A faithful port needs
+   per-block geometry *and* a choice of which curve drives TFG's ρ/μ/σ
+   schedules — a design decision about that arm, not taken here. The
+   EquiFM arm set is the other six; the driver refuses `tfg` loudly.
+2. **Scoring view.** EquiFM's final atom channels are soft; the property
+   networks read soft and argmax-decoded types differently by 0.1 D on μ
+   (audit §3). Every cell carries both (`_dec` twins); the decoded view is
+   the molecule that exists.
+3. **The charge channel** is advanced by the generator and never guided or
+   scored.
+4. **Sampler:** EquiFM's own Euler grid, 100 steps (the paper used dopri5);
+   the unguided row is not EquiFM's published row.
+5. Caveats 5.1, 5.2, 5.7 and 9.4 still apply (inferred disjointness is here
+   replaced by measured disjointness of guide vs oracle; δ is optimistic).
+
+### 10.5 Job layout
+
+`transfer_run.slurm` with `BACKEND=equifm` (the default): hash checks on
+EquiFM (SHA-256) and the vendored TFG networks, 12 compare tasks / 24 full
+tasks split by arm group (A = unguided, plug, tmpd, lgd_mc; B = btvg,
+btvg_var), results under `results/transfer_equifm/`. Assets travel in
+`fm_transfer_assets_v1.tgz` (55 MB, 42 files); on a fresh clone,
+`python proj1/scripts/fetch_equifm_assets.py` fetches and verifies them.
+
+---
+
+## 11. Amendment, 23 Sep (night) — all seven arms, fair tuning, and the equal-chemistry comparison on EquiFM
+
+Written before any EquiFM cell existed. Every arm below, **tfg included**, is
+fixed now, so on EquiFM no arm is post hoc (the frozen file says
+`tfg_post_hoc: false`; the main run's `tfg` label does not carry over).
+
+### 11.1 `tfg` ported to EquiFM
+
+TFG's step has schedules (ρ, μ, σ normalised over the grid on one noise
+curve), a gradient displacement and a clean-space mean displacement, each
+mapped onto the state through the path's geometry. On EquiFM:
+
+- **Geometry: per block, exact.** Coordinates use TFG's flow mapping (the one
+  `FlowSampler` uses on our model: `c = √(s²+n²)`, `k_var = c s′/s`,
+  `k_0 = s′`); atom types use its VP mapping (`1, a′/a, a′`, as on EDM). The
+  gradient TFG's rescale sees is each block's VP-state gradient, obtained by
+  handing `tfg_components` the coordinates in VP-normalised form.
+- **Schedules: the coordinate clock.** `tfg_components` draws one smoothing
+  std and takes one μ-step, so one clock must drive them. The coordinate
+  clock `(1−τ)²/((1−τ)²+s_x²)` is the linear-path clock TFG already runs on in
+  the main sweep (it agrees with `FlowSampler`'s to 1e-4), so TFG's per-step
+  schedule on EquiFM matches how it runs on our own model. Stated choice.
+- **10 gates** in `test_equifm_backend.py` (46 total): geometry equals
+  `FlowSampler`'s (coordinates, to ε) and `VPSampler`'s (types, exactly); the
+  displacement equals a hand-built reference to 1e-14; w = 0 is the unguided
+  field; the step moves f toward the target.
+
+### 11.2 Fair tuning, identical for every arm
+
+| rule | what it does | why |
+|---|---|---|
+| **one grid** | 0.01, 0.05, **0.1, 0.15**, 0.25, 0.5, 1, 2, 4 for every arm | the fill-in is where TFG's floor-clearing strengths sat on our model; one arm alone would get a denser best-of-grid |
+| **edge rule** (`--stage extend`) | an arm whose FR3a q90 pick is at an edge gets two more strengths beyond it (×4, ×16 or ÷4, ÷16), decided on the base grid; freeze refuses until they exist | the main run's lgd_mc best sat at w = 4 and still cleared the floor at w = 8 |
+| **decoded selection** | FR3a / FR3 choose on the decoded molecule's MAE | soft type channels can move without moving the molecule; measured for tfg on our model |
+| **same everything else** | seeds and batch (so identical starting noise), molecules and targets, window τ ≤ 0.5, velocity clip, guide, oracles, 100 Euler steps | — |
+
+**22 gates** (`test_transfer_protocol.py`, synthetic cells with known
+answers): the edge rule fires exactly on edge picks, freeze waits for it and
+can pick an extension strength, selection follows the decoded MAE, every
+frozen file is refused where it does not belong.
+
+### 11.3 The equal-chemistry-cost comparison (the main pipeline's PROPOSED design, on EquiFM)
+
+- **Tune:** `dist` on the fresh block `test[10000:12000]`, n = 2000, seed
+  20261001, **every arm** over w ∈ {0.05, 0.1, 0.15, 0.25, 0.5, 1, 2, 4, 8,
+  16} — past 4 because lgd_mc still clears the floor at 8, and filled in
+  between 0.05 and 0.25 for TFG's operating range. Every arm gets every point.
+- **Edge rule on the tune grid** (`eqextend`): the same rule as the screen's —
+  an edge pick gets ×4, ×16 (above 16) or ÷4, ÷16 (below 0.05); `eqfreeze`
+  waits for those cells. Added after the second audit: the main pipeline
+  found lgd_mc still clearing the floor at w = 16.
+- **Freeze** (`eqfreeze`): FR3a on the tune block (decoded MAE, floor 0.9 ×
+  unguided). It also writes the **frontier** (in_band against mol_stability
+  across w, per arm) and the **equal-chemistry number**: in_band where the
+  arm's stability curve first crosses the floor, interpolated between the two
+  bracketing strengths ("not reached" and "below floor" labelled).
+- **Confirm:** frozen strengths on `test[5000:10000]`, n = 5000, seeds
+  20261004–6, per-molecule sidecars; `full_run_table.py` reads it (FR5).
+- All three test blocks — headline 0:5000, confirm 5000:10000, tune
+  10000:12000 — are disjoint (checked).
+
+### 11.4 Cost (5080 speed; a Betty slice's relative speed is not yet measured)
+
+| stage | cells | GPU-h |
+|---|---|---|
+| compare | 330 × n = 512 | ≈ 20 |
+| extend | 0–36 × n = 512 | ≈ 1–2 |
+| full | 63 primary + secondary × n = 5000 | ≈ 40 |
+| eqtune | 183 × n = 2000 | ≈ 44 |
+| eqextend | 0–36 × n = 2000 | ≈ 2–6 |
+| eqconfirm | 63 × n = 5000 | ≈ 34 |
+
+≈ 140 GPU-h in all; the two chains are independent and can run side by side.
+The equal-chemistry study is ≈ 80 of it; `--n 1000` on eqtune would halve its
+tune half at the cost of frontier resolution.

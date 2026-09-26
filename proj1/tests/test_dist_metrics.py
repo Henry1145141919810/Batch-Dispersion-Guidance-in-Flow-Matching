@@ -255,6 +255,32 @@ check("correct seed pairing gives the power: |z| >> a wrong pairing",
       "|z| %.1f correct vs %.1f swapped"
       % (abs(r_ok["d_mae_z"]), abs(r_sw["d_mae_z"])))
 
+# ---- 14. bias / residual sd / the centring ceiling ------------------------
+# A known residual law: bias b, sd s. The page reads in_band against the
+# ceiling P(|Z| <= delta/s), so these three have to be exactly right.
+b_true, s_true = 0.07, 0.4
+res_known = b_true + s_true * rng.standard_normal(pos.size)
+cm_r = dm.cell_metrics(pm_from(y_te[pos] + res_known, pos), delta, lad, "mu")
+check("bias = mean signed residual",
+      abs(cm_r["bias"] - res_known.mean()) < 1e-12, "%.4f" % cm_r["bias"])
+check("resid_sd = sample sd of the residual (ddof=1)",
+      abs(cm_r["resid_sd"] - res_known.std(ddof=1)) < 1e-12, "%.4f" % cm_r["resid_sd"])
+z = delta / cm_r["resid_sd"]
+ceil_bf = 2 * 0.5 * (1 + math.erf(z / math.sqrt(2))) - 1
+check("in_band_ceiling = P(|Z| <= delta/resid_sd)",
+      abs(cm_r["in_band_ceiling"] - ceil_bf) < 1e-12, "%.4f" % cm_r["in_band_ceiling"])
+# a centred Gaussian's measured coverage should sit ON its ceiling
+cen = s_true * rng.standard_normal(20000)
+big = np.arange(20000) % pos.size
+pm_c = {"f_A": y_te[pos][big] + cen, "f_B": y_te[pos][big] + cen,
+        "y": y_te[pos][big], "finite": np.ones(20000, bool),
+        "mol_stable": np.ones(20000, bool), "valid": np.ones(20000, bool),
+        "n_atoms": m_te[pos][big], "mol_idx": np.arange(20000)}
+cm_c = dm.cell_metrics(pm_c, delta, lad, "mu", n_boot=2)
+check("a centred Gaussian's in_band lands on its ceiling",
+      abs(cm_c["in_band"] - cm_c["in_band_ceiling"]) < 0.01,
+      "%.4f vs %.4f" % (cm_c["in_band"], cm_c["in_band_ceiling"]))
+
 print("\n%d passed, %d failed" % (len(PASS), len(FAIL)))
 for f in FAIL:
     print("  FAILED: " + f)

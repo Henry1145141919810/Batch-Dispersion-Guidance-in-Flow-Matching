@@ -331,12 +331,26 @@ def cell_metrics(pm, delta, ladder, prop, y_train=None, m_train=None,
     e = err[fin]
     mae = float(e.mean()) if e.size else float("nan")
     k_in = int(inb.sum())
+    # Signed residual, split into its two parts: MAE conflates a distribution
+    # that is off-centre with one that is centred but wide, and the two have
+    # opposite remedies. `resid_sd` is what caps in-band coverage -- a perfectly
+    # centred Gaussian of that width scores P(|Z| <= delta / resid_sd), however
+    # well it is aimed. That ceiling is reported beside in_band by the results
+    # page, so "guidance does not help" can be told apart from "guidance steers
+    # but cannot concentrate".
+    res = (fB - y)[fin]
+    bias = float(res.mean()) if res.size else float("nan")
+    resid_sd = float(res.std(ddof=1)) if res.size > 1 else float("nan")
 
     out = {
         "n": int(n), "n_nonfinite": int((~fin).sum()),
         "mae": mae,
         "mae_ci": _boot_mean_ci(e, n_boot),
         "rmse": float(np.sqrt((e ** 2).mean())) if e.size else float("nan"),
+        "bias": bias, "resid_sd": resid_sd,
+        "in_band_ceiling": (2.0 * 0.5 * (1.0 + math.erf(
+            delta / resid_sd / math.sqrt(2.0))) - 1.0)
+        if resid_sd == resid_sd and resid_sd > 0 else float("nan"),
         "mae_published_units": mae * scale, "published_unit": unit,
         "in_band": k_in / n, "in_band_ci": _wilson(k_in, n),
         "mol_stability": float(stab.mean()),
