@@ -104,17 +104,28 @@ def w_eff_nominal(arm):
     return 1.0 + eta * (1.0 / (tau * tau) - 1.0)
 
 
-def load(root, backend, n, seeds):
-    """{(prop, arm): [rows, one per seed]} plus problems."""
+def load(root, backend, n, seeds, stage="v3"):
+    """{(prop, arm): [rows, one per seed]} plus problems.
+
+    `stage` selects BOTH the directory level and the label a cell must carry.
+    The two v3 stages run at the same n and the same seeds, so the stage is the
+    only thing that tells their cells apart; reading one tree with the other's
+    expectations is the mistake this argument exists to prevent.
+    """
     got, problems = {}, []
     for seed in seeds:
-        d = os.path.join(root, backend, "n%d" % n, "seed%s" % seed)
+        d = os.path.join(root, backend, stage, "n%d" % n, "seed%s" % seed)
         if not os.path.isdir(d):
             problems.append("%s: no directory for seed %s" % (backend, seed))
             continue
         for fn in sorted(glob.glob(os.path.join(d, "tr__*.json"))):
             r = json.load(open(fn))
-            if r.get("stage") != "v3":
+            if r.get("stage") != stage:
+                # the directory says one stage and the cell says another: a
+                # stray file, not something to quietly average in
+                problems.append("%s: %s is a %r cell under %s/"
+                                % (backend, os.path.basename(fn),
+                                   r.get("stage"), stage))
                 continue
             r["_seed"], r["_file"] = seed, os.path.basename(fn)
             # transfer_sweep records delta_mode under `calibration`, NOT at the
@@ -137,7 +148,7 @@ def load(root, backend, n, seeds):
     return cells, problems
 
 
-def check(cells, problems):
+def check(cells, problems, stage="v3"):
     rows = [r for rs in cells.values() for r in rs]
     if not rows:
         return problems + ["no v3 cells found"]
@@ -146,17 +157,26 @@ def check(cells, problems):
     # "this arm was not planned" rather than "this arm did not run". The
     # headline's arm set is not negotiable, so it is checked against the planner
     # rather than against whatever happens to be on disk.
+    # THE EXPECTED ARM SET IS PER STAGE. It used to be v3_arms() whatever tree
+    # was loaded, so the ablation -- which deliberately carries no comparison
+    # arm -- was ALWAYS reported as missing all five and the table refused on a
+    # perfect run. The planner is still the source of truth; only which plan is
+    # asked for changed.
     try:
         import transfer_sweep as T
-        want = list(T.v3_arms())
+        if stage == "v3abl":
+            want = list(T.v3_arms(etas=T.V3_ABL_ETAS,
+                                  tau_mults=T.V3_ABL_TAU_MULTS, compare=False))
+        else:
+            want = list(T.v3_arms())
     except Exception as exc:                       # noqa: BLE001
         problems.append("cannot import transfer_sweep to learn the planned arms "
                         "(%s), so a missing arm cannot be detected" % exc)
         want = []
     missing = [(p, a) for p in PROPS for a in want if (p, a) not in cells]
     if missing:
-        problems.append("%d planned headline cells absent entirely (not one "
-                        "seed): %s" % (len(missing),
+        problems.append("%d planned %s cells absent entirely (not one "
+                        "seed): %s" % (len(missing), stage,
                                        ", ".join("%s/%s" % m for m in missing[:8])
                                        + (" ..." if len(missing) > 8 else "")))
     # ablation arms are optional here (the ablation is a separate stage), but an
@@ -471,10 +491,16 @@ def main():
     ap.add_argument("--backend", default="fm", choices=BACKENDS)
     ap.add_argument("--both", action="store_true",
                     help="both base models on one page; they are NOT compared statistically")
-    # the HEADLINE tree. The ablation is n = 1000 and must be tabulated with
-    # --n 1000 --seeds 20261001; n is the only thing separating the two
-    # trees, so a wrong --n here silently reads the other stage's cells.
-    ap.add_argument("--n", type=int, default=2000)
+    # NO DEFAULT. v3 pre-registers no cell size (the operator picks it), so a
+    # default here would quietly tabulate a tree that may not be the one that
+    # ran. Both stages now use the SAME n and the SAME seeds and are told apart
+    # by --stage, which selects the directory level and the expected arm set.
+    ap.add_argument("--n", type=int, required=True,
+                    help="cell size the run used (results/v3/<be>/<stage>/n<N>/)")
+    ap.add_argument("--stage", default="v3", choices=["v3", "v3abl"],
+                    help="v3 = the headline (comparison set + BDG eta=4); "
+                         "v3abl = the eta x tau_mult grid, which carries NO "
+                         "comparison arm and is read against itself")
     ap.add_argument("--seeds", default="20261001,20261002,20261003")
     ap.add_argument("--md-out", default="")
     args = ap.parse_args()
@@ -483,8 +509,8 @@ def main():
 
     loaded, problems = {}, []
     for be in backends:
-        c, pr = load(args.root, be, args.n, seeds)
-        problems += check(c, pr)
+        c, pr = load(args.root, be, args.n, seeds, stage=args.stage)
+        problems += check(c, pr, stage=args.stage)
         loaded[be] = c
     if problems:
         print("REFUSING: the v3 run is not complete or not consistent.")
@@ -492,7 +518,9 @@ def main():
             print("  * " + p)
         raise SystemExit(1)
 
-    L = ["# Protocol v3 results%s" % (" - both base models" if args.both else ""), ""]
+    L = ["# Protocol v3 %s results%s"
+         % ("ablation" if args.stage == "v3abl" else "headline",
+            " - both base models" if args.both else ""), ""]
     L.append("Generated by `proj1/scripts/v3_table.py`. Do not hand-edit; re-run it.")
     L.append("")
     L.append("Protocol: [FULL_RUN_V3_PROTOCOL.md](../protocol/FULL_RUN_V3_PROTOCOL.md).")

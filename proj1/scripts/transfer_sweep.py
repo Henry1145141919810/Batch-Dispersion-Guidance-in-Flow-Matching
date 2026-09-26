@@ -276,14 +276,29 @@ V3_TARGET = "q50"
 V3_W = 1.0
 V3_T_START = 0.5                     # guidance on for t in [0.5, 1)
 V3_SEEDS = (20261001, 20261002, 20261003)
-# n = 2000, down from 5000 (Henry, 26 Sep). Three seeds are UNCHANGED. Batch
-# stays 500, so a cell runs 4 controllers instead of 10 -- controller COUNT is
-# what shrank, not controller quality (each still estimates V_b from 500).
-# The power this costs is pre-registered in FULL_RUN_V3_PROTOCOL.md section 6:
-# pooled n per (arm, property) falls 15000 -> 6000, every binomial SE rises
-# 1.58x, and a ~1pp contrast -- the size a BDG-vs-plug effect is expected to
-# be -- no longer clears a multiplicity-corrected threshold.
-V3_N = 2000                          # the headline; the ablation runs smaller
+# THREE SEEDS FOR BOTH STAGES (Henry, 26 Sep, final). The ablation ran one seed
+# for two days; it does not any more. Every v3 row, headline or ablation,
+# carries an across-seed spread.
+#
+# N IS DELIBERATELY UNSET. Henry left it to the operator: bobo picks the cell
+# size on the cluster he runs on, because it is a memory-and-budget decision
+# and nothing about the protocol depends on its value. `None` here is not a
+# placeholder to fill in later -- it is the pre-registration saying "this run
+# does not fix n", and --n is REQUIRED on the command line for both v3 stages.
+#
+# What n DOES decide is power, and that is the one thing the operator has to
+# read before choosing. FULL_RUN_V3_PROTOCOL.md section 6.1 gives the binomial
+# se as a function of n, with a table, so a value can be picked against the
+# effect size it needs to resolve rather than against the budget alone. The
+# short version: pooled se on in_band at p ~ 0.09 is sqrt(.09*.91/(3n)), so
+# resolving a ~1pp contrast under a multiplicity-corrected threshold needs
+# n in the low thousands per cell, not hundreds.
+#
+# It must be divisible by the batch. The batch is BDG's ESTIMATOR, not a speed
+# knob (see section 2.4), so a remainder batch is a second, far noisier
+# controller pooled into the cell's diagnostics as an equal. Both the slurm and
+# guidance_sweep refuse an indivisible pair.
+V3_N = None                          # required at the command line; see above
 V3_BDG_ETA = 4.0
 # tau_mult {0.5, 1.0} -- 0.75 dropped (Henry, 26 Sep). This is BDG's SETPOINT
 # knob, tau = tau_mult * f_A.y_std; it is NOT the t >= 0.5 guidance window,
@@ -304,30 +319,20 @@ V3_BDG_TAU_MULTS = (0.5, 1.0)
 V3_ABL_ETAS = (0.0, 1.0, 2.0, 4.0, 8.0)
 V3_ABL_TAU_MULTS = (0.5, 0.75, 1.0, 1.5)
 V3_ABL_ETA0_REF_TAU = 1.0
-# The ablation is SMALLER THAN THE HEADLINE, by Henry's decision of 26 Sep:
-# ONE seed against the headline's three, and n = 1000 against the headline's
-# 2000. It costs 4.2 GPU-h; the 51.3 it is sometimes compared against was the
-# ablation's OWN first plan (14 grid arms in a shared n5000 tree), NOT the
-# headline, which is 12.8. What that buys and what it gives up is
-# pre-registered in docs/protocol/ABLATION_V3_PROTOCOL.md; the short version is
-# that an ablation row is NOT comparable to a headline row (different n,
-# different seed count, 2 controllers per cell instead of 4), and the grid is
-# read only against itself. An earlier decision the same day had them equal,
-# and test_v3.py gated that equality; the gate now asserts the difference
-# instead, so neither value can drift silently.
-#
-# WHY 1000 AND NOT 2000. When the headline moved to n = 2000 the two stages
-# would have written the SAME tree under the SAME stage label, so v3_table.py
-# would have globbed the ablation's 15 single-seed arms into the headline's
-# table and refused (it requires every (prop, arm) at all three seeds). 1000
-# also keeps ablation_is_smaller_than_headline true. It must stay divisible by
-# the batch, 500 -- 1000 / 500 = 2 controllers per cell.
-V3_ABL_N = 1000
-V3_ABL_SEEDS = (V3_SEEDS[0],)
-# n = 1000 writes to results/v3/<backend>/n1000/, a different tree from the
-# headline's n2000/, so there are no headline BDG cells to reuse and the grid
-# runs ALL 17 arms rather than the 14 that excluded them. That makes it
-# self-contained, which is what lets it be read against itself.
+# The ablation now matches the headline on n and on seeds. It is the same
+# protocol with a different arm set, so an ablation row and a headline row at
+# the same n ARE comparable -- which is the point of the change, and the
+# opposite of what the 26 Sep morning draft said.
+V3_ABL_N = None                      # follows --n, like the headline
+V3_ABL_SEEDS = V3_SEEDS
+# THE TWO STAGES ARE SEPARATED BY THE TREE, NOT BY n. They write
+#   results/v3/<backend>/<stage>/n<N>/seed<S>/
+# with <stage> in {v3, v3abl}. n used to do this job, which is why the ablation
+# briefly ran at a different size; at equal n and equal seeds that separation
+# is gone, and without the stage directory v3_table.py would glob the
+# ablation's 15 extra arms into the headline's table. The stage level is what
+# lets both stages run at whatever n bobo picks.
+V3_STAGE_DIRS = {"v3": "v3", "v3abl": "v3abl"}
 V3_COMPARE_ARMS = ["unguided", "plug", "tmpd", "lgd_mc", "tfg"]
 
 
@@ -1443,11 +1448,26 @@ def main():
         raise SystemExit("unknown arm(s) %s; known: %s"
                          % (unknown, ", ".join(ARM_CLASS)))
     if args.n is None:
+        # v3 PRE-REGISTERS NO n (Henry, 26 Sep): the operator picks the cell
+        # size for the cluster they are on. V3_N is None on purpose, so refuse
+        # here rather than silently falling through to the 512 default -- a v3
+        # tree written at 512 would look like a real run and be badly
+        # underpowered. FULL_RUN_V3_PROTOCOL.md section 6.1 has the power table
+        # to choose against.
+        if args.stage in ("v3", "v3abl") and not args.preflight:
+            # --preflight overrides n to 8 further down (it runs one throwaway
+            # cell per arm and writes nothing), so requiring --n here would
+            # break the one call that legitimately has no cell size.
+            raise SystemExit(
+                "--stage %s needs an explicit --n. The v3 protocol does not "
+                "fix the cell size; pick it against the power table in "
+                "docs/protocol/FULL_RUN_V3_PROTOCOL.md section 6.1, and make "
+                "it divisible by --batch (the batch is BDG's estimator)."
+                % args.stage)
         args.n = {"full": 5000, "eqconfirm": EQ_CONFIRM_N, "eqtune": EQ_TUNE_N,
                   "eqextend": EQ_TUNE_N, "eqfreeze": EQ_TUNE_N,
                   "basecmp": BASECMP_N, "basecmprefine": BASECMP_N,
-                  "basecmpfull": 2000,
-                  "v3": V3_N, "v3abl": V3_ABL_N}.get(args.stage, 512)
+                  "basecmpfull": 2000}.get(args.stage, 512)
     if args.seed is None:
         if args.stage in ("full", "eqconfirm", "basecmpfull", "v3", "v3abl"):
             raise SystemExit("--stage %s needs --seed (one of %s)" % (
@@ -1502,21 +1522,23 @@ def main():
                 BASECMP_ROOT if basecmp else OUT_ROOTS[args.backend])
     if not args.out_dir:
         if v3stage:
-            # v3 keeps its own tree, split by backend and by stage, so it can
+            # v3 keeps its own tree, split by backend AND BY STAGE, so it can
             # never be read into v2's freeze, the transfer's freeze or basecmp's
             # table -- all of which assume a chemistry floor v3 does not use.
-            # NOT split by stage -- split by n, which now does the same job.
-            # The headline is n = 2000 and the ablation n = 1000, so the two
-            # land in n2000/ and n1000/ and cannot be globbed into one table.
-            # That separation is load-bearing and it is why the ablation is not
-            # 2000: at equal n the two stages write byte-identical paths under
-            # one stage label, and v3_table.py -- which requires every
-            # (prop, arm) at all three seeds -- would pull the ablation's 15
-            # single-seed arms into the headline's table and refuse.
-            # Consequence: nothing is shared, so the ablation recomputes its
-            # own eta = 4 rungs. That is the cost of the split, and it is
-            # small (the ablation is 4.2 GPU-h entire).
+            #
+            # THE STAGE LEVEL IS LOAD-BEARING. The headline and the ablation now
+            # run at the SAME n and the SAME three seeds, so n can no longer
+            # tell their cells apart; without this directory v3_table.py would
+            # glob the ablation's 15 extra arms into the headline's table. n
+            # used to do this job, which is the only reason the ablation was
+            # ever run at a different size.
+            #
+            # Consequence: the two stages share nothing, so the ablation
+            # recomputes its own eta = 4 rungs rather than reusing the
+            # headline's. That duplication is deliberate and it is what makes
+            # each stage's tree readable on its own.
             args.out_dir = os.path.join(root_out, args.backend,
+                                        V3_STAGE_DIRS[args.stage],
                                         "n%d" % args.n, "seed%d" % args.seed)
         elif basecmp:
             # the comparison keeps its OWN tree, per backend, so it can never be
@@ -1550,12 +1572,15 @@ def main():
                   # convention `extend` already follows, so one glob reads both
                   "basecmp": "basecmp", "basecmprefine": "basecmp",
                   "basecmpfull": "basecmpfull",
-                  # Both v3 stages write the SAME label: they are one protocol
-                  # at one (target, w, t_start, n, seed set), and the headline's
-                  # bdg arms are a subset of the ablation's grid. Labelling them
-                  # apart would make the same cell carry a different `stage`
-                  # depending on which job happened to write it first.
-                  "v3": "v3", "v3abl": "v3"}[args.stage]
+                  # The two v3 stages write DIFFERENT labels, and must. They
+                  # once shared "v3" on the argument that the headline's bdg
+                  # arms are a subset of the ablation's grid, so one cell could
+                  # be written by either job. That stopped being true when the
+                  # stages got their own directories: a cell now belongs to
+                  # exactly one stage, and a shared label left v3_table.py
+                  # unable to say which plan a tree was supposed to satisfy.
+                  # The directory and the label agree; a mismatch is a bug.
+                  "v3": "v3", "v3abl": "v3abl"}[args.stage]
 
     frozen = None
     if args.stage in ("v3", "v3abl"):

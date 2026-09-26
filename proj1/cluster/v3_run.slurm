@@ -122,7 +122,20 @@ source "$PROJ/.venv/bin/activate" || exit 1
 TS=proj1/scripts/transfer_sweep.py
 VT=proj1/scripts/v3_table.py
 STAGE="${STAGE:-v3}"
-N="${V3_N:-2000}"
+# NO DEFAULT. v3 pre-registers no cell size: the operator picks it for the
+# cluster they are on (Henry, 26 Sep). A default here would let a job run --
+# and write a tree that looks real -- at a size nobody chose. Pick it against
+# the power table in docs/protocol/FULL_RUN_V3_PROTOCOL.md section 6.1, and
+# make it divisible by BATCH, because the batch is BDG's ESTIMATOR and a
+# remainder batch is a second, far noisier controller pooled in as an equal.
+N="${V3_N:-}"
+if [ -z "$N" ]; then
+  echo "FATAL: V3_N is not set, and v3 has no default cell size." >&2
+  echo "The protocol leaves n to the operator. Choose it against the power" >&2
+  echo "table in docs/protocol/FULL_RUN_V3_PROTOCOL.md section 6.1, then:" >&2
+  echo "  V3_N=<n> bash proj1/cluster/submit_v3.sh" >&2
+  exit 1
+fi
 BATCH="${V3_BATCH:-500}"
 # THE ABLATION IS SMALLER THAN THE HEADLINE (Henry, 26 Sep): n = 1000 and one
 # seed, 4.2 GPU-h against the headline's 12.8. (The 51.3 this line used to cite
@@ -139,9 +152,10 @@ BATCH="${V3_BATCH:-500}"
 # which requires every (prop, arm) at all three seeds -- would glob the
 # ablation's 15 single-seed arms into the headline's table and refuse. It must
 # stay divisible by BATCH.
-if [ "$STAGE" = "v3abl" ]; then
-  N="${V3_ABL_N:-1000}"
-fi
+# The ablation runs at the SAME n and the SAME seeds as the headline. It used
+# to run smaller on both, purely so that n could tell the two trees apart;
+# transfer_sweep now writes results/v3/<be>/<stage>/n<N>/seed<S>/, so the
+# STAGE directory does that job and n is free to match.
 if [ "$BATCH" -le 0 ] || [ $(( N % BATCH )) -ne 0 ]; then
   echo "FATAL: batch $BATCH does not divide n $N." >&2
   echo "BDG's controller is the batch: a remainder batch is a second, smaller" >&2
@@ -151,9 +165,9 @@ if [ "$BATCH" -le 0 ] || [ $(( N % BATCH )) -ne 0 ]; then
 fi
 PROPS=(mu alpha gap)
 SEEDS=(20261001 20261002 20261003)
-# the ablation uses ONE of them, the first, so its rows share the headline's
-# first seed even though nothing else about them is comparable
-ABL_SEEDS=("${SEEDS[0]}")
+# The ablation uses ALL THREE, the same three (Henry, 26 Sep, final). It ran a
+# single seed for two days; every v3 row now carries an across-seed spread, so
+# an ablation row and a headline row at the same n ARE comparable.
 BACKENDS=(fm equifm)
 FM_CKPT=proj1/checkpoints/fm_last.pt
 FM_MD5=a190ac8394902027d4a951f8d30e8c5c
@@ -223,25 +237,22 @@ run_one () {            # $1 backend, $2 property, $3 seed, $4 arms, $5 min left
   return $rc
 }
 
-n_tasks () {
-  if [ "$STAGE" = "v3abl" ]; then echo 6; else echo 18; fi
-}
+# ONE GRID FOR BOTH STAGES. The ablation used to collapse to a single seed and
+# needed its own strides; it now runs the SAME three seeds as the headline
+# (Henry, 26 Sep, final), so the two differ ONLY in which arm list a task
+# carries. Deriving the count from ${#BACKENDS[@]} rather than hardcoding it is
+# what lets a backend be added without touching the arithmetic -- the stride bug
+# this file's gates exist for came from a hand-maintained constant.
+NP=${#PROPS[@]}
+NS=${#SEEDS[@]}
+NB=${#BACKENDS[@]}
+
+n_tasks () { echo $(( NB * NP * NS )); }
 
 task_spec () {          # $1 task id -> echoes "backend property seed armset"
-  local t="$1" be prop seed arms
-  if [ "$STAGE" = "v3abl" ]; then
-    # 6 tasks = 2 backends x 3 properties x ONE seed, all 17 arms each
-    be=${BACKENDS[$(( t / 3 ))]}
-    prop=${PROPS[$(( t % 3 ))]}
-    seed=${ABL_SEEDS[0]}
-    arms="$ABL_ARMS"
-  else
-    be=${BACKENDS[$(( t / 9 ))]}
-    prop=${PROPS[$(( (t / 3) % 3 ))]}
-    seed=${SEEDS[$(( t % 3 ))]}
-    arms="$V3_ARMS"
-  fi
-  echo "$be $prop $seed $arms"
+  local t="$1" arms
+  if [ "$STAGE" = "v3abl" ]; then arms="$ABL_ARMS"; else arms="$V3_ARMS"; fi
+  echo "${BACKENDS[$(( t / (NP * NS) ))]}"        "${PROPS[$(( (t / NS) % NP ))]}"        "${SEEDS[$(( t % NS ))]}"        "$arms"
 }
 
 RC=0
@@ -284,31 +295,29 @@ if [ "$STAGE" = "preflight" ]; then
     echo "nothing else will run. Fix the arm or lower V3_BATCH and resubmit." >&2
   fi
 elif [ "$STAGE" = "table" ]; then
-  # TWO TREES, not one. The headline lives under n$V3_N with three seeds and the
-  # ablation under n$V3_ABL_N with one, so a single --n would read the wrong
-  # directory for one of them -- and passing three seeds to the one-seed tree
-  # makes v3_table refuse with "1 of 3 seeds". Each tree is tabulated with its
-  # own n AND its own seed list, into its own files.
-  ABL_N_T="${V3_ABL_N:-1000}"
-  HEAD_SEEDS="$(IFS=,; echo "${SEEDS[*]}")"
-  ABL_SEEDS_T="$(IFS=,; echo "${ABL_SEEDS[*]}")"
+  # TWO TREES, told apart by the STAGE directory, not by n. Both stages run at
+  # the same n and the same three seeds now, so --stage selects the directory
+  # AND the arm set v3_table expects. Passing the wrong one makes it refuse:
+  # the ablation carries no comparison arm by design, so reading it with the
+  # headline's plan reports all five as missing.
+  ALL_SEEDS="$(IFS=,; echo "${SEEDS[*]}")"
   # a tree with no cells is SKIPPED, not failed: submitting only the ablation
   # must not make its table job red over a headline that was never run
-  for SPEC in "$V3_N|$HEAD_SEEDS|" "$ABL_N_T|$ABL_SEEDS_T|_ABL"; do
-    TN="${SPEC%%|*}"; REST="${SPEC#*|}"; TS_SEEDS="${REST%%|*}"; SUF="${REST#*|}"
+  for SPEC in "v3|" "v3abl|_ABL"; do
+    TST="${SPEC%%|*}"; SUF="${SPEC#*|}"
     FOUND=0
     for BE in "${BACKENDS[@]}"; do
-      [ -d "$PROJ/results/v3/$BE/n$TN" ] && FOUND=1
+      [ -d "$PROJ/results/v3/$BE/$TST/n$N" ] && FOUND=1
     done
     if [ "$FOUND" -eq 0 ]; then
-      echo "=== table: no cells under n$TN on either backend, skipping ==="
+      echo "=== table: no $TST cells under n$N on any backend, skipping ==="
       continue
     fi
-    echo "=== table: n=$TN seeds=$TS_SEEDS -> V3_RESULTS$SUF*.md ==="
-    srun python -u "$VT" --both --n "$TN" --seeds "$TS_SEEDS" \
+    echo "=== table: stage=$TST n=$N seeds=$ALL_SEEDS -> V3_RESULTS$SUF*.md ==="
+    srun python -u "$VT" --both --stage "$TST" --n "$N" --seeds "$ALL_SEEDS" \
         --md-out "$PROJ/docs/results/V3_RESULTS$SUF.md" || RC=$?
     for BE in "${BACKENDS[@]}"; do
-      srun python -u "$VT" --backend "$BE" --n "$TN" --seeds "$TS_SEEDS" \
+      srun python -u "$VT" --backend "$BE" --stage "$TST" --n "$N" --seeds "$ALL_SEEDS" \
           --md-out "$PROJ/docs/results/V3_RESULTS${SUF}_$BE.md" || RC=$?
     done
   done
@@ -335,13 +344,17 @@ else
 fi
 
 for BE in "${BACKENDS[@]}"; do
-  # the two stages have DIFFERENT trees and different totals: the headline is
-  # 7 arms x 3 props x 3 seeds = 63 per backend under n2000, the ablation
-  # 17 x 3 x 1 = 51 per backend under n1000. BOTH counts are scoped to their
-  # OWN n$N subtree -- the headline's used to count results/v3/$BE entire,
-  # which swept in the ablation's cells and could never reach its target.
-  if [ "$STAGE" = "v3abl" ]; then WANT=51; else WANT=63; fi
-  TREE="$PROJ/results/v3/$BE/n$N"
+  # Both stages run 3 properties x 3 seeds; they differ only in the arm count,
+  # so the target is derived rather than hardcoded -- the headline's used to be
+  # a literal 198 that counted results/v3/$BE entire, swept in the ablation's
+  # cells and could never be reached. Each count is scoped to its OWN stage
+  # subtree, which is what now separates them.
+  if [ "$STAGE" = "v3abl" ]; then N_ARMS=$(( $(echo "$ABL_ARMS" | tr ',' '
+' | wc -l) ))
+  else N_ARMS=$(( $(echo "$V3_ARMS" | tr ',' '
+' | wc -l) )); fi
+  WANT=$(( N_ARMS * NP * NS ))
+  TREE="$PROJ/results/v3/$BE/$STAGE/n$N"
   echo "cells $BE: $(find "$TREE" -name 'tr__*.json' 2>/dev/null | wc -l) / $WANT"
 done
 echo "elapsed: $(( ($(date +%s) - T_START) / 60 )) min, rc=$RC"

@@ -63,29 +63,51 @@ gate("headline_tau_ladder_is_two_points_and_the_grid_keeps_four",
      "monotonicity or curvature claim about tau can only be read off the "
      "4-point grid, never off the headline's 2 endpoints (head %s, grid %s)"
      % (T.V3_BDG_TAU_MULTS, T.V3_ABL_TAU_MULTS))
-# The ablation is DELIBERATELY smaller than the headline (Henry, 26 Sep, second
-# decision of the day -- the first had them equal and this gate asserted that).
-# It is cheap because it is read against ITSELF, not against headline rows.
-#
-# STRICTLY smaller is now also LOAD-BEARING, not just a budget choice. The two
-# stages write one stage label into results/v3/<be>/n<N>/, so n is the ONLY
-# thing separating their trees. At equal n, v3_table.py globs the ablation's 15
-# single-seed arms into the headline's table and refuses, because it requires
-# every (prop, arm) at all three seeds. When the headline dropped 5000 -> 2000
-# the ablation had to move 2000 -> 1000 for exactly this reason.
-gate("ablation_is_smaller_than_headline", T.V3_ABL_N < T.V3_N,
-     "ablation n %d vs headline %d -- at equal n the two stages share a tree "
-     "and the table stage refuses" % (T.V3_ABL_N, T.V3_N))
-gate("ablation_uses_one_seed", len(T.V3_ABL_SEEDS) == 1,
-     "%s -- 1 seed, so ablation rows carry no across-seed spread"
-     % (T.V3_ABL_SEEDS,))
-gate("ablation_seed_is_a_headline_seed", set(T.V3_ABL_SEEDS) <= set(T.V3_SEEDS),
-     "%s not drawn from %s" % (T.V3_ABL_SEEDS, T.V3_SEEDS))
-# the batch is BDG's estimator, so it must still divide the SMALLER n or the
-# ablation runs a ragged last controller -- the bug the headline already fixed
-gate("ablation_n_divisible_by_batch", T.V3_ABL_N % 500 == 0,
-     "n %d %% batch 500 = %d; %d whole controllers of 500 is the intent"
-     % (T.V3_ABL_N, T.V3_ABL_N % 500, T.V3_ABL_N // 500))
+# BOTH STAGES RUN THE SAME THREE SEEDS AND THE SAME n (Henry, 26 Sep, final).
+# The ablation ran one seed at a smaller n for two days. It does not any more,
+# and the gates that pinned the difference are replaced by the ones below.
+gate("ablation_uses_the_same_three_seeds",
+     tuple(T.V3_ABL_SEEDS) == tuple(T.V3_SEEDS),
+     "%s vs %s -- every v3 row, headline or ablation, must carry an "
+     "across-seed spread" % (T.V3_ABL_SEEDS, T.V3_SEEDS))
+# N IS NOT PRE-REGISTERED. The operator picks the cell size, so both constants
+# are None and --n is required. A number here would be a default nobody chose,
+# and transfer_sweep would write a tree that looks like a real run.
+gate("v3_pre_registers_no_n", T.V3_N is None and T.V3_ABL_N is None,
+     "V3_N=%r V3_ABL_N=%r -- v3 leaves n to the operator; see "
+     "FULL_RUN_V3_PROTOCOL.md section 6.1 for the power table they choose "
+     "against" % (T.V3_N, T.V3_ABL_N))
+gate("preflight_is_exempt_from_the_n_requirement",
+     'and not args.preflight' in io.open(
+         os.path.join(ROOT, "proj1", "scripts", "transfer_sweep.py"),
+         encoding="utf-8").read(),
+     "--preflight overrides n to 8 AFTER the requirement is checked, so the "
+     "check must skip it or the chain's first link dies")
+gate("transfer_sweep_refuses_v3_without_n",
+     'needs an explicit --n' in io.open(
+         os.path.join(ROOT, "proj1", "scripts", "transfer_sweep.py"),
+         encoding="utf-8").read(),
+     "with V3_N None, --stage v3 must REFUSE rather than fall through to the "
+     "512 compare default")
+# WHAT SEPARATES THE TWO STAGES, now that n and the seeds do not. The tree
+# gains a stage level and the cells carry distinct labels; both are required,
+# because v3_table selects on the directory and then verifies the label.
+gate("stages_have_distinct_tree_dirs",
+     set(T.V3_STAGE_DIRS) == {"v3", "v3abl"}
+     and len(set(T.V3_STAGE_DIRS.values())) == 2,
+     "%r -- at equal n and equal seeds the stage directory is the ONLY thing "
+     "keeping the ablation's 15 extra arms out of the headline's table"
+     % (T.V3_STAGE_DIRS,))
+_ts_src = io.open(os.path.join(ROOT, "proj1", "scripts", "transfer_sweep.py"),
+                  encoding="utf-8").read()
+gate("stages_write_distinct_cell_labels",
+     '"v3": "v3", "v3abl": "v3abl"' in _ts_src,
+     "the two stages once shared the label \"v3\"; with one tree per stage a "
+     "cell belongs to exactly one of them and the label must say which")
+gate("out_dir_includes_the_stage_level",
+     "V3_STAGE_DIRS[args.stage]" in _ts_src,
+     "results/v3/<backend>/<stage>/n<N>/seed<S>/ -- without the stage level "
+     "the two stages collide at equal n")
 gate("ablation_covers_headline_eta", T.V3_BDG_ETA in T.V3_ABL_ETAS)
 gate("ablation_covers_headline_taus",
      set(T.V3_BDG_TAU_MULTS) <= set(T.V3_ABL_TAU_MULTS))
@@ -158,72 +180,63 @@ gate("slurm_abl_arms_match_the_planner",
      % (sorted(grp.get("ABL_ARMS", "").split(",")), sorted(abl)))
 gate("slurm_abl_arms_is_the_whole_grid",
      "ABL_ARMS" in grp and len(grp["ABL_ARMS"].split(",")) == 17,
-     "%d arms; the ablation has its OWN tree (n=%d, not the headline's %d), so "
-     "it cannot reuse the headline's BDG rungs and must carry all 17"
-     % (len(grp.get("ABL_ARMS", "").split(",")) if grp.get("ABL_ARMS") else 0,
-        T.V3_ABL_N, T.V3_N))
+     "%d arms; the ablation has its OWN stage tree, so it cannot reuse the "
+     "headline's BDG rungs and must carry all 17"
+     % (len(grp.get("ABL_ARMS", "").split(",")) if grp.get("ABL_ARMS") else 0,))
 
+# THE TASK GRID IS NOW ONE FORMULA FOR BOTH STAGES. It used to be two, with
+# hardcoded strides (t/9, t/3) that these gates parsed out with regexes; the
+# ablation's collapse to one seed needed its own arithmetic, and a wrong stride
+# once left 27 cells unproducible. Both stages now run backends x properties x
+# seeds and differ ONLY in which arm list a task carries, so the strides come
+# from the array lengths in the slurm itself and there is nothing per-stage
+# left to get wrong.
 ts = re.search(r"task_spec \(\) \{(.*?)\n\}", src, re.S)
 gate("slurm_task_spec_found", bool(ts))
 blk = ts.group(1) if ts else ""
-abl_blk = blk[blk.index('if [ "$STAGE" = "v3abl" ]'):blk.index("  else")] if ts else ""
-head_blk = blk[blk.index("  else"):] if ts else ""
 
-BE_PAT = r"BACKENDS\[\$\(\(\s*t\s*/\s*(\d+)"
-PROP_PAT = r"PROPS\[\$\(\(\s*\(t\s*/\s*(\d+)\)"
-HALF_PAT = r"half=\$\(\(\s*\(t\s*/\s*(\d+)\)"
-
-
-def one(pat, blob):
-    m = re.search(pat, blob)
-    return int(m.group(1)) if m else None
-
-
-ABL_PROP_PAT = r"PROPS\[\$\(\(\s*t\s*%\s*(\d+)"   # ablation indexes prop directly
-A = {"be": one(BE_PAT, abl_blk), "prop": one(ABL_PROP_PAT, abl_blk)}
-H = {"be": one(BE_PAT, head_blk), "prop": one(PROP_PAT, head_blk)}
 NP, NS, NB = len(PROPS), len(T.V3_SEEDS), len(BE)
 NAS = len(T.V3_ABL_SEEDS)
-gate("headline_strides_parsed", None not in H.values(), str(H))
-gate("ablation_strides_parsed", None not in A.values(), str(A))
-gate("headline_strides_correct", H["be"] == NP * NS and H["prop"] == NS,
-     "be %s (want %d), prop %s (want %d)" % (H["be"], NP * NS, H["prop"], NS))
-# the ablation collapsed to ONE seed, so there is no seed stride and no arm-half:
-# 6 tasks = 2 backends x 3 properties, each carrying all 17 arms
-gate("ablation_strides_correct", A["be"] == NP and A["prop"] == NP,
-     "be %s (want %d), prop-modulus %s (want %d)" % (A["be"], NP, A["prop"], NP))
-gate("ablation_has_no_arm_halves", one(HALF_PAT, abl_blk) is None,
-     "a `half=` stride survives, but one task now carries all 17 arms")
 
-nt = re.search(r'v3abl" \]; then echo (\d+); else echo (\d+)', src)
-gate("slurm_declares_task_counts", bool(nt), nt.groups() if nt else "")
-N_ABL = int(nt.group(1)) if nt else -1
-N_HEAD = int(nt.group(2)) if nt else -1
-gate("task_counts_match_strides",
-     N_HEAD == NB * NP * NS and N_ABL == NB * NP * NAS,
-     "headline %d (want %d), ablation %d (want %d)"
-     % (N_HEAD, NB * NP * NS, N_ABL, NB * NP * NAS))
+gate("slurm_derives_dimensions",
+     re.search(r"NP=\$\{#PROPS\[@\]\}", src) is not None
+     and re.search(r"NS=\$\{#SEEDS\[@\]\}", src) is not None
+     and re.search(r"NB=\$\{#BACKENDS\[@\]\}", src) is not None,
+     "NP/NS/NB must come from the array lengths, or adding a backend silently "
+     "leaves tasks unproduced")
+gate("slurm_task_count_is_the_product",
+     re.search(r"n_tasks \(\) \{ echo \$\(\( NB \* NP \* NS \)\); \}", src)
+     is not None,
+     "n_tasks must be NB * NP * NS for BOTH stages")
+gate("slurm_backend_stride",
+     re.search(r"BACKENDS\[\$\(\(\s*t\s*/\s*\(NP\s*\*\s*NS\)\s*\)\)\]", blk)
+     is not None, blk[:120])
+gate("slurm_prop_stride",
+     re.search(r"PROPS\[\$\(\(\s*\(t\s*/\s*NS\)\s*%\s*NP\s*\)\)\]", blk)
+     is not None, blk[:120])
+gate("slurm_seed_stride",
+     re.search(r"SEEDS\[\$\(\(\s*t\s*%\s*NS\s*\)\)\]", blk) is not None,
+     blk[:120])
+gate("slurm_task_spec_is_stage_agnostic",
+     'if [ "$STAGE" = "v3abl" ]; then arms="$ABL_ARMS"; else arms="$V3_ARMS"; fi'
+     in blk,
+     "the ONLY thing task_spec may branch on is the arm list; anything else "
+     "re-introduces the per-stage arithmetic the strides were unified to remove")
+gate("no_arm_halves_survive", "half=" not in blk,
+     "a `half=` stride survives, but one task carries a whole arm list")
 
 
 def tile(stage):
-    """Re-derive task_spec() from the strides PARSED above."""
+    """Re-derive task_spec() from the SAME formula the slurm now uses."""
+    arms = grp["ABL_ARMS" if stage == "v3abl" else "V3_ARMS"].split(",")
     out, bad_t = [], []
-    if stage == "v3abl":
-        for t in range(N_ABL):
-            bi, pi = t // A["be"], t % A["prop"]
-            if bi >= NB or pi >= NP:
-                bad_t.append(t)
-                continue
-            for arm in grp["ABL_ARMS"].split(","):
-                out.append((BE[bi], PROPS[pi], str(T.V3_ABL_SEEDS[0]), arm))
-    else:
-        for t in range(N_HEAD):
-            bi, pi, si = t // H["be"], (t // H["prop"]) % NP, t % NS
-            if bi >= NB or pi >= NP or si >= NS:
-                bad_t.append(t)
-                continue
-            for arm in grp["V3_ARMS"].split(","):
-                out.append((BE[bi], PROPS[pi], str(T.V3_SEEDS[si]), arm))
+    for t in range(NB * NP * NS):
+        bi, pi, si = t // (NP * NS), (t // NS) % NP, t % NS
+        if bi >= NB or pi >= NP or si >= NS:
+            bad_t.append(t)
+            continue
+        for arm in arms:
+            out.append((BE[bi], PROPS[pi], str(T.V3_SEEDS[si]), arm))
     return out, bad_t
 
 
@@ -235,6 +248,7 @@ gate("headline_tasks_no_duplicates", len(h_cov) == len(set(h_cov)),
      "%d - %d" % (len(h_cov), len(set(h_cov))))
 gate("ablation_tasks_no_duplicates", len(a_cov) == len(set(a_cov)),
      "%d - %d" % (len(a_cov), len(set(a_cov))))
+
 gate("every_arm_list_non_empty",
      all(all(x.strip() for x in v.split(",")) for v in grp.values()), sorted(grp))
 
@@ -253,25 +267,25 @@ gate("headline_covers_every_cell_once",
      % (len(h_cov), len(want_h), sorted(want_h - set(h_cov))[:3] or "none",
         sorted(set(h_cov) - want_h)[:3] or "none"))
 
-want_a = {(b, p, str(T.V3_ABL_SEEDS[0]), a) for b in BE for p in PROPS
-          for a in grp["ABL_ARMS"].split(",")}
+want_a = {(b, p, str(sd), a) for b in BE for p in PROPS
+          for sd in T.V3_ABL_SEEDS for a in grp["ABL_ARMS"].split(",")}
 gate("ablation_covers_every_cell_once",
      set(a_cov) == want_a and len(a_cov) == len(want_a),
      "covered %d, wanted %d, holes %s extras %s"
      % (len(a_cov), len(want_a), sorted(want_a - set(a_cov))[:3] or "none",
         sorted(set(a_cov) - want_a)[:3] or "none"))
 
-# The ablation now DOES repeat the headline's BDG arms, and must: it runs at a
-# DIFFERENT n (V3_ABL_N vs V3_N), so its tree holds nothing to reuse. The gate
-# that used to forbid this is inverted -- what would be wrong now is the grid
-# MISSING them. NOTE this gate is set equality over arm NAMES and never reads n;
-# ablation_is_smaller_than_headline is what keeps the justification true.
+# The ablation DOES repeat the headline's BDG arms, and must: it writes its own
+# stage tree, so there is nothing of the headline's in it to reuse. The gate
+# that used to forbid the repetition is inverted -- what would be wrong now is
+# the grid MISSING them. This is set equality over arm NAMES; what keeps the
+# justification true is stages_have_distinct_tree_dirs, not n.
 gate("ablation_repeats_headline_bdg_arms_in_its_own_tree",
      set(T.v3_arms()) & set(grp["ABL_ARMS"].split(","))
      == {a for a in T.v3_arms() if a.startswith("bdg_e")},
-     "every headline BDG arm must be present at n=%d, since n=%d cells cannot "
-     "be reused: %s" % (T.V3_ABL_N, T.V3_N,
-                        sorted(set(T.v3_arms()) & set(grp["ABL_ARMS"].split(",")))))
+     "every headline BDG arm must appear in the grid, since the two stages "
+     "share no cells: %s"
+     % (sorted(set(T.v3_arms()) & set(grp["ABL_ARMS"].split(","))),))
 gate("ablation_carries_no_comparison_arms",
      not (set(T.V3_COMPARE_ARMS) & set(grp["ABL_ARMS"].split(","))),
      "Henry, 26 Sep: no plug/unguided baseline in the ablation, so the grid is "
@@ -280,9 +294,13 @@ gate("ablation_carries_no_comparison_arms",
 
 sub = io.open(os.path.join(ROOT, "proj1", "cluster", "submit_v3.sh"),
               encoding="utf-8").read()
-gate("submit_uses_both_array_ranges",
-     ("0-%d" % (N_HEAD - 1)) in sub and ("0-%d" % (N_ABL - 1)) in sub,
-     "headline must submit as 0-%d and the ablation as 0-%d" % (N_HEAD - 1, N_ABL - 1))
+# Both stages are the same shape now, so ONE range covers both.
+N_TASKS = NB * NP * NS
+gate("submit_uses_the_array_range",
+     sub.count("0-%d" % (N_TASKS - 1)) >= 2,
+     "both stages are %d tasks (%d backends x %d props x %d seeds), so "
+     "submit_v3.sh must use 0-%d for each"
+     % (N_TASKS, NB, NP, NS, N_TASKS - 1))
 
 # ---- the batch: BDG's estimator IS the batch ------------------------------
 #
@@ -303,15 +321,23 @@ m_batch = re.search(r'BATCH="\$\{V3_BATCH:-(\d+)\}"', src)
 gate("slurm_batch_default_is_measured", m_batch is not None,
      "the default must be a literal measured by batch_memprobe.py, not $N")
 BATCH_DEFAULT = int(m_batch.group(1)) if m_batch else 0
-m_n = re.search(r'N="\$\{V3_N:-(\d+)\}"', src)
-gate("slurm_n_matches_planner",
-     m_n is not None and int(m_n.group(1)) == T.V3_N,
-     "slurm n %s vs transfer_sweep V3_N %s"
-     % (m_n.group(1) if m_n else None, T.V3_N))
-N_CELL = int(m_n.group(1)) if m_n else T.V3_N
-gate("slurm_batch_divides_n", BATCH_DEFAULT > 0 and N_CELL % BATCH_DEFAULT == 0,
-     "batch %s must divide n %s exactly: a remainder batch is a second, much "
-     "noisier controller pooled in as an equal" % (BATCH_DEFAULT, N_CELL))
+# N HAS NO DEFAULT, in either place. The slurm must take it from the
+# environment with an EMPTY fallback and refuse when it is unset, so that a v3
+# tree can never be written at a size nobody chose. The old gate compared two
+# literals; there are no literals to compare any more, so it checks the
+# refusal instead.
+gate("slurm_n_has_no_default",
+     re.search(r'N="\$\{V3_N:-\}"', src) is not None
+     and re.search(r'N="\$\{V3_N:-\d+\}"', src) is None,
+     "V3_N must fall back to EMPTY, not to a number: v3 pre-registers no n")
+gate("slurm_refuses_unset_n",
+     "V3_N is not set" in src,
+     "with no default the job must FATAL on an unset V3_N rather than run")
+gate("slurm_batch_divides_n_at_runtime",
+     re.search(r"N % BATCH \)\) -ne 0", src) is not None,
+     "n is chosen by the operator, so divisibility can only be checked at "
+     "run time -- batch %s is BDG's estimator and a remainder batch is a "
+     "second, much noisier controller pooled in as an equal" % BATCH_DEFAULT)
 # and the job must refuse an override that does not divide n
 gate("slurm_refuses_indivisible_batch",
      re.search(r"N % BATCH \)\) -ne 0", src) is not None,

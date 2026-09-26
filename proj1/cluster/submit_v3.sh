@@ -8,10 +8,11 @@
 #
 # THE CHAIN
 #   A  v3 headline,  array 0-17   7 arms x 3 properties x 3 seeds x 2 bases,
-#                                 n = 2000, tree results/v3/*/n2000
+#                                 tree results/v3/*/v3/n<N>
 #   B  insurance after A          finishes whatever A's 4-hour window cut off
-#   C  v3 ablation,  array 0-5    the 17-arm (eta x tau_mult) grid at n=1000,
-#                                 ONE seed, its OWN tree (results/v3/*/n1000)
+#   C  v3 ablation,  array 0-17   the 17-arm (eta x tau_mult) grid, the SAME
+#                                 n and the SAME three seeds, its own stage
+#                                 tree (results/v3/*/v3abl/n<N>)
 #   D  insurance after C
 #   E  table                      one page per base model, plus both side by side
 #
@@ -29,22 +30,29 @@ export SLURM_CONF="${SLURM_CONF:-/cm/shared/apps/slurm/etc/slurm/slurm.conf}"
 
 PROJ=/vast/projects/ajw/wharton/hyhuang/cgm
 JOB=proj1/cluster/v3_run.slurm
-N="${V3_N:-2000}"
+# NO DEFAULT. v3 pre-registers no cell size: the operator picks it (Henry,
+# 26 Sep). Choose it against the power table in section 6.1 of
+# docs/protocol/FULL_RUN_V3_PROTOCOL.md, not against the budget alone.
+N="${V3_N:-}"
+if [ -z "$N" ]; then
+  echo "STOP: set V3_N. The v3 protocol does not fix the cell size -- it is" >&2
+  echo "yours to choose, and it decides the run's power, not just its cost." >&2
+  echo "  docs/protocol/FULL_RUN_V3_PROTOCOL.md section 6.1 has the table." >&2
+  echo "Then:  V3_N=<n> bash proj1/cluster/submit_v3.sh [headline|ablation|all]" >&2
+  exit 1
+fi
 # V3_BATCH must travel too. It is BDG's estimator size, not a speed knob: the
 # job defaults it to 500 (measured -- one batch of n needs 280 GiB on EquiFM
 # against a 45 GB slice) and refuses a value that does not divide N. Leaving it
 # out of --export meant an override set on this line silently did nothing.
 BATCH="${V3_BATCH:-500}"
-# The ablation runs at its OWN n (1000, one seed -- ABLATION_V3_PROTOCOL.md), and
-# the job overrides N for STAGE=v3abl. This script must know that too, or it
-# checks and reports the wrong number: it printed "n = 5000, 10 controllers" for
-# an ablation submission that the job then correctly ran smaller.
-#
-# ABL_N MUST STAY BELOW N. They are what separates the two trees; at equal n
-# both stages write results/v3/<be>/n<N>/ under one stage label and v3_table.py
-# refuses (it needs every (prop, arm) at all three seeds, and the ablation has
-# 15 arms at one). test_v3.py's ablation_is_smaller_than_headline gates it.
-ABL_N="${V3_ABL_N:-1000}"
+# THE ABLATION RUNS AT THE SAME n AND THE SAME THREE SEEDS as the headline
+# (Henry, 26 Sep, final). It used to run smaller on both, purely so that n
+# could tell the two trees apart; transfer_sweep now writes
+# results/v3/<be>/<stage>/n<N>/seed<S>/, so the STAGE directory does that job
+# and the two stages are free to match. ABL_N is kept as one name for the
+# divisibility loop below.
+ABL_N="$N"
 for _n in "$N" "$ABL_N"; do
     if [ $(( _n % BATCH )) -ne 0 ]; then
         echo "STOP: V3_BATCH=$BATCH does not divide n=$_n." >&2
@@ -121,7 +129,7 @@ if [ "$WHAT" = all ] || [ "$WHAT" = headline ]; then
     B=$(sub head2  ""   "$(dep)" v3);    LAST=$B
 fi
 if [ "$WHAT" = all ] || [ "$WHAT" = ablation ]; then
-    C=$(sub abl    0-5  "$(dep)" v3abl); LAST=$C
+    C=$(sub abl    0-17 "$(dep)" v3abl); LAST=$C
     D=$(sub abl2   ""   "$(dep)" v3abl); LAST=$D
 fi
 E=$(sub table  ""   "$(dep)" table)
@@ -129,18 +137,14 @@ E=$(sub table  ""   "$(dep)" table)
 cat <<EOF
 
 protocol v3 "$WHAT" submitted, batch = $BATCH
-$( if [ "$WHAT" = ablation ]; then
-     echo "  ablation at n = $ABL_N, ONE seed -> $(( ABL_N / BATCH )) BDG controllers per cell"
-   elif [ "$WHAT" = all ]; then
-     echo "  headline n = $N ($(( N / BATCH )) controllers/cell), ablation n = $ABL_N ($(( ABL_N / BATCH )) controllers/cell, 1 seed)"
-   elif [ "$WHAT" = headline ]; then
-     echo "  headline at n = $N, 3 seeds -> $(( N / BATCH )) BDG controllers per cell"
-   fi )
+  n = $N, 3 seeds, batch $BATCH -> $(( N / BATCH )) BDG controllers per cell
+  both stages run the same n and the same seeds; the STAGE directory is what
+  separates results/v3/<be>/v3/ from results/v3/<be>/v3abl/
 
 ${P:+  $P  preflight               every arm on both bases, and the batch
 }${A:+  $A  headline array (0-17)   comparison set + BDG eta=4, both bases
 }${B:+  $B  headline insurance
-}${C:+  $C  ablation array (0-5)    17-arm eta x tau_mult grid, n=1000, 1 seed
+}${C:+  $C  ablation array (0-17)   17-arm eta x tau_mult grid, same n, 3 seeds
 }${D:+  $D  ablation insurance
 }  $E  table                   refuses if anything is missing
 $( [ "$WHAT" = headline ] && echo "
