@@ -77,15 +77,18 @@ WHAT DIFFERS FROM THE MAIN SWEEP, and must be disclosed with every number:
      `--pair` overrides it; every cell records `pair`, `guide` and `oracle`,
      so which was used can be checked after the fact.
 
-     WHAT THAT COSTS. delta = k x MAE(f_B), so the pair sets the BAND WIDTH.
-     Our f_B is the less accurate of the two on all three properties, so an
-     ours-pair backend is scored in a wider band and its in_band is higher
-     for that reason alone. IN_BAND IS THEREFORE NOT COMPARABLE ACROSS
-     BACKENDS THAT USE DIFFERENT PAIRS. Within one backend every arm shares
-     one delta, so the arm-vs-arm comparison -- the question this project
-     asks -- is untouched. What it buys is that our pair is disjoint by
-     construction, where TFG's `evaluate_<p>` saw an unknown part of QM9 and
-     its delta is optimistically tight.
+     WHAT THAT COSTS. delta = k x MAE(f_B), so the pair sets the BAND WIDTH,
+     and the two oracles differ. MEASURED on the same calibration molecules
+     (pair_delta_compare.py -> docs/results/V3_PAIR_DELTA.md), ours/TFG is
+     0.87x on mu -- ours NARROWER, our oracle is the better one there -- and
+     2.61x on alpha, 1.44x on gap. THE DIRECTION IS NOT UNIFORM, so a blanket
+     "ours is wider" is wrong; quote it per property.
+
+     IN_BAND IS THEREFORE NOT COMPARABLE ACROSS BACKENDS THAT USE DIFFERENT
+     PAIRS, in either direction. Within one backend every arm shares one
+     delta, so the arm-vs-arm comparison -- the question this project asks --
+     is untouched. What it buys is that our pair is disjoint by construction,
+     where TFG's `evaluate_<p>` saw an unknown part of QM9.
 
      Both pairs are calibrated (or, for ours, scale-checked) on train_a +
      train_b only, so the `test` split -- where the `dist` targets come from
@@ -377,10 +380,10 @@ V3_COMPARE_ARMS = ["unguided", "plug", "tmpd", "lgd_mc", "tfg"]
 #
 # READ THIS BEFORE COMPARING in_band ACROSS BACKENDS. delta = k x MAE(f_B), so
 # the pair sets the BAND WIDTH. Our f_B is less accurate than TFG's on all
-# three properties -- measured in BASECMP_PROTOCOL.md, roughly 1.2x on mu, 3x
-# on alpha, 2x on gap -- so an ours-pair backend is scored in a WIDER band and
-# its in_band is higher for that reason alone, before any base model or any
-# arm is considered.
+# three properties. MEASURED (pair_delta_compare.py), ours/TFG delta is 0.87x
+# on mu, 2.61x on alpha, 1.44x on gap -- so ours is NARROWER on mu and wider
+# on the other two. The direction is NOT uniform and a blanket statement about
+# it is wrong; docs/results/V3_PAIR_DELTA.md has the table.
 #
 # That is a deliberate trade, not an oversight. Our pair is disjoint by
 # CONSTRUCTION (f_A and f_B trained on disjoint halves), where TFG's is

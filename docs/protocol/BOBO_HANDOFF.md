@@ -149,10 +149,20 @@ decision):
 | `equifm` | EquiFM | **TFG's** | all 7 |
 | `edm` | QM9 diffusion (EDMsecond) | **ours** | `unguided`, `plug` only |
 
-δ = k × MAE(f_B), so **the pair sets the width of the acceptance band**. Our
-oracle is the less accurate one, so an ours-pair backend is scored in a wider
-band and its `in_band` is higher for that reason alone — before any base model
-or any arm is considered.
+δ = k × MAE(f_B), so **the pair sets the width of the acceptance band**, and
+the two oracles are not equally accurate. Measured on the same 3000
+calibration molecules ([V3_PAIR_DELTA.md](../results/V3_PAIR_DELTA.md)):
+
+| property | δ ours | δ TFG | ours / TFG |
+|---|---|---|---|
+| mu | 0.136757 | 0.156754 | **0.87×** — ours narrower |
+| alpha | 0.430463 | 0.164797 | **2.61×** — ours wider |
+| gap | 0.005381 | 0.003736 | **1.44×** — ours wider |
+
+So an ours-pair backend is scored in a different band, **narrower on mu and
+wider on alpha and gap**, and its `in_band` moves for that reason alone —
+before any base model or any arm is considered. Do not say "ours is the wider
+band" without naming the property.
 
 **Within one backend every arm shares one δ**, so the arm-against-arm
 comparison is completely unaffected. That is the comparison this project is

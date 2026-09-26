@@ -66,11 +66,22 @@ that is done it is a separate run and its numbers do not belong in a v3 table.
 > ### ⚠️ The pair sets the band, so in-band does not cross backends
 >
 > δ = k × MAE(f_B). The pair therefore sets the **width of the acceptance
-> band**, and our f_B is the less accurate of the two on all three properties
-> — roughly 1.2× on mu, 3× on alpha, 2× on gap
-> ([BASECMP_PROTOCOL.md](BASECMP_PROTOCOL.md) §2). So an ours-pair backend is
-> scored in a **wider band**, and its `in_band` is higher for that reason
-> alone, before any base model or any arm is considered.
+> band**, and the two oracles do not have the same accuracy. **Measured** on
+> the same 3000 calibration molecules, through the same code path both pairs
+> use ([V3_PAIR_DELTA.md](../results/V3_PAIR_DELTA.md)):
+>
+> | property | δ ours | δ TFG | ours / TFG | |
+> |---|---|---|---|---|
+> | mu | 0.136757 | 0.156754 | **0.87×** | ours **narrower** |
+> | alpha | 0.430463 | 0.164797 | **2.61×** | ours **wider** |
+> | gap | 0.005381 | 0.003736 | **1.44×** | ours **wider** |
+>
+> **The direction is not uniform.** Our oracle is the *better* one on mu, so
+> the band there is narrower; it is worse on alpha and gap. An earlier draft
+> of this section said our band was wider on all three ("~1.2× on mu, 3× on
+> alpha, 2× on gap"), quoting a table computed on a different split. That is
+> **withdrawn**: it is wrong on mu, and wrong in magnitude on the other two.
+> Quote the measured table, per property.
 >
 > **Never compare `in_band` between `fm` and `equifm`.** It was already true
 > that nothing is paired across backends (§3); this is stronger — the two
