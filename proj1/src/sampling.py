@@ -57,8 +57,13 @@ class _Base:
                  w=1.0, n_probe=1, probe_seed=0, clip=1.0,
                  n_mc=4, sigma_mc=0.1, want_kappa3=False, rch=None,
                  band_tau=None, band_eta=1.0, band_radius=None,
-                 tau=None, spbc_eta=1.0, spbc_radius=None, schedule=None,
+                 tau=None, spbc_eta=1.0, spbc_radius=None,
+                 schedule=None,
                  update_rule="euler", update_kw=None, log_velocity=False,
+                 # BDG. eta DEFAULTS TO 0.0, not 1.0: at eta = 0 the dispersion
+                 # term is multiplied by zero, so an un-configured `bdg` is
+                 # bit-identical to plug rather than silently servoing at unit
+                 # gain. Every caller that wants the controller sets eta.
                  tfg=None, bdg_eta=0.0, bdg_tau=None, bdg_onesided=False,
                  bdg_e_override=None):
         self.net, self.mask = net, mask
@@ -200,7 +205,16 @@ class _Base:
                  # guided steps on which the deviation term REVERSED. This list
                  # is a whitelist, so a key absent here is silently dropped.
                  "bdg_w_eff_sq", "bdg_w_eff_neg",
-                 "bdg_batch")
+                 "bdg_batch",
+                 # bobo's original three, kept so bdg_table.py and test_bdg.py
+                 # keep reading what they expect. `bdg_dev`/`bdg_disp` are
+                 # mean-zero over the batch, so THIS accumulator's mean drives
+                 # them to ~1e-7 -- the _rms pair above is what carries the
+                 # signal. `bdg_widening` is the fraction of guided steps with
+                 # e < 0, i.e. the controller ASKED to widen; `bdg_w_eff_neg`
+                 # is the fraction where 1 + eta*e < 0, i.e. the deviation term
+                 # actually reversed. Both are wanted; they are not the same.
+                 "bdg_dev", "bdg_disp", "bdg_widening")
 
     def _accumulate_diag(self, diag):
         """Running mean of each diagnostic over every guided step and batch."""

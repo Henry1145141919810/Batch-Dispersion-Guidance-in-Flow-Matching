@@ -1,0 +1,6 @@
+ckpt fm_m2_dfb500.pt | best_it 475600  val 0.06336  121.8M views  complete=True
+real train  GC mean 0.4552  sd 0.0552
+real test   GC mean 0.4556  sd 0.0551
+gen  nfe  50 n 4096  gc_hard mean 0.4705 sd 0.0487 | gc_soft mean 0.4657 sd 0.0455 | decode conf 0.937
+gen  nfe 100 n 4096  gc_hard mean 0.4637 sd 0.0517 | gc_soft mean 0.4624 sd 0.0489 | decode conf 0.958
+gen  nfe 200 n 4096  gc_hard mean 0.4596 sd 0.0531 | gc_soft mean 0.4599 sd 0.0510 | decode conf 0.971

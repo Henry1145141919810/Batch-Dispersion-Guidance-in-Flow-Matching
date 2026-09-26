@@ -33,8 +33,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
 sys.path.insert(0, os.path.join(ROOT, "proj1", "src"))
 sys.path.insert(0, os.path.join(ROOT, "proj1", "scripts"))
-from guidance import (KNOWN_MODES, Cost, Posterior,  # noqa: E402
-                      fm_posterior, guidance_field)
+from guidance import (DISPLACEMENT_MODES, KNOWN_MODES, Cost,  # noqa: E402
+                      Posterior, fm_posterior, guidance_field)
 from sampling import FlowSampler, initial_noise, integrate  # noqa: E402
 
 R = {}
@@ -243,6 +243,28 @@ def part_a():
     except ValueError:
         ok = True
     chk("A15 missing bdg_tau raises", ok)
+
+    # A16-A18 come from bobo's original test_bdg.py, kept when the two were
+    # merged on 26 Sep. A16 pins the routing: `bdg` adds to plug's NUMERATOR
+    # and must never be treated as a displacement mode, which would send it
+    # down spbc_displacement instead. A17/A18 pin `bdg_widening`, the one diag
+    # key of bobo's that carries a signal ours did not already record: it is
+    # e < 0, "the controller ASKED to widen", which is NOT bdg_w_eff_neg
+    # (1 + eta*e < 0, "the deviation term actually reversed").
+    chk("A16 'bdg' is NOT a displacement mode",
+        "bdg" not in DISPLACEMENT_MODES)
+    _, _, d_tight = field("bdg", bdg_eta=eta, bdg_tau=0.3 * tau_fp)
+    _, _, d_wide = field("bdg", bdg_eta=eta, bdg_tau=3.0 * tau_fp)
+    chk("A17 tighten is not flagged widening",
+        float(d_tight["bdg_widening"][0]) == 0.0
+        and float(d_tight["bdg_e"][0]) > 0,
+        "widening %.1f e %.4g" % (float(d_tight["bdg_widening"][0]),
+                                  float(d_tight["bdg_e"][0])))
+    chk("A18 widen IS flagged widening",
+        float(d_wide["bdg_widening"][0]) == 1.0
+        and float(d_wide["bdg_e"][0]) < 0,
+        "widening %.1f e %.4g" % (float(d_wide["bdg_widening"][0]),
+                                  float(d_wide["bdg_e"][0])))
 
 
 # --------------------------------------------------------------------------

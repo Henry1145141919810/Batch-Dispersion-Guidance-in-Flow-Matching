@@ -294,12 +294,22 @@ def cell_name(prop, arm, tgt, w, win, variant="-"):
     return base + ".json"
 
 
-# ---- BDG (25 Sep) ---------------------------------------------------------
+# ---- BDG grid, `--stage bdggrid` (25 Sep) ---------------------------------
 # Ported from docs/methods/BDG_HANDOFF.md section 2. The grid below is the
 # handoff's own ladder, reduced to what a local single-GPU run can finish.
-BDG_ETA = 4.0
-BDG_TAU_MULT = (0.5, 1.0, 1.5)
-BDG_W = 1.0
+#
+# THERE ARE TWO BDG PLANNERS IN THIS FILE and they are not interchangeable.
+# This one (`--stage bdggrid`, plan_bdg_grid_cells) is the PARAMETERISED grid:
+# --targets, --strengths and --bdg-variants all open, controls re-run per
+# (prop, target). The other (`--stage bdg`, plan_bdg_ladder_cells, further
+# down) is the author's FIXED ladder, wired into proj1/cluster/bdg*.slurm,
+# with its own hardcoded fixed points and w_eff reduction controls. They were
+# written independently and merged on 26 Sep; before that merge both were
+# called plan_bdg_cells, so the later one silently shadowed the earlier and
+# `--stage bdg` raised a TypeError on its second call. Keep the names distinct.
+BDG_GRID_ETA = 4.0
+BDG_GRID_TAU_MULT = (0.5, 1.0, 1.5)
+BDG_GRID_W = 1.0
 
 
 def parse_bdg_variant(v):
@@ -316,7 +326,7 @@ def parse_bdg_variant(v):
     return float(m.group(1)), float(m.group(2)), bool(m.group(3))
 
 
-def plan_bdg_cells(props, targets, variants, ws, win=None):
+def plan_bdg_grid_cells(props, targets, variants, ws, win=None):
     """BDG grid plus the two controls every BDG cell is read against.
 
     The controls are re-run INSIDE this plan, at this n, batch, device and
@@ -378,6 +388,19 @@ def arm_kwargs(arm, variant, delta):
     elif arm == "spbc":
         r = float(v.split("r")[1]) if v.startswith("r") else -1.0
         kw["spbc_radius"] = None if r < 0 else r
+    elif arm == "bdg":
+        # variant "e<eta>t<tau_mult>[o]":  eta = dispersion gain,
+        # tau_mult = setpoint as a multiple of s (= f_A.y_std by default), so
+        # t1 means "hold the data's own spread", t0.5 contract, t1.5 WIDEN.
+        # A trailing "o" is the one-sided ablation (BTVG's contract-only
+        # restriction). tau itself is resolved in run_cell, where s is known.
+        m = re.match(r"^e([0-9.]+)t([0-9.]+)(o?)$", v)
+        if not m:
+            raise ValueError("bdg variant must look like e1t0.5 or e4t1.5o, "
+                             "got %r" % (v,))
+        kw["bdg_eta"] = float(m.group(1))
+        kw["bdg_onesided"] = bool(m.group(3))
+        kw["_bdg_tau_mult"] = float(m.group(2))
     elif arm in SHG_SCHEDULES:
         kw["schedule"] = SHG_SCHEDULES[arm]
         # any mode the schedule can select must have its own hyperparameters
@@ -555,6 +578,93 @@ def plan_v2_cells(props, arms):
         for arm in sel:
             for v in variants(arm, single=True):
                 add(prop, arm, "q90", DEFAULT_W, V2_WIN, v)
+    return cells
+
+
+# MEASURED fixed points, from bdg_e recorded by array 8706324: the tau_mult at
+# which e = 0 is sqrt(V_b)/y_std, using the mid-trajectory V_b rather than the
+# terminal spread. The pre-run estimate used the terminal sd and was wrong by
+# about 2x on alpha and gap, which is why tau_mult=1.0 is NOT the hold rung.
+BDG_FIXED_POINT = {"mu": 1.21, "alpha": 0.73, "gap": 0.65}
+# Measured w_eff = 1 + eta*<e> of the floor-clearing BDG cells that widen.
+BDG_WEFF = {"mu": (-0.414, -0.288), "alpha": (-0.465,), "gap": (-0.800,)}
+# ---- BDG fixed ladder, `--stage bdg` --------------------------------------
+# The author's ladder, called by proj1/cluster/bdg*.slurm. Distinct from the
+# BDG_GRID_* constants above; see the note at those.
+BDG_TAU_MULT = [0.5, 1.0, 1.5]      # contract / (mislabelled hold) / WIDEN, x s
+BDG_ETA = [1.0, 4.0]
+BDG_W = 1.0                          # centring strength held fixed for the ladder
+
+
+def plan_bdg_ladder_cells(props, win=None):
+    """BDG ablation ladder plus its MATCHED controls, all in one job.
+
+    Matched controls are mandatory here and not optional: the only generator
+    checkpoint present in this tree is weights/fm_ema.pt, while every cell in
+    results/sweep* was produced with fm_last.pt, which is absent. Cross-
+    checkpoint comparison would be invalid, so unguided and plug are re-run
+    beside BDG on the same checkpoint, seed and window, and ONLY those
+    comparisons are reported.
+
+    Ladder, per property (w fixed at 1.0 so only the dispersion knobs move):
+      e0t1      eta = 0            -> must reproduce plug bit-identically
+      e{1,4}t{0.5,1.0,1.5}         -> gain x setpoint, both directions
+      e4t0.5o, e4t1.5o             -> the one-sided (BTVG) restriction
+    """
+    win = V2_WIN if win in (None, "") else float(win)
+    seen, cells = set(), []
+
+    def add(prop, arm, w, variant):
+        k = (prop, arm, "q50", w, win, variant)
+        if k not in seen:
+            seen.add(k)
+            cells.append(k)
+
+    for prop in props:                       # pass 1: controls first
+        add(prop, "unguided", 1.0, "bdgref")
+        add(prop, "plug", BDG_W, "bdgref")
+        add(prop, "bdg", BDG_W, "e0t1")      # the bit-identity control
+    for prop in props:                       # pass 2: the ladder
+        for tm in BDG_TAU_MULT:
+            for eta in BDG_ETA:
+                add(prop, "bdg", BDG_W, "e%gt%g" % (eta, tm))
+    for prop in props:                       # pass 3: one-sided ablation
+        for tm in (0.5, 1.5):
+            add(prop, "bdg", BDG_W, "e4t%go" % tm)
+    for prop in props:                       # pass 4: plug strength reference
+        for w in (0.25, 4.0):
+            add(prop, "plug", w, "bdgref")
+    for prop in props:
+        # THE TRUE HOLD CONTROL, one rung per property at its own measured
+        # fixed point. A servo with a setpoint should do NOTHING when the batch
+        # already sits at the setpoint; this is the cell that tests that, and
+        # it cannot be a shared tau_mult because the fixed point is a property
+        # of each guide's scale.
+        fp = BDG_FIXED_POINT.get(prop)
+        if fp:
+            for eta in BDG_ETA:
+                add(prop, "bdg", BDG_W, "e%gt%g" % (eta, fp))
+    for prop in props:
+        # THE REDUCTION CONTROL. BDG's numerator is AFFINE in F_i, so it
+        # factors exactly:
+        #     (y-F_i) - eta*e*(F_i-F_bar) = (1+eta*e) * (y_eff - F_i)
+        # i.e. BDG is plug at a batch-adaptive scalar weight w_eff = 1+eta*e
+        # with a shifted target. Verified to 1e-14. Every floor-clearing
+        # "widening" cell has w_eff NEGATIVE, so the widening is plug run at a
+        # negative guidance weight, not variance control.
+        # These cells test that directly: plug at the measured w_eff. If they
+        # reproduce the corresponding BDG cells, the reduction is demonstrated
+        # and not merely derived.
+        for w in BDG_WEFF.get(prop, ()):
+            add(prop, "plug", w, "weff")
+    for prop in props:
+        # THE SCIENTIFIC CORE: V_b (across-batch, survives) vs V_F (per-sample
+        # posterior variance, vanishes as k = (1-t)^2/t -> 0). btvg_var is the
+        # V_F arm. It must be re-run HERE, on this checkpoint and this device,
+        # because its cells on disk are all fm_last and would make the one
+        # comparison the paper turns on a cross-checkpoint artefact.
+        for w in (1.0, 4.0):
+            add(prop, "btvg_var", w, "tau1")
     return cells
 
 
@@ -819,7 +929,7 @@ def main():
                          "TARGETS key such as q50,q90")
     ap.add_argument("--stage", default="main",
                     choices=["main", "v2", "all", "compare", "targets", "full",
-                             "tune", "tuned_full", "bdg"],
+                             "tune", "tuned_full", "bdg", "bdggrid"],
                     help="main = the v1 grid (default arms); v2 = the new arms "
                          "against re-run references; all = both, v1 first; "
                          "full = every compare-set arm once at its --frozen "
@@ -829,7 +939,7 @@ def main():
                          "freeze_tune.py chose (needs --frozen); bdg = the BDG "
                          "ladder plus its own re-run unguided/plug controls")
     ap.add_argument("--bdg-variants", default="",
-                    help="--stage bdg: comma-separated 'e<eta>t<mult>[o]'. "
+                    help="--stage bdggrid: comma-separated 'e<eta>t<mult>[o]'. "
                          "Default: eta=%g at tau_mult %s."
                          % (BDG_ETA, ",".join(str(m) for m in BDG_TAU_MULT)))
     ap.add_argument("--frozen", default="",
@@ -870,6 +980,33 @@ def main():
     ap.add_argument("--strengths", default="",   # stages `targets` and `tune`
                     help="--stage targets only: comma list replacing the "
                          "registered strength grid (default: STRENGTHS)")
+    ap.add_argument("--s-mode", default="y_std",
+                    choices=["y_std", "y_std_4", "2delta", "delta", "delta_4", "zero"],
+                    help="the guidance tolerance s in the likelihood "
+                         "exp(-(y-f)^2 / 2 s^2). FINDINGS Gap 0: s was hardcoded "
+                         "to f_A.y_std and NEVER swept, 6-17x wider than the "
+                         "delta the samples are scored against. For the plug "
+                         "family s is degenerate with w (kappa = w/s^2), but "
+                         "for the smg/tmpd family the denominator is s^2 + v_f "
+                         "so it is NOT. s=zero on smg_var reduces to e/V, which "
+                         "is the interval-likelihood objective to within 13%%.")
+    ap.add_argument("--only-variant", default="",
+                    help="keep only planned cells with this variant. Used by "
+                         "the BDG CPU array to put ONE cell in each task: this "
+                         "model's tensors are too small for torch intra-op "
+                         "parallelism to engage, so the parallelism has to be "
+                         "across cells rather than threads.")
+    ap.add_argument("--only-arm", default="",
+                    help="keep only planned cells with this arm. --arms selects "
+                         "what is PLANNED; this filters what was planned.")
+    ap.add_argument("--win", default="",
+                    help="--stage targets only: t_min_guide for the planned "
+                         "cells, replacing V2_WIN (0.5). The registered grid "
+                         "left (t_min >= 0.75, w > 1) EMPTY -- all 24 "
+                         "tmin0.75 cells on disk are w=1, which carries only "
+                         "12.5%% of the guidance impulse -- so the claim that "
+                         "the late window is ineffective is confounded with "
+                         "strength. This flag exists to test that.")
     ap.add_argument("--dist-offset", type=int, default=0,
                     help="dist targets from test[offset : offset+n] (default 0 "
                          "= the full run's block). Use a disjoint block to tune "
@@ -972,9 +1109,12 @@ def main():
     if args.stage == "targets":
         cells += plan_target_cells(
             props, arms, [t for t in args.targets.split(",") if t],
+            win=(float(args.win) if args.win else None),
             strengths=([float(x) for x in args.strengths.split(",") if x]
                        if args.strengths else None))
     frozen = None
+    if args.stage == "bdg":
+        cells += plan_bdg_ladder_cells(props, win=args.win)
     if args.stage == "full":
         if not args.frozen:
             raise SystemExit("--stage full needs --frozen (the json written by "
@@ -991,15 +1131,15 @@ def main():
     if args.stage in ("v2", "all"):
         v2 = V1_MISSING + V2_ARMS + SHG_ARMS if args.stage == "all" else arms
         cells += plan_v2_cells(props, v2)
-    if args.stage == "bdg":
+    if args.stage == "bdggrid":
         variants = ([v for v in args.bdg_variants.split(",") if v]
-                    or ["e%gt%g" % (BDG_ETA, m) for m in BDG_TAU_MULT])
+                    or ["e%gt%g" % (BDG_GRID_ETA, m) for m in BDG_GRID_TAU_MULT])
         for v in variants:
             parse_bdg_variant(v)          # fail on a typo before any compute
-        cells += plan_bdg_cells(
+        cells += plan_bdg_grid_cells(
             props, [t for t in args.targets.split(",") if t], variants,
             ws=([float(x) for x in args.strengths.split(",") if x]
-                if args.strengths else [BDG_W]))
+                if args.strengths else [BDG_GRID_W]))
     if args.preflight:
         seen_arm, first = set(), []
         for c in cells:
@@ -1011,6 +1151,10 @@ def main():
     if args.only_w:
         keep = {float(x) for x in args.only_w.split(",") if x}
         cells = [c for c in cells if float(c[3]) in keep]
+    if args.only_variant:
+        cells = [c for c in cells if str(c[5]) == args.only_variant]
+    if args.only_arm:
+        cells = [c for c in cells if str(c[1]) == args.only_arm]
     todo = [c for c in cells if not os.path.exists(os.path.join(OUT, cell_name(*c)))]
     if args.preflight:
         todo = list(cells)          # never skip: nothing was written
@@ -1203,16 +1347,29 @@ def main():
             target = float(y_real.mean())
         else:
             target = TARGETS[prop][tgt]
-        s = f_A.y_std
+        # Gap 0 (bobo): s was never swept. The default reproduces the
+        # registered runs byte for byte; every other value is an explicit
+        # opt-in. tau_mult below multiplies whatever s resolves to here, so a
+        # non-default --s_mode moves BDG's setpoint too -- which is why
+        # bdg_meta records bdg_s rather than assuming f_A.y_std.
+        _dl = float(delta)
+        s = {"y_std": lambda: f_A.y_std,
+             "y_std_4": lambda: f_A.y_std / 4.0,
+             "2delta": lambda: 2.0 * _dl,
+             "delta": lambda: _dl,
+             "delta_4": lambda: _dl / 4.0,
+             "zero": lambda: 0.0}[args.s_mode]()
         if "_bdg_tau_mult" in extra:
-            # tau = tau_mult * s, s = the guide's own output sd. Resolved here
-            # because s comes from the loaded guide. Recorded on the cell below
-            # so a result can be read without re-deriving it.
+            # tau = tau_mult * s. The unguided population sd is within ~7% of
+            # f_A.y_std under the registered protocol, so tau_mult reads as
+            # "fraction of the natural spread". Recorded on the cell below so a
+            # result can be read without re-deriving it.
             mult = extra.pop("_bdg_tau_mult")
             extra["bdg_tau"] = mult * float(s)
             bdg_meta = {"bdg_tau_mult": mult, "bdg_tau": extra["bdg_tau"],
                         "bdg_eta": extra["bdg_eta"],
-                        "bdg_onesided": extra["bdg_onesided"], "bdg_s": float(s)}
+                        "bdg_onesided": extra["bdg_onesided"],
+                        "bdg_s": float(s), "bdg_s_mode": args.s_mode}
         else:
             bdg_meta = {}
         if arm == "bdg" and args.batch < args.n:
@@ -1220,6 +1377,11 @@ def main():
             # runs several independent controllers with different setpoint
             # errors. Refuse rather than write a cell whose controller is not
             # the one the cell name claims.
+            #
+            # THIS GUARD IS guidance_sweep's ONLY. Protocol v3 runs through
+            # transfer_sweep.py, which deliberately splits n into several
+            # controllers because one batch of n does not fit in memory, and
+            # records that deviation per cell. Do not copy this raise there.
             raise ValueError(
                 "bdg needs --batch == --n (the batch IS the estimator); "
                 "got n=%d batch=%d" % (args.n, args.batch))

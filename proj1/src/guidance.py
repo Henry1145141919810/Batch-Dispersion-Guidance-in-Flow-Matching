@@ -1779,6 +1779,17 @@ def guidance_field(f_net, post_fn, coords, feats, mask, y, s,
             "bdg_disp_rms": rms_disp.detach().expand_as(fval).clone(),
             "bdg_w_eff": (1.0 + bdg_eta * e).detach().expand_as(fval).clone(),
             "bdg_batch": torch.full_like(fval, float(B)),
+            # KEPT FOR COMPATIBILITY with bdg_table.py and test_bdg.py, which
+            # read these three by name. `bdg_dev` and `bdg_disp` are mean-zero
+            # over the batch by construction, so _accumulate_diag's batch mean
+            # reduces them to ~1e-7 -- read `bdg_dev_rms`/`bdg_disp_rms`
+            # instead. `bdg_widening` is NOT the same signal as
+            # `bdg_w_eff_neg`: widening is e < 0 (the controller asked to
+            # spread), w_eff_neg is 1 + eta*e < 0 (the deviation term actually
+            # reversed), and they differ by the factor eta.
+            "bdg_dev": dev.detach().clone(),
+            "bdg_disp": disp.detach().clone(),
+            "bdg_widening": (e < 0).to(fval.dtype).expand_as(fval).detach().clone(),
         }
         # THE STEP MEAN IS THE SECOND HALF OF THE SAME BUG. The keys above are
         # exact per step -- e is one scalar for the batch -- but the sampler then

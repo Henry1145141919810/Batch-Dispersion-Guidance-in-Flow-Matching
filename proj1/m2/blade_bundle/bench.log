@@ -1,0 +1,4 @@
+device=cuda params=1.02M train=83722
+  4,177 sample-views/sec
+  80,000 steps x 256 = 20.5M views  ->  1.36 h
+  published Linear FM budget 40.3M  ->  2.68 h

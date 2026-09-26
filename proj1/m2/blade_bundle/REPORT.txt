@@ -1,0 +1,91 @@
+Modality 2 base model -- blade run report (2026-09-26)
+
+Checkpoint: blade:/scratch2/boboli/projects/cis6270-project1-group2/proj1/m2/blade_bundle/fm_m2_dfb500.pt
+Run on GPU 2 (RTX A6000), 03:09:24 -> 12:11:32. Logs: train.log, bench.log,
+sample_gc.log, check_quality.log, nfe_sweep.log.
+
+VERDICT: the base is good. At enough Euler steps it matches the data on base
+composition, GC mean, GC spread (97%) and k-mers, and it does not memorise. The
+one thing the sweep must get right is the sampler's NFE; see item 5.
+
+DEVIATIONS FROM THE HANDOFF -- read these first
+  1. 1500 epochs, not 489. The project owner asked for this. That is 492,000 steps,
+     126.0M sample-views: 3.1x the published Linear FM budget (40.3M) and above
+     Dirichlet FM's 111.7M. Cosine LR annealed over all 1500 epochs.
+  2. --patience 300 (was 10), so that early stopping cannot fire and the run reaches
+     1500 as asked. The checkpoint is still the best-val one.
+  3. --out ./fm_m2_dfb500.pt (was fm_m2_dfb500.pt). The bundle crashed as shipped:
+     with no directory in --out, simplex_fm.py:303 calls os.makedirs('') at the
+     first val improvement and raises FileNotFoundError at epoch 5. Path-only fix;
+     no training code changed. The fix belongs upstream too.
+  No other flag, the data, the split, the crop and the code are all unchanged.
+
+Sanity check on load: all reproduced exactly
+  train (83722, 500, 4)  val (10505, 500, 4)  test (10434, 500, 4)
+  GC mean 0.4552  sd 0.0552    gc_soft == gc_hard: max|d| = 0.00e+00
+  one-hot rows sum to 1: max err 0.0e+00
+
+1. Final validation loss
+   best val 0.06336 at step 475,600 = epoch 1450 (121.8M views).
+   last val 0.06337 at step 492,000 = epoch 1500. Train 0.06341 ~ val, no overfitting.
+   Curve: ep5 0.06858, ep50 0.06537, ep100 0.06464, ep250 0.06426, ep490 0.06421,
+          ep750 0.06412, ep1000 0.06361, ep1250 0.06346, ep1500 0.06337.
+
+2. Early stopping
+   Disabled (see deviation 2); the run went the full 1500 epochs.
+   For reference: with the original --patience 10, early stopping would have fired
+   at epoch 195 (best then 0.06444 at epoch 145), with LR still at 1.92e-3.
+
+3. Wall time and throughput
+   Training loop 539.7 min (9.0 h), including validation.
+   bench.py on GPU 2: 4,177 sample-views/sec (three earlier probes gave
+   4,187 / 4,236 / 4,247). Realised rate including validation: ~3,890 views/sec.
+
+4. Generated GC sd vs real 0.0552
+   Unguided, x0 ~ Dirichlet(1), Euler with to_simplex after each step, seed 0.
+   gate.py was not in the bundle, so its NFE is unknown here; hence the sweep.
+
+     NFE     n    GC mean   gc_hard sd  (% of 0.0552)  gc_soft sd   decode conf
+      50   4096   0.4705     0.0487        88%           0.0455       0.937
+     100   4096   0.4637     0.0517        94%           0.0489       0.958
+     200   4096   0.4596     0.0531        96%           0.0510       0.971
+     400   2048   0.4568     0.0531        96%           0.0517       0.980
+    1000   2048   0.4554     0.0534        97%           0.0526       0.988
+     real         0.4552     0.0552                                   (test: 0.4556 / 0.0551)
+
+   Across seeds 0/1/2 at NFE 100, gc_hard sd is 0.0517 / 0.0512 / 0.0515, so the
+   estimate is stable. The base reproduces the data's spread to within ~3% once the
+   sampler converges; the earlier 200 bp gate had 86%. Anchor the setpoint grid on
+   s = 0.0552 as planned.
+
+5. Surprises
+   - The bundle crashes at the first checkpoint save as shipped (deviation 3).
+   - At low NFE the sampler, not the model, biases composition. At NFE 100, G is
+     over-produced (0.240 vs real 0.227) while C is not (0.223), so Watson-Crick
+     symmetry breaks and GC mean runs +0.008 high. It converges as NFE grows: at
+     NFE 1000, A/C/G/T = .2720/.2267/.2287/.2726 vs real .2725/.2282/.2274/.2719,
+     and GC mean is 0.4554. This is Euler discretisation error, not a learned bias.
+   - At low NFE, gc_soft and gc_hard also disagree on generated samples: at NFE 100
+     the guided property's sd (0.0489) is 6% under the scored one (0.0517). The
+     gap closes to 1.5% at NFE 1000. On real data they agree exactly.
+     => Calibrate tau and run the sweep at the same NFE, and prefer NFE >= 400 if
+        the budget allows. At NFE 100, a soft-scale setpoint will score wider and
+        centred higher than intended.
+   - The patience-10 protocol would have stopped this run at epoch 195, under
+     un-annealed LR (1.92e-3).
+   - Val loss moved only 0.06421 -> 0.06337 from epoch 490 to 1500 (1.3%), most of
+     it after epoch 750, once LR fell below 1e-3.
+
+Quality checks (check_quality.py, NFE 100, n 4096 per row, reference = real test)
+                    3-mer JS   4-mer JS   6-mer JS   longest homopolymer (mean)
+   real train (floor)  0.0000     0.0000     0.0006      6.9
+   generated seed 0    0.0007     0.0010     0.0025      6.6
+   iid real comp.      0.0134     0.0225     0.0463      5.3
+   uniform random      0.0170     0.0271     0.0528      5.2
+   (JS in log2, pooled k-mer counts.) The 3-mer JS is 24x better than uniform (the
+   gate's criterion; the 200 bp gate had 7.6x) and 19x better than composition-
+   matched iid. So the model learned sequence structure, not just base frequencies.
+   No degenerate repeats: P(run >= 20) is 0.002-0.004 generated vs 0.004 real.
+   No memorisation: the nearest-train aligned identity for 512 samples is mean 0.343
+   and max 0.372, the same as real test vs train (0.345 / 0.382). Nothing is
+   near a copy. (Aligned identity only; shifted copies are not checked.)

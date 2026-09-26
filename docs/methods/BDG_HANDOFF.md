@@ -63,7 +63,9 @@ push_i = [ (y - F_i) - eta * e * (F_i - F_bar) ] / s^2 * g_i
             centring          dispersion
 ```
 
-`tau` is **the knob** (requested spread); `eta` is the gain. In the sweep `tau = tau_mult * s` with
+`tau` is **the knob** (requested spread); `eta` is the gain. **Note:** `tau_mult = 1.0` is *not* a
+no-op — the measured fixed points are ~0.57–0.87 depending on property and gain, so cell names like
+`e4t1` should not be read as "hold". The bit-identity control is `e0t1` (`eta = 0`). In the sweep `tau = tau_mult * s` with
 `s = f_A.y_std`, so `tau_mult` reads as "fraction of the natural spread".
 
 ### Why that dispersion term is the gradient of the grouping
@@ -189,10 +191,19 @@ $PY proj1/scripts/bdg_table.py results/bdg_seed2
 
 **Protocol facts you must not break:**
 
-- `weights/fm_last.pt`, which produced **every** cell in `results/sweep*`, is **not in this tree**
-  (it lives under another account, permission denied). The only generator here is `weights/fm_ema.pt`.
-  **No BDG number may be compared to `results/sweep`.** That is why `unguided` and `plug` controls are
-  re-run inside every BDG job, and why output goes to `results/bdg/`, not `results/sweep/`.
+- **CHECKPOINT: corrected 25 Sep.** An earlier version of this doc said BDG numbers could never be
+  compared to `results/sweep`. That was too strong. `weights/fm_ema.pt` (md5 `e19ccc06`) carries
+  `source_md5 = a190ac83`, the md5 stamped in all 1080 sweep cells, and `load_fm(..., use_ema=True)`
+  reads `("ema_state_dict", "ema")` from **both** layouts — so sampling consumed the *same EMA tensors*
+  either way. `weights/README.md` records `max |w_slim - w_full| = 0.0` on every parameter.
+  Measured on 18 matched (prop, arm, q, w, t_min) pairs: `in_band` differs by **+0.0012 ± 0.0129**
+  (max 0.0234), against 0.0188 for two independent draws — i.e. *below* independent-draw noise, t=0.38.
+  `mol_stability` drifts **-0.0077 ± 0.0211**, consistently signed but not significant.
+  **So:** BDG cells and `results/sweep` cells MAY appear in the same comparison table, provided the
+  equivalence check above is printed as a protocol table. The real differences are DEVICE (B200 GPU vs
+  CPU) and BATCH (128 vs 512), not weights.
+  **BUT keep floor calls within-job.** FR3a = 0.362109 and `mol_stability` drifts -0.008, which flips
+  marginal cells. Pass/fail verdicts use the in-job control; comparison tables may mix.
 - BDG runs `--n 512 --batch 512` (one batch) on purpose: **for BDG the batch IS the estimator.** The
   usual 128-in-512 would run four independent controllers.
 - `btvg_var` runs at batch 128. This is sound *only* because `V_F` is per-sample and cannot depend on
@@ -261,24 +272,44 @@ so the comparison is valid.
 
 ## 8. Novelty — the honest position
 
-**Not new:** batch-coupled guidance (Particle Guidance, Corso et al. ICLR 2024 — but *repulsive*, in
-sample space, no setpoint); moment correction (MGD, arXiv 2602.17211); spread targeting through a
-batch distribution (Variance-Tilted Diffusion, arXiv 2606.22239 — but *monotone*, can only widen, on a
-fixed linear feature); divergence-to-a-reference matching (MMD Guidance, arXiv 2601.08379); adaptive
-guidance scales (autoguidance, CFG++, guidance intervals); and **the one-sided version of this exact
-controller**, specified in this repo's own `Three_New_Guidance_Ideas_Variance_and_Switching.md` §5.2 as
-`b_V = -eta_V (V - tau^2)_+`, never implemented, and abandoned in its own revision.
+A final literature pass (25 Sep) found **more prior art than earlier checks did**. Read this before
+writing §3.5 — three framings that look attractive are already dead.
 
-**What is ours:** removing the positive-part restriction so one controller both narrows *and* widens;
-the stability argument that licenses removing it (the clamp is only necessary for the vanishing
-per-sample `V_F`, not for `V_b`); the setpoint-relative scale-free error `e`; and the demonstration
-that the resulting loop does not reduce to any fixed weight schedule.
+**Dead framings, do not use any of these:**
 
-**Do not claim** to be first to control variance, and do not present this as a new *direction* —
-the reduction in §3 forbids it.
+| framing | killed by |
+|---|---|
+| "the guidance weight as a feedback controller" | **CFG-Ctrl, arXiv:2603.03281** — reinterprets CFG as control on the generative flow and *explicitly* calls vanilla CFG "a proportional controller (P-control) with fixed gain". Scale-as-gain is in print. |
+| "negative guidance weight widens the distribution" | **Ventura, Achilli, Ambrogioni & Lucibello, arXiv:2602.00716** (31 Jan 2026) — proposes a schedule with a negative-guidance window and states the mechanism outright: *"negative guidance reduces means and expands variances"*, with theory and Stable Diffusion experiments. Our `plug` at `w<0` widening 1.15–2.53x is a **replication in a different guidance family, not a discovery.** Cite it. |
+| "state-dependent / self-regulating guidance scale" | **FBG, arXiv:2506.06085** — self-regulating scale from the model's own predictions, challenging guidance-as-fixed-hyperparameter. |
+| "drive an empirical batch second moment to a setpoint, two-sided" | **MGD, arXiv:2602.17211** — empirical ensemble moments, a prescribed target, a corrector whose RHS is literally (empirical moment − setpoint), sign-reversing with the mismatch, and second moments included whenever the feature map has quadratic entries. |
 
-Two independent checks rated this `yes / yes / marginal` with ~0.85 confidence of clearing a
-"slightly novel" bar for a course project, ~0.1 for a workshop paper.
+**Also not new:** batch-coupled guidance (Particle Guidance, Corso et al. ICLR 2024 — *repulsive*, in
+sample space, no setpoint); spread targeting through a batch distribution (Variance-Tilted Diffusion,
+arXiv:2606.22239 — *monotone*, can only widen, fixed linear feature); MMD Guidance (arXiv:2601.08379);
+adaptive scales generally (autoguidance, guidance intervals, CFG rescaling); and **the one-sided
+version of this exact controller**, specified in this repo's own
+`Three_New_Guidance_Ideas_Variance_and_Switching.md` §5.2 as `b_V = -eta_V (V - tau^2)_+`, never
+implemented, and abandoned in its own revision.
+
+**What actually survives — a narrow combination claim plus a negative result.** No paper found sets
+the scalar weight of a *property-gradient* guidance term from the *across-batch second moment of the
+property net's own endpoint prediction*, against a *user-chosen* setpoint, signed so the weight passes
+through zero. Each ingredient is separately published; the combination is not. MGD is closest and
+differs in three ways worth stating: no property predictor (its feature map is fixed), its setpoint is
+the interpolant's own moment trajectory rather than a user choice, and it solves a Gram-matrix system
+for multipliers rather than reducing to a reweighted guidance term.
+
+**The real content is the reduction (§3), not the method.** `w_eff = 1+eta*e` is a structural result:
+it says the repo's own unimplemented RATV 2x2 solve is unnecessary, and that any affine-in-`F_i`
+coefficient is `plug` reweighted. Pair that with the measured finding that both ends of the knob are
+blocked and you have a defensible course-project contribution. **Sell the diagnosis, not the arm.**
+
+**Do not claim** to be first to control variance, to have invented feedback guidance, or to have
+discovered negative-weight widening.
+
+Verdict: ~0.85 confidence of clearing a "slightly novel" bar for a course project, ~0.1 for a
+workshop paper.
 
 ---
 
@@ -289,8 +320,9 @@ Two independent checks rated this `yes / yes / marginal` with ~0.85 confidence o
    property — the grid-search artifact that produced two false results earlier in this project.
    **Cheapest fix: 6 cells, ~1 h.** This is the highest-value remaining run.
 2. **`plug` at negative `w` beats BDG on alpha** (1.153x at `mol_stab` 0.397 vs BDG's 1.034 / 0.373).
-   The simpler thing wins there. Report it; do not bury it. Negative guidance weight as a deliberate
-   widening mechanism may be a cleaner claim than BDG itself.
+   The simpler thing wins there — report it, do not bury it. **But it is NOT a claim:** negative-weight
+   widening is published (arXiv:2602.00716). Present it as a replication and as the honest control that
+   BDG must beat.
 3. **`bdg_dev` and `bdg_disp` are structurally uninformative** — both are mean-zero over the batch by
    construction and `_accumulate_diag` takes a batch mean, so they record ~1e-7 in every cell. Persist
    the batch RMS instead.
@@ -316,3 +348,116 @@ Two independent checks rated this `yes / yes / marginal` with ~0.85 confidence o
 - **§3.6 / §4.6 (Modality 2)** — `V_b` is the batch variance of a scalar and carries no geometry, so
   only `f_A` and the pullback change. **Verify this claim before relying on it** — it has not been
   tested on the simplex.
+
+---
+
+# 11. Modality 2 — DNA enhancers on the probability simplex
+
+Added 26 Sep. **BDG transferred with zero code change**, which is the §3.6 claim made
+literal. Read §11.4 before writing §4.6 — the task is *not* the published benchmark.
+
+## 11.1 Data — and one trap
+
+`/vast/projects/pranam/lab/pranam/MOG-DFM/dataset/enhancer_data/`
+- `KC_regions.fa` — 6,126 **Drosophila** Kenyon-cell enhancers, native 500 bp (`chr2L..chrX`)
+- `MEL_regions.fa` — 3,885 **human** melanoma enhancers (`chr1..chr22`)
+
+**Do not merge them.** Different species. Training on the mixture makes the GC
+distribution bimodal, and BDG steering that spread would partly be steering the
+species mixing proportion — a confound sitting on the measured quantity. Use KC
+alone, all 6,126 (no train/val split needed: the evaluator is an exact count, so
+no leakage is possible).
+
+`DeepFlyBrain_data.pkl` (554 MB), `DeepMEL2_data.pkl` (440 MB) and
+`classifier_ckpt/enhancer_class.ckpt` (133 B) are **git-LFS pointers, not files**.
+The hparams beside them ARE real (`num_cls: 47`, `mel_enhancer: true`) and are the
+Dirichlet-FM repo's MEL classifier config.
+
+## 11.2 Code
+
+| file | what |
+|---|---|
+| `proj1/m2/gate.py` | the go/no-go on the naive base. **Passed**: decode confidence 0.983, generated GC sd 0.0572 vs real 0.0668 (86%), 3-mer JS 7.6x better than uniform |
+| `proj1/m2/simplex_fm.py` | data → simplex, model, training, `gc_soft` (f_A) / `gc_hard` (exact evaluator). GPU + 500 bp + validation early stopping |
+| `proj1/m2/m2_sweep.py` | guidance field + sampler + metrics, one cell per invocation |
+| `proj1/cluster/m2_{gate,train,sweep,train_gpu}.slurm` | the runs |
+| `results/m2/` | 26 cells, 2 seeds, at 200 bp |
+
+## 11.3 What transferred
+
+State space went from R^3 molecular coordinates to (Delta^3)^L; the property went
+from a trained EGNN to an exact GC count; **the controller did not change**.
+
+| signature | QM9 | DNA |
+|---|---|---|
+| `eta=0` ≡ plug | bit-identical | **bit-identical** |
+| one-sided at widening setpoint ≡ plug | exact | **exact** (`w_eff = +1.000`) |
+| widening reached | 1.168 / 1.094 | **1.0055 / 1.0078** (`w_eff` −1.381 / −1.451) |
+| monotone in tau | 0.68→0.91→1.03 | 0.81→1.00→1.01 |
+| cost identical to plug | yes | **yes**, byte-identical |
+| contraction breaks the fidelity floor | FR3a fails at `e4t0.5` | **k-mer floor fails at `e4t0.5`** |
+| in_band improves | **no** | **no** |
+
+**The conclusion transferred too:** in neither modality does spread control raise
+band coverage, and in both the contraction rung is the one that breaks fidelity.
+
+**The magnitude is 2.6x smaller** (0.20 vs 0.52 span). Not the clip — it fired on
+0-3% of steps and the widening cell clipped *once* in 25,600. Three real causes:
+GC is **affine** (zero curvature, gradient identical at every position, so the
+simplex renormalisation partly undoes it); GC is a **200-position average**; and
+the band spans only **4.3 attainable GC values** (granularity 1/200 = 0.005,
+delta = 0.0107), a hard ceiling on what any method can move.
+
+The lever for a stronger effect is a **richer property**, not more data: a trained
+cell-type classifier logit is nonlinear, motif-driven and continuous-valued. Use
+classifier **guidance**, never classifier **conditioning** — a conditional model
+gives BDG nothing to steer and breaks the M1↔M2 parallel §3.6 is scored on.
+
+## 11.4 THIS IS NOT THE PUBLISHED BENCHMARK — disclose it
+
+Verified 26 Sep against Dirichlet FM (arXiv 2402.05841), Fisher Flow (NeurIPS
+2024), Gumbel-Softmax FM (arXiv 2503.17361) and MOG-DFM (arXiv 2505.07086).
+
+**The standard enhancer protocol:** class-conditional generation, **500 bp**,
+DeepFlyBrain (**81 classes**, 104k seqs) / DeepMEL2 (**47 classes**, 89k), scored by
+**FBD** — Wasserstein distance between Gaussians fit to a pretrained classifier's
+penultimate embeddings, **10k samples each** — plus target-class probability.
+Dataset: Zenodo 10184648, a single **26 GB** tarball.
+
+**GC content is used by none of them.** Their targets are cell-type class
+(enhancers), Sei-predicted activity (promoters), and DNA shape HelT/Rise (MOG-DFM).
+
+**Our deviations:** GC-band coverage instead of class-conditional FBD; 6,126
+sequences instead of 83,968; 1.3M sample-views instead of 40.3M; 200 bp in the
+shipped cells instead of 500.
+
+**Three disclosures that are free rubric credit:**
+1. **Gumbel-Softmax FM does not run the enhancer benchmark at all** (promoter,
+   protein and peptide tasks only). Only 2 of the 3 named baselines apply here.
+2. **Fisher Flow switches the headline metric to perplexity and disputes FBD**,
+   reporting the cell-type classifiers score only **11.5% / 11.2%** test accuracy.
+   You can cite a NeurIPS paper saying the standard evaluator is weak.
+3. **MOG-DFM's own guided demo runs at `--length 100`** while reporting base FBD at
+   500 bp. Short-length guided demonstrations are precedented in this literature.
+
+**Our base model IS their "Linear FM" baseline** (published FBD 19.6 melanoma /
+15.0 fly brain at 100 NFE, vs Dirichlet FM 5.3 / 15.2), trained on a 6k subset.
+So the base is a *named published baseline*, not something non-standard — but the
+numbers are not comparable. **Quote theirs for context; never put them in one
+table with ours.**
+
+Also: at 200 bp their classifier does **not** crash — it global-average-pools, so
+it is length-agnostic and returns numbers that are meaningless. Silent garbage,
+not an error. Another reason the 500 bp rerun matters.
+
+## 11.5 In flight / next
+
+- **GPU job 8716992** (`b200-mig90`): 500 bp, hidden 256, 12 layers, batch 256,
+  validation early stopping, max 100k steps. Records `best_it`, `sample_views`,
+  `val_loss` for §A.2. When it lands, re-run the 26-cell sweep at 500 bp.
+- **Memorization check, not yet run.** 6,126 sequences on a 0.83M-param model: take
+  nearest-neighbour Hamming from each generated sequence to the training set. ~20
+  lines, no new sampling (the `.permol.pt` sidecars exist). This is the novelty
+  metric the rubric lists for sequence modalities, and it converts a question
+  someone will ask at the defense into a reported number.
+- **QM9 gap runs, not queued** (see §9): eta=1 on seed 2 is the highest-value one.
