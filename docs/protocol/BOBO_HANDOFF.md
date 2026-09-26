@@ -171,6 +171,34 @@ pool cells whose `pair` disagrees, and every cell records which pair scored it.
 
 ---
 
+## 5b. Verified before this was handed over
+
+All three backends were run end to end on 26 Sep at `--preflight` (one
+throwaway cell per arm, nothing written), each with its declared pair:
+
+| backend | generator md5 | pair | guide MAE (mu) | δ | scale check |
+|---|---|---|---|---|---|
+| `fm` | `a190ac839490` | ours | 0.07019 D | 0.13676 | 0.997 / 0.994 |
+| `equifm` | `89db17e7f793` | TFG's | 0.04174 D | 0.15675 | 0.979 / 0.946 |
+| `edm` | `6abbd010d766` | ours | 0.07019 D | 0.13676 | 0.997 / 0.994 |
+
+So the wiring is exercised, not merely intended — including `edm`, the one
+new path, where our predictors have to be scale-wrapped because that sampler
+works in one-hot/4.
+
+**Not verified:** a full-size cell on a cluster GPU, wall-clock cost on your
+hardware, and the memory figures on your card. The preflight runs 8 molecules
+per arm; the array's own preflight link re-checks the batch on the real slice
+before the run starts.
+
+Run the same check yourself after cloning:
+
+```
+python proj1/scripts/transfer_sweep.py --stage v3 --backend fm     --props mu --arms unguided,plug --seed 20261001 --preflight
+```
+
+---
+
 ## 6. Things that are NOT ready, so you do not go looking
 
 - **Modality 2 is not a v3 backend.** Its model and data are in the clone and
