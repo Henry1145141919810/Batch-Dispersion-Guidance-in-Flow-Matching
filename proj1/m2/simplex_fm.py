@@ -188,6 +188,9 @@ def main():
     # matching their step count would be ~6,500 epochs of pure memorisation.
     # "Matched in strength" for a smaller dataset means trained until validation
     # stops improving, and reporting where that happened.
+    ap.add_argument("--epochs", type=int, default=489,
+                    help="passes over the training set. 0 falls back to --steps.\n                          489 x 327 steps x 256 = 41.0M sample-views, which is\n                          the published Linear FM budget (157,440 steps, 40.3M).")
+    ap.add_argument("--val-every-epochs", type=int, default=5)
     ap.add_argument("--val-every", type=int, default=2000)
     ap.add_argument("--patience", type=int, default=5)
     ap.add_argument("--dfb", action="store_true",
@@ -214,10 +217,21 @@ def main():
     Xa, Xv = Xa.to(dev), Xv.to(dev)
     net = SimplexFM(a.hidden, a.layers).to(dev)
     opt = torch.optim.Adam(net.parameters(), lr=a.lr)
-    sch = torch.optim.lr_scheduler.CosineAnnealingLR(opt, a.steps)
+    # One epoch is one pass over the training set with a fresh shuffle, matching
+    # both published enhancer baselines (Dirichlet FM and Fisher Flow each use
+    # DataLoader(shuffle=True) with max_epochs) and our own Modality 1, which
+    # reshuffles with randperm. Sampling minibatches i.i.d. WITH replacement --
+    # the earlier behaviour here -- leaves ~37% of the data unseen in any
+    # epoch's worth of steps, since (1 - 1/N)^N -> 1/e, and defines no epoch
+    # boundary to report against published budgets.
+    steps_per_epoch = math.ceil(Xa.shape[0] / a.batch)
+    total_steps = a.epochs * steps_per_epoch if a.epochs else a.steps
+    sch = torch.optim.lr_scheduler.CosineAnnealingLR(opt, total_steps)
     dir1 = torch.distributions.Dirichlet(torch.ones(4, device=dev))
-    print("model %.2fM params | %d steps" % (
-        sum(p.numel() for p in net.parameters()) / 1e6, a.steps))
+    print("model %.2fM params | %d epochs x %d steps = %d steps | %.1fM sample-views"
+          % (sum(p.numel() for p in net.parameters()) / 1e6,
+             a.epochs or 0, steps_per_epoch, total_steps,
+             total_steps * a.batch / 1e6))
 
     def val_loss(n_rep=8):
         """Validation loss on held-out sequences, averaged over several noise
@@ -233,50 +247,63 @@ def main():
                 tot += float(F.mse_loss(net(xt, t), x1 - x0))
         net.train(); return tot / n_rep
 
-    t0, run = time.time(), 0.0
+    t0, run, last_val_it = time.time(), 0.0, 0
     best_val, bad, best_state, best_it = float("inf"), 0, None, 0
-    for it in range(1, a.steps + 1):
-        i = torch.randint(0, Xa.shape[0], (a.batch,), device=dev)
-        x1 = Xa[i]
-        x0 = dir1.sample((a.batch, a.crop))
-        t = torch.rand(a.batch, device=dev)
-        xt = t[:, None, None] * x1 + (1 - t)[:, None, None] * x0
-        loss = F.mse_loss(net(xt, t), x1 - x0)
-        opt.zero_grad(); loss.backward(); opt.step(); sch.step()
-        run += float(loss.detach())
-        if it % a.val_every == 0:
-            tr = run / a.val_every; run = 0.0
-            vl = val_loss()
-            mark = ""
-            if vl < best_val - 1e-6:
-                best_val, bad, best_it = vl, 0, it
-                best_state = {k: v.detach().cpu().clone()
-                              for k, v in net.state_dict().items()}
-                # WRITE IT NOW. SLURM can kill this job at its wall limit, and a
-                # best_state living only in memory would be lost. Every improved
-                # checkpoint is durable, so a killed run still yields a usable
-                # model and the recorded sample_views say how far it got.
-                os.makedirs(os.path.dirname(a.out), exist_ok=True)
-                torch.save({"state_dict": best_state, "hidden": a.hidden,
-                            "layers": a.layers, "crop": a.crop,
-                            "steps": a.steps, "seed": a.seed,
-                            "final_loss": best_val, "best_it": it,
-                            "sample_views": it * a.batch, "val_loss": vl,
-                            "device": dev, "gc_mean": float(gc.mean()),
-                            "gc_std": float(gc.std()), "complete": False},
-                           a.out)
-                mark = " *best, saved*"
-            else:
-                bad += 1
-                mark = "  (no improve %d/%d)" % (bad, a.patience)
-            print("  it %6d  train %.5f  val %.5f  lr %.2e  %.1f min  %.1fM views%s"
-                  % (it, tr, vl, sch.get_last_lr()[0], (time.time() - t0) / 60,
-                     it * a.batch / 1e6, mark))
-            if bad >= a.patience:
-                print("  EARLY STOP: val has not improved for %d checks. Best was"
-                      " it %d (val %.5f, %.1fM sample-views)."
-                      % (a.patience, best_it, best_val, best_it * a.batch / 1e6))
-                break
+    it, seen, stop = 0, 0, False
+    n_epochs = a.epochs if a.epochs else math.ceil(a.steps / steps_per_epoch)
+    for ep in range(1, n_epochs + 1):
+        # Fresh permutation each epoch: every sequence is used exactly once.
+        order = torch.randperm(Xa.shape[0], device=dev)
+        for k in range(steps_per_epoch):
+            i = order[k * a.batch:(k + 1) * a.batch]
+            if i.numel() == 0:
+                continue
+            x1 = Xa[i]
+            b = x1.shape[0]                      # the last batch may be short
+            x0 = dir1.sample((b, a.crop))
+            t = torch.rand(b, device=dev)
+            xt = t[:, None, None] * x1 + (1 - t)[:, None, None] * x0
+            loss = F.mse_loss(net(xt, t), x1 - x0)
+            opt.zero_grad(); loss.backward(); opt.step(); sch.step()
+            run += float(loss.detach()); it += 1; seen += b
+            if not a.epochs and it >= a.steps:
+                stop = True; break
+        if a.epochs and ep % a.val_every_epochs and ep != n_epochs:
+            continue
+        tr = run / max(1, (it - last_val_it)); run = 0.0; last_val_it = it
+        vl = val_loss()
+        mark = ""
+        if vl < best_val - 1e-6:
+            best_val, bad, best_it = vl, 0, it
+            best_state = {k: v.detach().cpu().clone()
+                          for k, v in net.state_dict().items()}
+            # WRITE IT NOW. SLURM can kill this job at its wall limit, and a
+            # best_state living only in memory would be lost. Every improved
+            # checkpoint is durable, so a killed run still yields a usable
+            # model and the recorded sample_views say how far it got.
+            os.makedirs(os.path.dirname(a.out), exist_ok=True)
+            torch.save({"state_dict": best_state, "hidden": a.hidden,
+                        "layers": a.layers, "crop": a.crop,
+                        "steps": a.steps, "seed": a.seed,
+                        "final_loss": best_val, "best_it": it,
+                        "sample_views": it * a.batch, "val_loss": vl,
+                        "device": dev, "gc_mean": float(gc.mean()),
+                        "gc_std": float(gc.std()), "complete": False},
+                       a.out)
+            mark = " *best, saved*"
+        else:
+            bad += 1
+            mark = "  (no improve %d/%d)" % (bad, a.patience)
+        print("  it %6d  train %.5f  val %.5f  lr %.2e  %.1f min  %.1fM views%s"
+              % (it, tr, vl, sch.get_last_lr()[0], (time.time() - t0) / 60,
+                 it * a.batch / 1e6, mark))
+        if bad >= a.patience:
+            print("  EARLY STOP: val has not improved for %d checks. Best was"
+                  " it %d (val %.5f, %.1fM sample-views)."
+                  % (a.patience, best_it, best_val, best_it * a.batch / 1e6))
+            stop = True
+        if stop:
+            break
     if best_state is not None:
         net.load_state_dict(best_state)
     best = best_val
@@ -284,7 +311,8 @@ def main():
     os.makedirs(os.path.dirname(a.out), exist_ok=True)
     torch.save({"state_dict": {k: v.cpu() for k, v in net.state_dict().items()},
                 "hidden": a.hidden, "layers": a.layers, "crop": a.crop,
-                "steps": a.steps, "seed": a.seed, "final_loss": best,
+                "steps": total_steps, "epochs": a.epochs, "seed": a.seed,
+                "sequences_seen": seen, "final_loss": best,
                 "best_it": best_it, "sample_views": best_it * a.batch,
                 "val_loss": best_val, "device": dev,
                 # the data's own GC scale. This plays the role f_A.y_std plays in

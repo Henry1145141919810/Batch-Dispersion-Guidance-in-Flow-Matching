@@ -76,47 +76,54 @@ Packed to 12 MB here purely for transfer.
 
 ---
 
-## 4. Steps, not epochs
+## 4. Epochs, and why
 
-`simplex_fm.py` draws minibatches **i.i.d. with replacement**:
+One epoch is one pass over the training set with a fresh shuffle:
 
 ```python
-i = torch.randint(0, Xa.shape[0], (a.batch,), device=dev)
+order = torch.randperm(Xa.shape[0], device=dev)      # every sequence once
 ```
 
-There is no DataLoader and no shuffle, so **no epoch boundary exists to count**.
-Steps are the only natural unit. This is standard for diffusion/flow-matching
-training and is unbiased; it is not a defect.
+This matches both published enhancer baselines — Dirichlet FM
+(`train_dna.py:82-93`) and Fisher Flow (`dna_enhancer_datamodule.py:83`) each
+use `DataLoader(shuffle=True)` with `max_epochs` — and our own Modality 1,
+which reshuffles with `randperm`.
+
+An **earlier version of this file sampled minibatches i.i.d. WITH replacement**
+(`torch.randint`). That is also unbiased, but it leaves roughly **37%** of the
+data unseen in any epoch's worth of steps, since (1 - 1/N)^N -> 1/e, and it
+defines no epoch boundary to report against published budgets. If you see
+`randint` in the training loop, you have an outdated copy.
+
+Note the distinction is *with vs without replacement*, NOT full-batch gradient
+descent vs SGD. Both variants are mini-batch at batch 256.
 
 The unit that compares across datasets and against published work is
-**sample-views = steps × batch**:
+**sample-views = steps x batch**:
 
-| | steps | batch | views | epoch-equivalent |
+| | steps | batch | views | epochs |
 |---|---|---|---|---|
 | published Dirichlet FM | 436,240 | 256 | 111.7M | 1,330 |
 | published **Linear FM** (our base's method) | 157,440 | 256 | 40.3M | 480 |
-| **this run** | 160,000 | 256 | **41.0M** | **489** |
+| **this run** | 160,392 | 256 | **41.1M** | **489** |
 
-Chosen to land on the published Linear FM budget. Epochs are reported for
-readability only — never as the training unit.
-
----
+328 steps/epoch x 489 epochs. Chosen to land on the published Linear FM budget.
 
 ## 5. Config, and what not to change
 
 ```
 --hidden 128 --layers 10     1.02M params
---batch 256 --lr 2e-3        cosine anneal over --steps
---steps 160000               41.0M sample-views
---val-every 2000 --patience 10
+--batch 256 --lr 2e-3        cosine anneal over epochs x steps_per_epoch
+--epochs 489                 160,392 steps, 41.1M sample-views
+--val-every-epochs 5 --patience 10
 --crop 500
 ```
 
-- **Cosine LR anneals over `--steps`.** Cutting the run short leaves LR
-  un-annealed. Change `--steps` rather than killing early.
+- **Cosine LR anneals over the full `--epochs`.** Cutting the run short leaves
+  LR un-annealed. Change `--epochs` rather than killing early.
 - **Checkpoints save on every validation improvement**, so a crash or OOM still
   leaves the best model at `fm_m2_dfb500.pt`. Early stopping may end it before
-  160k steps — that is correct behaviour, not a failure.
+  489 epochs — that is correct behaviour, not a failure.
 - If the benchmark shows lots of headroom, `--hidden 256 --layers 12` (4.87M
   params) is a reasonable upgrade. At 83,722 sequences that is 58 params/seq;
   1.02M is 12/seq. QM9's ratio was 28.
