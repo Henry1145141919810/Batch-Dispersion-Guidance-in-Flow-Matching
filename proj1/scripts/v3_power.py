@@ -45,6 +45,9 @@ import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.join(ROOT, "proj1", "scripts"))
+sys.path.insert(0, os.path.join(ROOT, "proj1", "src"))
+
+COMPARE_ARMS = ("unguided", "plug", "tmpd", "lgd_mc", "tfg")
 
 # the rate the budget is costed at: v2_run.slurm's measured 58 min for a
 # 23.5-unit task at n = 5000, on OUR base. Units are DEFINED at n = 5000 and
@@ -94,21 +97,42 @@ def se_contrast(p_a, p_b, n, seeds):
                      + p_b * (1 - p_b) / (n * seeds))
 
 
-def gpu_hours(n, n_arms_head, n_arms_abl, props, seeds, backends, ratio):
-    """Both stages, both-ish bases. Returns (headline, ablation) GPU-hours."""
-    u = UNITS_AT_5000
-    scale = n / float(N_REF)
+def stage_units(arms, n, comp_units, per_bdg):
+    """n5000-equivalent units for one (property, seed, backend) task.
 
-    def stage(n_comp_arms, n_bdg_arms):
-        units = (u["compare_set"] if n_comp_arms else 0.0) \
-            + u["per_bdg_arm"] * n_bdg_arms
-        per_task_min = units * scale * MIN_PER_UNIT
-        tasks_per_backend = props * seeds
-        # one backend at our rate, the rest at `ratio`
-        total_min = per_task_min * tasks_per_backend * (1 + (backends - 1) * ratio)
-        return total_min / 60.0
+    The comparison set is costed as ONE bundle of `comp_units` because that is
+    how it was measured (v2's 58 min covered all five arms together). A
+    backend running only SOME of them -- the QM9 diffusion base runs unguided
+    and plug -- is charged pro rata by arm count. That is crude and it
+    OVERSTATES: unguided does no guidance at all and plug is the cheapest
+    guided arm, so two-fifths of the bundle is more than their real share.
+    Erring high is the right direction for a budget.
+    """
+    comp = [a for a in arms if a in COMPARE_ARMS]
+    bdg = [a for a in arms if a.startswith("bdg_")]
+    units = comp_units * (len(comp) / float(len(COMPARE_ARMS)))         + per_bdg * len(bdg)
+    return units * (n / float(N_REF))
 
-    return (stage(5, n_arms_head - 5), stage(0, n_arms_abl))
+
+def gpu_hours(n, stage_arms, props, seeds, registry, ratio):
+    """GPU-hours for one stage, summed over the backends that run it.
+
+    Each backend is charged for the arms IT runs (the registry), not for the
+    stage's full set, and every backend after the first at the borrowed
+    `ratio`. `fm` is the one the rate was measured on, so it is charged at 1x
+    and everything else at `ratio`.
+    """
+    total_min = 0.0
+    for be, cfg in sorted(registry.items()):
+        allow = cfg.get("arms")
+        arms = list(stage_arms) if allow is None else             [a for a in stage_arms if a in allow]
+        if not arms:
+            continue                       # this backend sits this stage out
+        u = stage_units(arms, n, UNITS_AT_5000["compare_set"],
+                        UNITS_AT_5000["per_bdg_arm"])
+        rate = 1.0 if be == "fm" else ratio
+        total_min += u * MIN_PER_UNIT * props * seeds * rate
+    return total_min / 60.0
 
 
 def main():
@@ -124,14 +148,16 @@ def main():
     ap.add_argument("--arms", type=int, default=None,
                     help="guided arms contrasted against unguided (default: "
                          "the headline's own count minus unguided)")
-    ap.add_argument("--backends", type=int, default=2,
-                    help="how many base models the run covers")
+    # no --backends count: which base models run, and which arms each runs,
+    # is the registry's to say. Overstating it was how the ablation's cost
+    # came out larger than the headline's.
     ap.add_argument("--alpha", type=float, default=0.05)
     ap.add_argument("--ns", default="500,1000,2000,3000,5000,10000")
     ap.add_argument("--md-out", default="")
     a = ap.parse_args()
 
     import transfer_sweep as T
+    registry = T.V3_BACKENDS
     seeds = a.seeds if a.seeds else len(T.V3_SEEDS)
     head = list(T.v3_arms())
     abl = list(T.v3_arms(etas=T.V3_ABL_ETAS, tau_mults=T.V3_ABL_TAU_MULTS,
@@ -160,7 +186,13 @@ def main():
              % (n_contrasts, n_contrasts // a.props, a.props))
     L.append("| threshold | Bonferroni alpha=%.3f/%d, two-sided: **z = %.3f** |"
              % (a.alpha, n_contrasts, z))
-    L.append("| base models | %d |" % a.backends)
+    L.append("| base models | %d: %s |"
+             % (len(registry),
+                ", ".join("%s (%s pair%s)"
+                          % (b, c["pair"],
+                             "" if c["arms"] is None
+                             else ", %s only" % "+".join(c["arms"]))
+                          for b, c in sorted(registry.items()))))
     L.append("")
     L.append("All figures in percentage points of in_band.")
     L.append("")
@@ -173,18 +205,21 @@ def main():
         sp = se_pooled(p, n, seeds) * 100
         sx = se_contrast(p, p_ref, n, seeds) * 100
         mdd = z * sx
-        gh, ga = gpu_hours(n, len(head), len(abl), a.props, seeds,
-                           a.backends, EQUIFM_RATIO)
+        gh = gpu_hours(n, head, a.props, seeds, registry, EQUIFM_RATIO)
+        ga = gpu_hours(n, abl, a.props, seeds, registry, EQUIFM_RATIO)
         L.append("| %d | %.3f | %.3f | %.3f | **%.2f** | %.1f | %.1f |"
                  % (n, sc, sp, sx, mdd, gh, ga))
     L.append("")
     L.append("**How to read the last column pair.** GPU-hours are costed from "
              "`v2_run.slurm`'s one measured rate (58 min for 23.5 units at "
-             "n = %d on our base) scaled linearly in n, with every base model "
-             "after the first at the **borrowed** %.2fx ratio. That ratio is "
-             "not measured for EquiFM. Per-task fixed cost does not scale with "
-             "n, so these are a **floor**; read the real number off the "
-             "`[timing]` line once the first tasks land."
+             "n = %d on our base) scaled linearly in n. `fm` is charged at "
+             "that rate; every other base model at the **borrowed** %.2fx "
+             "ratio, which is not measured for EquiFM and is a stand-in. Each "
+             "backend is charged only for the arms it runs, so the QM9 "
+             "diffusion base costs a fraction of the others in the headline "
+             "and nothing at all in the ablation. Per-task fixed cost does "
+             "not scale with n, so these are a **floor**; read the real "
+             "number off the `[timing]` line once the first tasks land."
              % (N_REF, EQUIFM_RATIO))
     L.append("")
     L.append("**The number that should decide it** is the minimum detectable "

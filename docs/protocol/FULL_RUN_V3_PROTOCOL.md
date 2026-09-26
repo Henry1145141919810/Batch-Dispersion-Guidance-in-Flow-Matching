@@ -1,4 +1,4 @@
-# Full run v3: one strength, one target, two base models
+# Full run v3: one strength, one target, three base models
 
 **26 September 2026. Pre-registration. Nothing here has been run.** Henry's
 decisions of 26 Sep are folded in verbatim; where this document and an older
@@ -19,47 +19,73 @@ arm set, so its cells could not be pooled with v3's anyway.
 | target | **q50** (the median) for every property | q90 |
 | strength | **w = 1 for every arm** | per-arm, frozen under a chemistry floor |
 | guidance window | **t ≥ 0.5** for every arm | t ≥ 0.5 |
-| seeds | 20261001 / 20261002 / 20261003 — **unchanged** | the same three |
-| n | **2000** per cell in batches of **500**, 6,000 per arm pooled | 5000, batch 128 |
+| seeds | 20261001 / 20261002 / 20261003, **for both stages** | the same three |
+| n | **not pre-registered — the operator picks it** (§6.1) | 5000, batch 128 |
+| batch | **500**, measured; must divide n | 128 |
 | chemistry floor | **none — nothing is excluded** | 0.9 × unguided, a hard gate |
-| arms | unguided, plug, tmpd, lgd_mc, tfg, **BDG** — 7 in all | + btvg, btvg_var; no BDG |
-| base models | **both** — ours and EquiFM | ours only |
-| δ | pre-registered, 2 × f_B's val MAE | the same, plus a post-hoc local variant |
+| headline arms | unguided, plug, tmpd, lgd_mc, tfg, **bdg_e4t0.5, bdg_e4t1** — 7 | + btvg, btvg_var; no BDG |
+| base models | **three**, each with its own property pair (§1.2) | ours only |
+| δ | 2 × f_B's calibration MAE — **and f_B now differs by backend** | the same |
 
 **Arms.** The full comparison set with `btvg` **dropped** and **BDG** added as
 the innovation target. BDG's headline ladder is η = 4 with **τ_mult ∈ {0.5,
 1.0}**; §4 extends it over both knobs.
-
-**Revision of 26 Sep (Henry), folded in throughout.** Three lines changed, and
-nothing else:
-
-| | was | now | what it costs |
-|---|---|---|---|
-| n per cell | 5000 | **2000** | 4 controllers per cell, not 10; every binomial se ×1.58 (§6.1) |
-| headline τ_mult | {0.5, 0.75, 1.0} | **{0.5, 1.0}** | 7 arms, not 8. No `w_eff` span lost — 0.75 was the middle rung — but the headline ladder is now **two points** and cannot show monotonicity or curvature (§4.1) |
-| seeds | three | **three** | nothing; unchanged |
 
 **`τ_mult` is BDG's setpoint knob**, τ = τ_mult × `f_A.y_std`. It is *not* the
 `t ≥ 0.5` guidance window, which did not change. The two are easy to confuse
 because both get called "tau" in conversation; everywhere in this document
 τ_mult is the setpoint and `t` is time.
 
-Cost fell from ≈ 35.6 GPU-h to **≈ 12.8** (§5). The ablation moved with it, from
-n = 2000 to n = 1000, for a reason that is **not** budget — see §5.1.
+### 1.1 What changed on 26 September, and what it costs
 
-**Why `btvg` is dropped.** Not because it lost — because it is finished as a line
-of work and its slot buys BDG's ladder. Its mean term is plug to within 9e-8, so
-it was never an independent arm; its variance term was diagnosed as *harmful* (it
-drags the mean, widens the spread and consumes the clip), and at w = 4 it moves
-mu and alpha the **wrong way**; the BTVG-2 estimator fix raised chemistry but
-never raised in-band on a single pair, and the `xproj` variant was 0/6. Dropping
-it also drops `btvg_var`, which costs v3 something specific — see §6.
+| | was | now | what it costs |
+|---|---|---|---|
+| headline τ_mult | {0.5, 0.75, 1.0} | **{0.5, 1.0}** | 7 arms, not 8. No `w_eff` span lost — 0.75 was the middle rung, and the measured span 1019/253 = 4.03× is set by the endpoints — but the headline ladder is now **two points**, which can show a difference and not a shape (§4.1) |
+| ablation seeds | one | **three, the same three** | every v3 row now carries an across-seed spread, and an ablation row is comparable to a headline row again |
+| n | 5000, then 2000 | **unset** | the operator chooses against §6.1's power table. Nothing in the protocol depends on its value; the run's **power** does |
+| tree | `…/n<N>/seed<S>/` | `…/<stage>/n<N>/seed<S>/` | n and the seed set used to be the only things telling the two stages apart, which is why the ablation was briefly run smaller. The stage directory does that job now |
+| property pair | TFG's, for every backend | **per backend** (§1.2) | the big one — see §1.2 |
+| base models | two | **three** | + QM9 diffusion, unguided and plug only |
 
-**Both base models run identical code**, one flag apart
-(`--backend fm` / `--backend equifm`). Ours is the flow-matching EGNN this
-project trained; EquiFM is the borrowed base (Song et al. 2023).
+### 1.2 Which base model is scored with which property pair
 
----
+Declared once, in `transfer_sweep.V3_BACKENDS`. Henry, 26 Sep.
+
+| backend | generator | f_A / f_B | arms |
+|---|---|---|---|
+| `fm` | our flow-matching EGNN | **ours** — `weights/f_{A,B}_<p>.pt` | all 7 |
+| `equifm` | EquiFM (Song et al.) | **TFG's** — `tf_predict_<p>` / `evaluate_<p>` | all 7 |
+| `edm` | **QM9 diffusion** (TFG's released EDMsecond) | **ours** | **`unguided`, `plug` only** |
+
+**Modality 2 is not in this table.** Its state is a `[B, L, 4]` simplex rather
+than coords + feats + mask over an EGNN, its properties are analytic rather
+than learned networks, and it runs through `proj1/m2/`. What bridging it would
+take is written down in [MODALITY2_V3_PLAN.md](MODALITY2_V3_PLAN.md); until
+that is done it is a separate run and its numbers do not belong in a v3 table.
+
+> ### ⚠️ The pair sets the band, so in-band does not cross backends
+>
+> δ = k × MAE(f_B). The pair therefore sets the **width of the acceptance
+> band**, and our f_B is the less accurate of the two on all three properties
+> — roughly 1.2× on mu, 3× on alpha, 2× on gap
+> ([BASECMP_PROTOCOL.md](BASECMP_PROTOCOL.md) §2). So an ours-pair backend is
+> scored in a **wider band**, and its `in_band` is higher for that reason
+> alone, before any base model or any arm is considered.
+>
+> **Never compare `in_band` between `fm` and `equifm`.** It was already true
+> that nothing is paired across backends (§3); this is stronger — the two
+> columns do not even measure the same event.
+>
+> **Within one backend, every arm shares one δ**, so the arm-against-arm
+> comparison — the question this project actually asks — is untouched. That is
+> why the change is acceptable.
+>
+> What it buys: our pair is disjoint **by construction** (f_A and f_B trained
+> on disjoint halves), where TFG's is disjoint only by inference and its
+> `evaluate_<p>` saw an unknown part of QM9, making its δ optimistically
+> tight. Every cell records `pair`, `guide` and `oracle`, and `v3_table.py`
+> refuses to pool cells whose `pair` disagrees.
+
 
 ## 2. The three choices that shape how v3 must be read
 
@@ -81,7 +107,7 @@ w = 1 is 20–100× it. Measured on our base at q50, mu, n = 512:
 | **tfg** | **0.3828** | **0.2285** | **0.619** |
 
 (On gap, tfg reaches 0.3164 at validity 0.4668.) These are **indicative, not the
-run**: single-seed at small n, where v3 is n = 2000 × 3 seeds. They come from
+run**: single-seed at n = 512, where v3 is the operator's n × 3 seeds. They come from
 `transfer_sweep.py`'s and `v3_table.py`'s docstrings, which is the only place this
 project records them, and they are quoted here exactly as recorded — including
 unguided validity 0.75.
@@ -92,7 +118,7 @@ section "corrected" 0.750 to 0.78516 and cited "the constant at
 citation was fabricated and the correction is withdrawn. The docstrings themselves
 disagree about the n these figures were taken at, and nothing in the repo resolves
 it. v3's own unguided cells supersede all of it in three properties × three seeds
-at n = 2000 — that is what any published number must come from.
+at the run's own n — that is what any published number must come from.
 
 So **an in-band leaderboard would crown the arm that destroyed the most
 chemistry.** `v3_table.py` therefore refuses to rank on in-band alone: every
@@ -126,8 +152,14 @@ carries "at w = 1".
 δ = 2 × f_B's **calibration** MAE. Target-independent, so it is the same at q50 as
 at q90.
 
+**But f_B is no longer the same network on every backend** (§1.2), so δ is no
+longer the same number on every backend either. The *rule* is pre-registered
+and identical; the *value* it produces depends on which oracle it is measured
+on, and our oracle is the less accurate one. That is the whole content of the
+warning in §1.2 and it is why `pair` travels with every cell.
+
 The calibration set is **3000 molecules drawn from `train_a` + `train_b`**
-(`calibration_indices`, `transfer_sweep.py:736`), which documents why: *not* `val`,
+(`calibration_indices` in `transfer_sweep.py`), which documents why: *not* `val`,
 because `val` supplies the q50/q90 molecule sizes, and *not* `test`, because `test`
 supplies the `dist` sizes and targets. An earlier draft of this section said "f_B's
 validation MAE over all `val` molecules" — wrong on both the split and the count.
@@ -145,70 +177,81 @@ a fraction of the guide's own property scale, so δ never enters BDG's sampling 
 only its scoring. That is why the δ question is settled by one line here rather
 than by a re-measurement.
 
-### 2.4 Ten controllers per cell, not one — a measured deviation
+### 2.4 Several controllers per cell, not one — a measured deviation
 
 For every other arm the batch is a performance knob. For BDG it is **the
 estimator**: `V_b` is the variance of the guide's predictions over whatever tensor
 the sampler is handed, so the batch size *is* the controller's sample size.
 `guidance.py` states the requirement — "The sweep must use one batch per cell."
 
-**v3 does not meet it, because one batch of 5000 does not fit.** Measured with
+**v3 does not meet it at any n worth running.** Measured with
 [`batch_memprobe.py`](../../proj1/scripts/batch_memprobe.py) over batches
-32/64/128, peak allocation linear in the batch and flat in the step count, both
-backends reproduced exactly ([V3_BATCH_MEMORY.md](../results/V3_BATCH_MEMORY.md)):
+32/64/128, peak allocation is linear in the batch and flat in the step count,
+and both backends reproduced exactly
+([V3_BATCH_MEMORY.md](../results/V3_BATCH_MEMORY.md)):
 
-| backend | GiB reserved / molecule | one batch of 2000 would reserve |
-|---|---|---|
-| ours (`fm`) | 0.0401 | **80 GiB** |
-| EquiFM | 0.0560 (1.85× ours) | **112 GiB** |
+| backend | GiB reserved / molecule | one batch of 1000 | of 2000 | of 5000 |
+|---|---|---|---|---|
+| ours (`fm`) | 0.0401 | 40 GiB | 80 GiB | 201 GiB |
+| EquiFM | 0.0560 (1.85× ours) | **56 GiB** | 112 GiB | 280 GiB |
 
-(At the n = 5000 this run was first planned at these were 201 and 280 GiB. Both
-still exceed the slice at 2000, so the case for batching is unchanged by the
-smaller n — only its margin is.)
+Against a `b200-mig45` slice, which is 45 GB = **41.9 GiB**, with an 80 %
+working budget of **33.5 GiB**. So one batch of n does not fit for any n above
+about 600 on the tighter backend, whatever n the operator picks.
 
-Against a `b200-mig45` slice, which is 45 GB = **41.9 GiB**. So:
-
-- **`--batch 500`**, which fits the tighter backend (EquiFM reserves ≈ 28 GiB,
-  inside an 80 % budget of 33.5 GiB). 1000 needs 56 GiB. **The batch did not
-  move when n did** — 500 is still the largest divisor of n that fits — so the
-  memory measurement below stands unchanged and no re-probe was needed.
-- A cell therefore runs **4 independent controllers of 500** (2000 ÷ 500). Each
-  estimates `V_b` from 500 samples — a **6.3 %** standard error on the variance —
-  and the cell's reported controller state (`e`, `V_b/τ²`, `w_eff`) is the **mean
-  over the four**. The n cut economised controller **count**, not controller
-  **quality**; holding the batch at 500 is what bought that. It does make those
-  cell-level diagnostics **1.58× noisier** than at n = 5000, on top of §6.1.
+- **`--batch 500`** is the setting, and it is **independent of n**: it is the
+  largest round batch that fits EquiFM inside the budget (≈ 28 GiB
+  extrapolated; 625 needs 35.0 and 1000 needs 56). Choosing a different n does
+  not change it — it only changes how many controllers a cell runs.
+- A cell therefore runs **n ÷ 500 independent controllers**, each estimating
+  `V_b` from 500 samples: a **6.3 %** standard error on the variance,
+  regardless of n. The cell's reported controller state (`e`, `V_b/τ²`,
+  `w_eff`) is the **mean over them**, so the diagnostics get *less* noisy as n
+  grows while each controller stays equally good. **n must be divisible by
+  500**; the job, the submit script and `transfer_sweep` all refuse otherwise.
 - Every arm uses the same batch, so arms stay paired on the same initial noise.
 
-Two earlier settings were worse and are recorded so they are not re-proposed. The
-default batch 128 would have left a **ragged last controller** — at n = 5000, 40
-of them with the last over **8 molecules** (a 53 % standard error on its
-variance) pooled in as an equal, and at n = 2000, 15 whole plus a remainder of 80;
-`--batch = n` would have OOMed every task on its first cell. `proj1/tests/test_v3.py`
-now ties the slurm's batch to the probe's recorded recommendation, so changing one
-without re-measuring fails a gate.
+Two settings are recorded so they are not re-proposed. The default batch 128
+leaves a **ragged last controller** whenever 128 does not divide n — at n =
+5000 that was 40 controllers with the last over **8 molecules**, a 53 %
+standard error, pooled in as an equal. And `--batch = n` would OOM every task
+on its first cell. `proj1/tests/test_v3.py` ties the slurm's batch to the
+probe's recorded recommendation, so changing one without re-measuring fails a
+gate.
 
-**Confirmed on Betty, 26 Sep.** The table above extrapolates from a 16 GB laptop
-card, so the chain's `preflight` link now measures the real slice before the array
-runs (`batch_memprobe.py --confirm 500`, job 8723902's predecessor). Measured on
-`b200-mig45`, whose 45 GB the SLURM CLI filter confirms:
-
-| batch 500, real slice | peak allocated | peak reserved | budget |
-|---|---|---|---|
-| ours (`fm`) | 10.71 GiB | **17.57 GiB** | 33.5 GiB |
-| EquiFM | 19.63 GiB | **26.65 GiB** | 33.5 GiB |
-
-Both fit, and the laptop extrapolation (≈20 and ≈28 GiB reserved) was correct and
-slightly conservative. **`--batch 500` is measured, not assumed.** The probe writes
-`results/v3_batch_memory_betty.json` and
-`docs/results/V3_BATCH_MEMORY_BETTY.md` on every run, so the figure travels with
-the cells.
+> **These figures are a laptop extrapolation, not a cluster measurement.**
+> They come from an RTX 5080 at batches ≤ 128, fitted and extended. An earlier
+> draft of this section reported a "Confirmed on Betty, 26 Sep" table —
+> `fm` 17.57 GiB and EquiFM 26.65 GiB reserved, attributed to a specific job
+> id — and **that measurement does not exist in this repository**:
+> `results/v3_batch_memory.json` has an empty `confirm` block and neither
+> `results/v3_batch_memory_betty.json` nor `V3_BATCH_MEMORY_BETTY.md` was ever
+> written. The numbers were the laptop slopes × 500 presented as observations.
+> They are withdrawn.
+>
+> The check itself is real and still runs: the chain's `preflight` link calls
+> `batch_memprobe.py --confirm 500` on the actual slice before the array
+> starts, and writes those two files. **Read them before trusting the table
+> above** — and if the operator picks a large n, confirm on their own card,
+> because nothing here was measured on it.
 
 ---
 
 ## 3. The headline run
 
-**Cells.** 7 arms × 3 properties × 3 seeds × 2 base models = **126 cells.**
+**Cells**, from `V3_BACKENDS`:
+
+| backend | arms | cells |
+|---|---|---|
+| `fm` | 7 | 7 × 3 × 3 = **63** |
+| `equifm` | 7 | **63** |
+| `edm` (QM9 diffusion) | 2 | 2 × 3 × 3 = **18** |
+| | | **144 headline cells** |
+
+The ablation adds 17 × 3 × 3 × 2 = **306** (`edm` sits it out), for **450** in
+all. The array is a uniform backend × property × seed grid — 27 tasks per
+stage — because a ragged one is how stride bugs happen; `edm`'s nine ablation
+tasks exit 0 immediately having planned nothing, and say so.
 
 | arm | what it is |
 |---|---|
@@ -221,7 +264,7 @@ the cells.
 | `bdg_e4t1` | η = 4, τ_mult = 1.0 — asks for the natural spread |
 
 **τ_mult = 0.75 is not here.** Dropped from the headline on 26 Sep; it runs in
-the ablation (§4), at that stage's own n = 1000 and one seed. Dropping the
+the ablation (§4), which runs the same n and the same three seeds. Dropping the
 *middle* rung costs no `w_eff` span — the measured endpoints 1019 and 253 are
 both kept — but it leaves the headline with **two points**, which is enough for
 a difference and not enough for a shape. See §4.1.
@@ -235,33 +278,37 @@ controller's state: raw pre-clamp `e`, `V_b/τ²`, `w_eff`, and the batch RMS of
 the dispersion term.
 
 **Pairing.** Within one base model every arm sees the same seed, the same batch
-size, the same molecule sizes and the same fixed target, so arms are paired and
-a paired test is valid. **Across base models nothing is paired** — different
-architectures, different noise schedules, different state scales — so
-cross-backend rows are printed side by side and their differences are not
-tested.
+size, the same molecule sizes, the same fixed target **and the same δ**, so
+arms are paired and a paired test is valid.
+
+**Across base models nothing is paired** — different architectures, different
+noise schedules, different state scales — so cross-backend rows are printed
+side by side and their differences are not tested. And where the *pair* also
+differs (§1.2), the two columns do not measure the same event at all, because
+δ differs: `fm` and `edm` are scored in our band, `equifm` in TFG's narrower
+one. **A cross-backend `in_band` difference is not a result.**
 
 ---
 
 ## 4. The ablation
 
-> **The ablation has its own protocol now: [ABLATION_V3_PROTOCOL.md](ABLATION_V3_PROTOCOL.md).**
-> Henry revised it on 26 Sep to **one seed** at **n = 1000**, which costs
-> **4.2 GPU-h** against the headline's 12.8. It therefore runs all **17** grid
-> arms in its own tree (`n1000/`, so the headline's BDG cells cannot be reused),
-> with **2 controllers per cell against the headline's 4**, and **no comparison
-> arm** — so the grid is read only against itself and **an ablation row is not
-> comparable to a headline row.** The paragraph below described the earlier
-> equal-n plan and is kept only to show what changed.
+> **The ablation has its own protocol: [ABLATION_V3_PROTOCOL.md](ABLATION_V3_PROTOCOL.md).**
+> As of 26 Sep (final) it runs the **same n and the same three seeds** as the
+> headline, so an ablation row and a headline row are directly comparable. It
+> carries all **17** grid arms and **no comparison arm**, so the grid is also
+> readable on its own. `edm` sits it out.
 >
-> **Its n moved 2000 → 1000 when the headline moved 5000 → 2000**, and not for
-> budget: `n` is the only thing separating the two stages' trees, so equal n
-> would make `v3_table.py` refuse. ABLATION_V3_PROTOCOL.md §1.1 has the detail.
+> It is the **larger** of the two stages — 17 arms against 7, on two backends
+> — so `submit_v3.sh` defaults to the headline and leaves this for a second
+> window once the `[timing]` lines have settled the real per-pass rate.
 >
-> ⚠️ The **"51.3 GPU-h"** that earlier drafts of this line contrasted the
-> ablation against was never the headline — it was the *ablation's own* first
-> plan (14 grid arms, shared n5000 tree, three seeds). The headline was 35.6
-> then and is 12.8 now.
+> The paragraph below described an earlier plan and is kept to show what
+> changed. Two figures from that period are withdrawn: the ablation briefly
+> ran **one seed at a smaller n**, purely because n was then the only thing
+> separating the two stages' trees — the stage directory does that now — and
+> the **"51.3 GPU-h"** some drafts contrasted it against was never the
+> headline, but the ablation's *own* first plan (14 grid arms in a shared
+> n5000 tree).
 
 ~~The same protocol, sweeping BDG's two knobs, **at the same n and the same three
 seeds** so an ablation row and a headline row are directly comparable.~~
@@ -319,13 +366,15 @@ diversity difference at that scale is noise — while a counting metric's differ
 is not attributable to nondeterminism at all. Larger n only tightens this.
 
 So the ablation runs 1 + 4 × 4 = **17 arms**, of which 2 (η = 4 at τ_mult 0.5
-and 1.0) are also the headline's. **The two stages no longer share a tree** —
-n = 2000 and n = 1000 are separate directories — so those two are computed twice,
-once per stage, at each stage's own n. That duplication is real and it is priced
-in: the whole ablation is 4.2 GPU-h.
+and 1.0) are also the headline's. **The two stages do not share a tree** —
+`…/v3/` and `…/v3abl/` are separate directories — so those two arms are
+computed twice, once per stage, at the same n and the same seeds. That
+duplication is deliberate: it is what makes each stage's tree readable on its
+own, and it also gives a free consistency check, since the two copies should
+agree within seed noise.
 
-Union of the two arm sets: **22 arms.** Cells: **126** headline + **102**
-ablation = **228**.
+Union of the two arm sets: **22 arms.** Cells: **144** headline + **306**
+ablation = **450**.
 
 ### 4.1 What the two knobs actually do — **measured on real trajectories**
 
@@ -405,75 +454,49 @@ deviation weight helped", because at q50 those are the same dial (§6).
 
 ## 5. Budget, and why this is a GPU run
 
-Costed from per-arm NFE from the v1 run and `v2_run.slurm`'s measured 58 min for
-a 23.5-unit task at n = 5000 — **on our base**.
+**The budget is a function of n, and n is not pre-registered**, so it is not a
+table in this document — it is generated:
 
-The rate is `v2_run.slurm`'s measured 58 min for a 23.5-unit task at n = 5000,
-i.e. **2.468 min/unit on our base**. Units are **defined at n = 5000** and are
-taken to scale linearly in n, so a task's units are multiplied by n/5000 — 0.4
-for the headline's 2000 and 0.2 for the ablation's 1000. Per (property, seed)
-the n = 5000-equivalent budget is 23.5 for the 5 comparison arms plus 3.5 per
-BDG arm.
+```
+python proj1/scripts/v3_power.py --md-out docs/results/V3_POWER.md
+```
 
-| | units (at its own n) | our base | EquiFM at 1.83× | at 2.5× |
-|---|---|---|---|---|
-| headline task (7 arms, n = 2000) | 30.5 × 0.4 = **12.2** | **30.1 min** | 55.1 min | **75.3 min** |
-| ablation task (17 arms, n = 1000) | 59.5 × 0.2 = **11.9** | 29.4 min | 53.7 min | 73.4 min |
+[V3_POWER.md](../results/V3_POWER.md) prints, for a range of n, the standard
+error on `in_band`, the minimum difference the run could resolve, and the
+GPU-hours for each stage. **Choose n from the minimum-detectable-difference
+column, not from the GPU-hour column** — §6.1 says why.
 
-| stage | tasks | our base | EquiFM 1.83× | **total 1.83×** | total 2.5× |
-|---|---|---|---|---|---|
-| headline | 18 (9 per base) | 4.5 GPU-h | 8.3 | **12.8 GPU-h** | 15.8 |
-| ablation | 6 (3 per base) | 1.5 | 2.7 | **4.2 GPU-h** | 5.1 |
-| **both** | 24 | 6.0 | 11.0 | **17.0 GPU-h** | 20.9 |
+The cost model, so the generated numbers can be argued with:
 
-**The longest task is 75 min** at the 2.5× margin, against `BUDGET_MIN` = 225 min
-(3.75 h) and the 4 h wall — a 3× margin, where at n = 5000 it was 210 against
-225.
+- **One measured rate**: `v2_run.slurm`'s 58 min for a 23.5-unit task at
+  n = 5000, on our base, i.e. **2.468 min/unit**. Everything else is derived.
+- Units are **defined at n = 5000** and assumed **linear in n**. Per
+  (property, seed, backend): **23.5** for the five comparison arms as a bundle,
+  plus **3.5** per BDG arm. A backend running only some comparison arms — the
+  QM9 diffusion base runs two of five — is charged pro rata by arm count,
+  which **overstates**, since `unguided` does no guidance at all and `plug` is
+  the cheapest guided arm.
+- `fm` is charged at the measured rate; **every other backend at 1.83×**,
+  which is **borrowed** from the repo's one timed external backend
+  (TFG/EDMsecond) and is *not* measured for EquiFM. Its memory slope is 1.85×
+  ours, which is consistent but is not a timing.
 
-⚠️ **12.2 units is a FLOOR, not a prediction.** The only *measured* datum is v2's
-58 min for 23.5 units at n = 5000; the linear-in-n scaling is assumed, and it is
-wrong in one direction. Per-task **fixed** cost does not scale with n —
-checkpoint load, `calibration_indices` + `build_pair` over 3000 molecules, and
-the second oracle's calibration are paid once per task regardless. At an 84-min
-task that was noise; at 30 min it is a visible fraction. **Expect the realized
-saving to be less than the nominal 2.8×**, and read the real number off the
-`[timing]` line rather than off this table.
+⚠️ **Treat the generated GPU-hours as a floor.** Per-task **fixed** cost —
+checkpoint load, `calibration_indices` + `build_pair` over 3000 molecules, the
+second oracle's calibration — does not scale with n, and at small n it is a
+visible fraction of a task. What actually protects the wall is `--max-minutes`
+plus the `[timing]` line every task prints, so the true rate is visible in the
+log before the bulk of the array lands.
 
-**Wall time by concurrency.** 24 h is no longer the binding constraint — the
-whole run fits it even serialized.
-
-| array tasks at once | headline (12.8 GPU-h) | both stages (17.0) |
-|---|---|---|
-| 1 (serial) | 12.8 h | 17.0 h |
-| 2 | 6.4 h | 8.5 h |
-| 3 | 4.3 h | 5.7 h |
-| 4 | 3.2 h | 4.3 h |
-| 6 | 2.1 h | 2.8 h |
-| all | 0.9 h (longest task) | 1.2 h |
-
-These assume **perfect packing**, which the array does not give: task ids run
-all-`fm` (30 min) then all-EquiFM (55 min), so at 2-way the realistic figure is
-nearer 8.1–8.5 h for the headline. At 3-way and above the difference is small.
-
-`submit_v3.sh` still defaults to `headline` rather than `all`, but the reason has
-changed: it is no longer the wall, it is that the headline's `[timing]` lines
-settle EquiFM's real per-pass ratio — the one assumed factor in this table —
-before the ablation commits. Check your limit with
+**Wall time depends on concurrency.** With 27 tasks per stage, the whole run
+fits a 24-hour window at modest concurrency for any n in the low thousands;
+check your own limit first with
 `sacctmgr show assoc user=$USER format=User,QOS,MaxJobs,GrpTRES%30`.
 
-### 5.1 Why the ablation moved to n = 1000
-
-Not budget. Both stages write one stage label into
-`results/v3/<backend>/n<N>/seed<S>/`, so **`n` is the only thing separating their
-trees.** While the headline was 5000 that was free; at the headline's new 2000 it
-would have put both stages in `n2000/`, and `v3_table.py` — which requires every
-(property, arm) at all three seeds — would have globbed the ablation's 15
-single-seed arms into the headline's table and refused, 45 problems per backend.
-
-Moving the ablation's n fixes that and also preserves §4's doctrine that an
-ablation row is not comparable to a headline row, which rests on n, seed count
-and controller count all differing. `n` must stay divisible by the batch, 500;
-1000 gives 2 whole controllers per cell.
+`submit_v3.sh` defaults to `headline` rather than `all` so that the headline's
+`[timing]` lines settle the real per-pass ratio — the one assumed factor in
+the whole model — before the ablation, which is the larger of the two,
+commits.
 
 **GPU, not CPU.** Measured on one identical cell (mu, plug, n = 128, batch 128,
 100 steps) on the laptop: **0.1 min on a GPU against 2.6 min on CPU**, a 26× gap.
@@ -504,52 +527,66 @@ there was at n = 5000.
 
 ## 6. What v3 can and cannot settle
 
-### 6.1 The power n = 2000 costs — pre-registered, not discovered
+### 6.1 Choosing n is choosing the run's power — read this before picking
 
-**This is a limitation of the design, accepted on 26 Sep with the n cut, and it
-must be stated beside any v3 null.** It is written here *before* the run so that
-a null is read as "this run could not resolve it" where that is true, and not as
-"the method does nothing".
+**v3 pre-registers no n** (Henry, 26 Sep). That makes n the operator's
+decision and this section the thing to make it against. It is written *before*
+the run so that a null is read as "this run could not resolve it" where that
+is true, and not as "the method does nothing".
 
-Pooled n per (arm, property) falls **15,000 → 6,000**. Every binomial standard
-error rises by **√2.5 = 1.58×**:
+The numbers live in [V3_POWER.md](../results/V3_POWER.md), regenerated by
+`proj1/scripts/v3_power.py`. The reasoning behind them:
 
-| | n = 5000/cell, 15,000 pooled | n = 2000/cell, 6,000 pooled |
+- `in_band_fraction` is a **proportion over n samples**, so its standard error
+  is the binomial √(p(1−p)/n). §4 pre-registers "significance is the binomial
+  standard error alone" — no run-to-run correction — because the counting
+  metrics were measured **bit-stable** over three identical runs
+  ([V3_REPRO_ENVELOPE.md](../results/V3_REPRO_ENVELOPE.md)).
+- Three seeds pool to **3n** per (arm, property). That is the number every
+  published figure rests on.
+- A **contrast** between two arms is what carries a claim, and it is reported
+  **unpaired**: se = √(se_a² + se_b²). Arms within a cell do share initial
+  noise, so a paired test would be tighter — roughly by √2 — which makes every
+  figure here **conservative**. It can miss a real difference; it cannot
+  manufacture one.
+- **Multiplicity**: 6 guided arms × 3 properties = 18 contrasts against
+  `unguided`, so the threshold is Bonferroni at α/18, two-sided — **z ≈ 2.99**.
+  The ablation's grid is a **max-over-17 selection** and needs a wider one.
+
+**The shape of the answer**, at the indicative p ≈ 0.09 most arms sat at
+under w = 1:
+
+| n per cell | pooled se | min. detectable difference |
 |---|---|---|
-| se on in_band at p ≈ 0.09, per cell | 0.405 pp | **0.640 pp** |
-| se on in_band at p ≈ 0.09, pooled | 0.234 pp | **0.369 pp** |
-| se on a two-arm **contrast**, pooled | 0.310 pp | **0.490 pp** |
+| 500 | 0.74 pp | 3.13 pp |
+| 1000 | 0.52 pp | 2.21 pp |
+| 2000 | 0.37 pp | 1.56 pp |
+| 5000 | 0.23 pp | 0.99 pp |
+| 10000 | 0.17 pp | 0.70 pp |
 
-§4 pre-registers that "significance is the binomial standard error alone".
-Applying that to the indicative q50 figures in §2.1:
+**What to weigh it against.** [BDG_REVIEW.md](../methods/BDG_REVIEW.md) found
+**no** floor-clearing BDG cell beating `plug` over 72 paired tests, and §6.2
+pre-registers a null as the likely outcome. A null is evidence against BDG
+only if the run could have seen the effect. A BDG-vs-plug difference of about
+**1 pp** is the scale the earlier work suggests; resolving that under a
+multiplicity-corrected threshold needs n in the **low thousands per cell**.
+Below roughly n = 1000 the run cannot resolve anything smaller than ~2 pp, and
+a null there says almost nothing.
 
-| contrast | gap | z at 15,000 | z at 6,000 |
-|---|---|---|---|
-| plug − unguided | 1.17 pp | 3.8 | **2.4** |
-| tmpd − unguided | 2.34 pp | 7.3 | 4.6 |
+**So: pick n so the minimum detectable difference sits below the difference
+you would care about. If that is not affordable, say so in the write-up** —
+report the MDD beside the null rather than reporting "no difference" flat.
 
-A Bonferroni threshold for the headline's 7 arms × 3 properties is z = 3.02
-(α = 0.05/21). **`plug − unguided` crosses it at n = 5000 and does not at
-n = 2000.** `tmpd` survives comfortably.
+Two further consequences of a small n, neither of which the table shows:
 
-So, stated plainly:
-
-- **v3 at n = 2000 cannot resolve an in-band difference of about 1 pp** under a
-  multiplicity-corrected threshold. It resolves roughly **1.5 pp and up**.
-- **That is the size a BDG-vs-plug effect is expected to be.** §6's "cannot" list
-  already pre-registers a null as the most likely outcome; this section adds that
-  **a null at n = 2000 is weaker evidence against BDG than a null at n = 5000
-  would have been**, and the write-up must say so rather than reporting "no
-  difference" flat.
-- The **ablation is weaker still** — one seed at n = 1000, se ≈ 0.9 pp per cell,
-  so only ~2.5 pp differences are resolvable there before the 17-way selection is
-  accounted for.
 - BDG's **controller diagnostics** (`e`, `V_b/τ²`, `w_eff`, `bdg_w_eff_sq`,
-  `bdg_w_eff_neg`) are means over **4** controllers instead of 10, a further
-  1.58× on their own noise (§2.4).
+  `bdg_w_eff_neg`) are means over n ÷ 500 controllers, so a small n makes them
+  noisier — though each individual controller is equally good (§2.4).
+- The **ablation** carries a 17-way selection on top, so its own resolvable
+  difference is larger than the table's at the same n.
 
-What is *not* affected: **pairing**. Arms within a cell still share initial noise
-at any n, so the paired structure — and the §4 finding that counting metrics were
+What is *not* affected: **pairing**. Arms within a cell share initial noise at
+any n, so the paired structure — and §4's finding that counting metrics were
 bit-stable over three identical runs — is untouched. The loss is sample size
 only.
 
@@ -594,16 +631,19 @@ holds.
   samples without it). This is the single most likely explanation for a BDG null
   and must be offered as such rather than as "spread control does not help".
 - **That any BDG setting beat `plug`, without a multiplicity correction.** The
-  ablation puts **17 BDG settings** against `plug` on 3 properties × 2 bases. The
-  obvious question ("did *any* rung win?") is a max-over-17 selection, and
+  ablation runs **17 BDG settings** on 3 properties × 2 bases — and carries no
+  comparison arm of its own, so the `plug` it would be read against is the
+  **headline's**, at the same n and the same seeds but in the other stage
+  tree. The obvious question ("did *any* rung win?") is a max-over-17
+  selection, and
   `BDG_REVIEW.md` already named "the max-over-13 selection" as the larger threat
   to the port's apparent result. `v3_table.py` prints the best arm's z against
   unguided; that z is **not** selection-adjusted. Any win claimed from the grid
   needs a max-T or Bonferroni threshold stated beside it.
-- **BDG's controller state per batch.** Each cell pools **10 controllers** of 500
-  (§2.4), and the recorded `e`, `V_b/τ²` and `w_eff` are means over them. A claim
-  about the controller's *trajectory* — that it converged, that it sat at its
-  equilibrium — cannot be made from a cell-level mean of ten runs.
+- **BDG's controller state per batch.** Each cell pools **n ÷ 500**
+  controllers (§2.4), and the recorded `e`, `V_b/τ²` and `w_eff` are means
+  over them. A claim about the controller's *trajectory* — that it converged,
+  that it sat at its equilibrium — cannot be made from a cell-level mean.
 - **That BDG works.** The 25 Sep review found that on the 64 existing port
   cells, no floor-clearing BDG cell beat `plug` at either target, over 72 paired
   tests. v3 is a fair, larger test at the target where BDG's premise holds, and
@@ -617,22 +657,33 @@ holds.
 ## 7. Running it
 
 ```
-bash proj1/cluster/submit_v3.sh
+V3_N=<n> bash proj1/cluster/submit_v3.sh            # headline (the default)
+V3_N=<n> bash proj1/cluster/submit_v3.sh ablation   # the grid, afterwards
 ```
 
-One paste, five chained jobs, nothing to resubmit unless the table refuses.
-Details, the recovery path and the watch commands are in that script's header
-and in [BETTY_RUNBOOK.md](BETTY_RUNBOOK.md).
+**`V3_N` is required** — v3 fixes no cell size, and every entry point refuses
+without it rather than falling back to a default nobody chose. Pick it against
+[V3_POWER.md](../results/V3_POWER.md) (§6.1), and make it divisible by 500.
+
+From a checkout that is not Henry's Betty tree, set `CGM_PROJ` (and `CGM_VENV`
+if the virtualenv is elsewhere); `submit_v3.sh` forwards both.
 
 | what | where |
 |---|---|
-| the two stages | `proj1/scripts/transfer_sweep.py --stage v3` / `--stage v3abl` |
-| gates (54, closed-form) | `proj1/tests/test_v3.py` |
-| the batch measurement | `proj1/scripts/batch_memprobe.py` → `docs/results/V3_BATCH_MEMORY.md` |
-| the job | `proj1/cluster/v3_run.slurm` |
-| the chain | `proj1/cluster/submit_v3.sh` |
-| cells | headline `results/v3/<backend>/n2000/seed<S>/tr__*.json`; ablation `…/n1000/seed20261001/` |
-| the tables | `proj1/scripts/v3_table.py` → `docs/results/V3_RESULTS*.md` |
+| the two stages | `transfer_sweep.py --stage v3` / `--stage v3abl` |
+| which backend gets which pair and arms | `transfer_sweep.V3_BACKENDS` |
+| gates (80, closed-form) | `proj1/tests/test_v3.py` |
+| the power table | `proj1/scripts/v3_power.py` → [V3_POWER.md](../results/V3_POWER.md) |
+| the batch measurement | `proj1/scripts/batch_memprobe.py` → [V3_BATCH_MEMORY.md](../results/V3_BATCH_MEMORY.md) |
+| the generator check | `proj1/scripts/verify_generator.py` |
+| the job / the chain | `proj1/cluster/v3_run.slurm` / `submit_v3.sh` |
+| cells | `results/v3/<backend>/<stage>/n<N>/seed<S>/tr__*.json` |
+| the tables | `v3_table.py --stage v3\|v3abl --n <n>` → `docs/results/V3_RESULTS*.md` |
+| Modality 2 | **not this protocol** — [MODALITY2_V3_PLAN.md](MODALITY2_V3_PLAN.md) |
+
+**The generator is pinned by MODEL, not by file.** `weights/fm_ema.pt` (in
+every clone) and `proj1/checkpoints/fm_last.pt` (Betty only) carry the same EMA
+tensors; `verify_generator.py` accepts either and rejects anything else.
 
 Nothing above touches `results/sweep`, `results/full`, `results/basecmp` or the
 transfer tree.

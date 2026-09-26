@@ -1,23 +1,22 @@
-# v3 ablation: BDG's two knobs, at n = 1000 on one seed
+# v3 ablation: BDG's two knobs, on the same protocol as the headline
 
-**26 September 2026. Pre-registration. Nothing here has been run.** This document
-governs `--stage v3abl` only. The headline run is
-[FULL_RUN_V3_PROTOCOL.md](FULL_RUN_V3_PROTOCOL.md) and where the two disagree on
-`n` or seeds, each governs its own tree.
+**26 September 2026. Pre-registration. Nothing here has been run.** This
+document governs `--stage v3abl` only. The headline is
+[FULL_RUN_V3_PROTOCOL.md](FULL_RUN_V3_PROTOCOL.md), and everything this stage
+does not override is inherited from it.
 
-**Revised 26 Sep**, when the headline moved to n = 2000: this stage moved to
-**n = 1000**, because equal n would put both stages in one tree under one stage
-label and the table refuses that (§1.1). Nothing else changed.
+**Final form, 26 Sep (Henry).** This stage runs the **same n and the same
+three seeds** as the headline. Two earlier same-day drafts had it smaller —
+one seed, then a smaller n as well — and both are withdrawn. What they were
+working around was that `n` used to be the only thing separating the two
+stages' result trees; `transfer_sweep` now writes
+`results/v3/<backend>/<stage>/n<N>/seed<S>/`, so the **stage directory** does
+that job and the two stages are free to match.
 
-**The ablation is deliberately cheaper than the headline** (Henry, 26 Sep):
-**4.2 GPU-h against the headline's 12.8**. It buys that by dropping from three
-seeds to one and from n = 2000 to n = 1000. What that costs is stated in §4 and
-it is not small — read §4 before quoting any number from this run.
-
-⚠️ **The figure "51.3 GPU-h" that earlier drafts contrasted this run against was
-never the headline.** It was *this stage's own first plan* — 14 grid arms in a
-shared n = 5000 tree across three seeds. The headline was 35.6 GPU-h then and is
-12.8 now. Anywhere that number appears as "the headline", it is wrong.
+⚠️ **The figure "51.3 GPU-h" that earlier drafts contrasted this run against
+was never the headline.** It was *this stage's own first plan* — 14 grid arms
+in a shared n = 5000 tree. Anywhere that number appears as "the headline", it
+is wrong.
 
 ---
 
@@ -27,75 +26,67 @@ shared n = 5000 tree across three seeds. The headline was 35.6 GPU-h then and is
 |---|---|---|
 | grid | η ∈ {0, 1, 2, 4, 8} × τ_mult ∈ {0.5, 0.75, 1.0, 1.5} | η = 4 × τ_mult ∈ {0.5, 1.0} |
 | arms | **17** (all of the grid) | 7 (5 comparison + 2 BDG) |
-| n per cell | **1000**, in batches of **500** → **2 controllers** | 2000 in batches of 500 → 4 controllers |
-| seeds | **one — 20261001** | three |
+| comparison arms | **none** — see §4 | all five |
+| n per cell | **the same as the headline**, whatever the operator chose | — |
+| seeds | **the same three** | the same three |
 | properties | mu, alpha, gap | the same |
-| base models | **both** — ours and EquiFM | the same |
+| base models | **`fm` and `equifm`** | those two **+ `edm`** |
 | target / strength / window | q50, w = 1, t ≥ 0.5 | the same |
+| property pair | per backend, inherited (`fm` ours, `equifm` TFG's) | the same |
 | chemistry floor | none | none |
-| **cells** | **102** = 17 × 3 × 1 × 2 | 126 |
-| **cost** | **≈ 4.2 GPU-h** (fm 1.5 + EquiFM 2.7) | ≈ 12.8 GPU-h |
-| tree | `results/v3/<backend>/n1000/seed20261001/` | `…/n2000/seed<S>/` |
+| **cells** | **306** = 17 × 3 × 3 × 2 | 144 |
+| tree | `results/v3/<backend>/v3abl/n<N>/seed<S>/` | `…/v3/n<N>/…` |
 
-**This stage now carries the τ_mult 0.75 rung alone.** The headline dropped it,
-keeping only the endpoints 0.5 and 1.0. So any claim that the τ ladder is
-*monotone*, or that it curves, must be read off this grid's four points — the
-headline's two cannot show either. That raises this stage's importance and does
-not change its design.
+**This stage is the LARGER of the two** — 17 arms against 7 — so
+`submit_v3.sh` defaults to the headline and leaves this for a second window,
+once the headline's `[timing]` lines have settled the real per-pass rate.
 
-### 1.1 Why n = 1000 and not 2000
-
-Both stages write one stage label (`"v3"`) into
-`results/v3/<backend>/n<N>/seed<S>/`, so **`n` is the only thing separating their
-trees**. While the headline was n = 5000 that separation was free. When the
-headline moved to 2000 it stopped being free: at equal n the two stages produce
-byte-identical paths, and [`v3_table.py`](../../proj1/scripts/v3_table.py) — which
-requires every (property, arm) pair at **all three seeds** — would glob this
-stage's 15 single-seed arms into the headline's table and refuse with 45 problems
-per backend.
-
-Three fixes were available: move this stage's n, split the stage label, or
-special-case the table's glob. Moving n was chosen because it also **preserves
-the §4 doctrine** that an ablation row is not comparable to a headline row — that
-doctrine rests on n, seed count and controller count differing, and equal n would
-have removed one of the three and left the gate asserting it false.
-
-`n` must stay divisible by the batch, 500. 1000 gives **2 whole controllers**
-per cell, each still estimating `V_b` from 500 molecules (a 6.3 % standard error
-on the variance). Controller **count** shrank; controller **quality** did not.
+**The QM9 diffusion base sits this out.** It is declared `unguided`, `plug`
+only, and the grid plans neither, so its nine array tasks exit 0 immediately
+and say so. The array grid stays uniform (backend × property × seed) because a
+ragged one is how stride bugs happen.
 
 **η = 0 appears once, at τ_mult = 1.0.** At η = 0 the dispersion term is
-multiplied by zero, so τ_mult cannot change those samples; four τ_mults would be
-one computation under four names and pooling them would look like four
+multiplied by zero, so τ_mult cannot change those samples; four τ_mults would
+be one computation under four names and pooling them would look like four
 independent measurements of one thing. It is the identity rung: `w_eff` ≡ 1
 whatever the controller measures, which is why it reproduces `plug` **in the
 guidance field** regardless of `V_b`.
 
-**All 17 arms run, including the headline's two** (η = 4 at τ_mult 0.5 and 1.0).
-`n = 1000` writes to a different directory from the headline's `n2000/`, so there
-is nothing to reuse. This is a feature: the grid is **self-contained**, and every
-rung is comparable to every other rung at the same n, batch, seed and controller
-count.
+**All 17 arms run, including the headline's two** (η = 4 at τ_mult 0.5 and
+1.0). The two stages write separate trees, so there is nothing to reuse — and
+that duplication is useful: the two copies are at the same n and the same
+seeds, so they should agree within seed noise, which is a free consistency
+check on the whole harness.
 
----
+### 1.1 This stage carries the τ_mult 0.75 and 1.5 rungs alone
 
-## 2. The batch does not shrink with n
+The headline keeps only the endpoints, 0.5 and 1.0. So **any claim that the τ
+ladder is monotone, or that it curves, must be read off this grid's four
+points** — the headline's two can show a difference and not a shape.
+
+## 2. The batch is the estimator, and it does not depend on n
 
 For every other arm the batch is a performance knob. For BDG it is **the
-estimator**: `V_b` is the variance of the guide's predictions across the molecules
-in the batch, so the batch size *is* the controller's sample size.
+estimator**: `V_b` is the variance of the guide's predictions across the
+molecules in the batch, so the batch size *is* the controller's sample size.
 
-`2000 / 500 = 4`, exactly. So a cell runs **four controllers of 500** instead of
-the headline's ten, and **each one still estimates `V_b` from 500 molecules — a
-6.3 % standard error on the variance.** Controller *count* was economised;
-controller *quality* was not. That is the only defensible way to make a BDG run
-cheaper, and it is why n was cut to 2000 rather than to a number that does not
-divide 500.
+**`--batch 500`, whatever n is.** It is the largest round batch that fits the
+tighter backend inside the working budget, and that is a property of the card,
+not of n. A cell therefore runs **n ÷ 500 controllers**, each estimating `V_b`
+from 500 molecules — a **6.3 % standard error on the variance, independent of
+n**. Choosing a larger n buys *more* controllers, not better ones, so the
+cell-level controller diagnostics get less noisy while each controller stays
+equally good. **n must be divisible by 500**; `test_v3.py` and the job both
+refuse otherwise.
 
-Batch 500 is measured, not assumed: on `b200-mig45` it reserves 17.57 GiB on our
-base and 26.65 GiB on EquiFM against a 33.5 GiB budget
-([V3_BATCH_MEMORY.md](../results/V3_BATCH_MEMORY.md), confirmed on Betty 26 Sep).
-`test_v3.py` refuses a batch that does not divide the ablation's n.
+⚠️ **The memory figures are a laptop extrapolation, not a cluster
+measurement.** An earlier draft of this section stated "17.57 GiB on our base
+and 26.65 GiB on EquiFM … confirmed on Betty 26 Sep"; **that measurement does
+not exist in this repository** and is withdrawn — see FULL_RUN_V3_PROTOCOL.md
+§2.4. The chain's `preflight` link does run the real check
+(`batch_memprobe.py --confirm 500`) before the array starts. Read what it
+writes, especially if the operator picked a large n.
 
 ---
 
@@ -145,55 +136,58 @@ any of it looks different on a borrowed base model.
 
 **Cannot, and must not be claimed:**
 
-- **That any rung beat `plug`, `tmpd`, `lgd_mc` or `tfg`.** There is **no
-  comparison arm in this stage** (Henry, 26 Sep — explicitly declined). The
-  headline's `plug` is at n = 2000, three seeds, four controllers, in a different
-  tree. **This grid is read only against itself.**
-- **Anything with a seed-to-seed error bar.** One seed. A difference between two
-  rungs carries the binomial se at n = 1000 and *no* across-seed component, so it
-  understates the true uncertainty. At n = 1000 that se is ~0.9pp at p ≈ 0.09,
-  so only differences of roughly 2.5pp or more are resolvable at all, before any
-  correction for the 17-way selection. The headline's three seeds are the only place
-  this project can estimate that spread.
-- **A number transferable to the headline.** Different n (1000 vs 2000),
-  different seed count (1 vs 3), two controllers instead of four. An ablation row and a headline row are not two
-  measurements of the same quantity. The gate that used to enforce equal n was
-  inverted on 26 Sep to assert the *difference*, so this cannot drift silently.
-- **That a rung's result came from the controller rather than the clip** (§3.4).
-  This is the single most likely explanation for a null and must be offered as
-  such, not as "spread control does not help".
-- **Anything about the setpoint regime.** No rung is within 28× of it (§3.1). If
-  the grid comes back flat, the honest reading includes "we never tested τ_mult
-  near the value where the controller could equilibrate" — τ_mult ≈ 2–8 is the
-  obvious follow-up and is *not* in this run.
+- **That any rung beat `plug`, `tmpd`, `lgd_mc` or `tfg` — from this stage
+  alone.** There is **no comparison arm here** (Henry, 26 Sep, explicitly
+  declined), so the grid is primarily read against itself. What *has* changed
+  is that the headline's `plug` is now at the **same n, the same three seeds
+  and the same property pair**, in the sibling stage tree — so a comparison
+  against it is defensible where it was not before. It is a comparison
+  **across stage trees**, which must be stated, and it inherits the full
+  17-way selection problem below.
+- **That any rung won, without a multiplicity correction.** 17 settings × 3
+  properties × 2 bases. "Did *any* rung win?" is a **max-over-17** selection;
+  `BDG_REVIEW.md` already named "the max-over-13 selection" as the larger
+  threat to the port's apparent result. A max-T or Bonferroni threshold must
+  be stated beside any win claimed from this grid, and `v3_table.py`'s printed
+  z is **not** selection-adjusted.
+- **A difference smaller than the run can resolve.** The resolvable difference
+  is set by the n the operator chose — see
+  [V3_POWER.md](../results/V3_POWER.md) — and this stage's 17-way selection
+  makes its own threshold wider than the headline's at the same n. Report the
+  minimum detectable difference beside a null.
+- **That a rung's result came from the controller rather than the clip**
+  (§3.4). Measured: `plug` clips on 884 sample steps, `bdg_e4t0.5` on
+  **2516**. This is the single most likely explanation for a null and must be
+  offered as such, not as "spread control does not help".
+- **Anything about the setpoint regime.** No rung is within 28× of it (§3.1).
+  If the grid comes back flat, the honest reading includes "we never tested
+  τ_mult near the value where the controller could equilibrate" — τ_mult ≈ 2–8
+  is the obvious follow-up and is *not* in this run.
+- **A monotone reading of the τ_mult ladder.** On 62 % of guided steps at
+  τ_mult 1.5 the deviation term reverses (§3). Order rows by **measured**
+  `w_eff`, never by τ_mult and never by the withdrawn closed form.
 
 ---
 
 ## 5. Running it
 
 ```
-bash proj1/cluster/submit_v3.sh ablation
+V3_N=<n> bash proj1/cluster/submit_v3.sh ablation
 ```
 
-Four chained jobs: **preflight → array `0-5` → insurance → table.** The preflight
-is joined with `afterok`, so a broken arm or a batch that will not fit stops
-everything before the grid runs.
+**`V3_N` is required and must match the headline's** — that is what makes the
+two stages comparable, and nothing enforces it across separate submissions, so
+check it. Four chained jobs: **preflight → array → insurance → table**. The
+preflight is joined with `afterok`, so a broken arm or a batch that will not
+fit stops everything before the grid runs. The array range is derived from the
+job file (backends × properties × seeds) rather than typed.
 
 | | |
 |---|---|
-| array | **6 tasks** = 2 backends × 3 properties (one seed, all 17 arms per task) |
-| longest task | 59 min ours, ~107 min EquiFM at 1.83×, 147 min at the 2.5× margin, against `BUDGET_MIN` 225 |
-| wall | 1.8 h at 6-way · 2.8 h at 3-way · 8.3 h serial |
-| gates | `proj1/tests/test_v3.py` (65, closed-form) |
-| cells | `results/v3/<backend>/n2000/seed20261001/tr__*.json` — 51 per backend |
-| table | `proj1/scripts/v3_table.py --n 2000` |
-
-Overrides: `V3_ABL_N` changes n (it must stay divisible by the batch, or the job
-refuses); `V3_BATCH` changes the controller size, but **only before the first cell
-exists** — the batch is in every filename and in the table's consistency keys, so
-changing it mid-run splits the tree and the table refuses.
-
-Costs are estimates on the same 2.468 min/unit rate as the headline, with EquiFM
-at a **borrowed** 1.83× (the repo's one timed external backend). The headline's
-`[timing]` lines measure that factor directly; read them before trusting the
-figures above.
+| stage | `transfer_sweep.py --stage v3abl` |
+| grid | `V3_ABL_ETAS` × `V3_ABL_TAU_MULTS` in `transfer_sweep.py` |
+| arms literal | `ABL_ARMS` in `proj1/cluster/v3_run.slurm` |
+| cells | `results/v3/<backend>/v3abl/n<N>/seed<S>/tr__*.json` |
+| table | `v3_table.py --stage v3abl --n <n>` → `docs/results/V3_RESULTS_ABL*.md` |
+| power | [V3_POWER.md](../results/V3_POWER.md) |
+| gates | `proj1/tests/test_v3.py` |

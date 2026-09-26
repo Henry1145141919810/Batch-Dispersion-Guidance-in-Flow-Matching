@@ -23,11 +23,15 @@ Submission **29 Sep 08:30**, defence **30 Sep**.
 > | strength | **w = 1 for every arm** |
 > | chemistry floor | **removed** — nothing is excluded; chemistry is reported |
 > | arms | unguided, plug, tmpd, lgd_mc, tfg + **BDG** (the innovation target). `btvg`/`btvg_var` **dropped** |
-> | base models | **both** — ours and EquiFM, same external guide/oracle (TFG's) |
-> | n | **2000** per cell in **batches of 500** = 4 BDG controllers per cell (revised 26 Sep from 5000) |
+> | base models | **three**, each with its OWN property pair (26 Sep): `fm` (ours) + **our** f_A/f_B · `equifm` + **TFG's** f_A/f_B · `edm` = QM9 diffusion (TFG's EDMsecond) + **our** f_A/f_B, **unguided+plug only** |
+> | ⚠️ pair consequence | δ = k × MAE(f_B), so **the pair sets the band width**. Ours is the less accurate oracle (≈1.2× mu, 3× alpha, 2× gap), so an ours-pair backend is scored in a **wider band** and its in_band is higher for that reason alone. **in_band is NOT comparable across backends with different pairs.** Within a backend all arms share one δ, so the arm ranking — the actual question — is untouched |
+> | seeds | **three, for BOTH stages** (the ablation ran one seed until 26 Sep) |
+> | n | **not pre-registered** — the operator picks it. Batch stays **500** whatever n is, so a cell runs n ÷ 500 BDG controllers, each estimating V_b from 500 samples (6.3 % se, independent of n). n must divide by 500 |
 > | BDG τ_mult | headline **{0.5, 1.0}** (0.75 dropped 26 Sep; it runs in the ablation). This is the SETPOINT knob, not the t ≥ 0.5 window |
-> | size | **126** headline cells (`n2000/`) + **102** ablation (`n1000/`, 1 seed); ≈ **12.8** / **17.0 GPU-h** |
-> | power cost of the n cut | pooled n per arm 15,000 → 6,000, every binomial se ×1.58. A ~1 pp in-band contrast no longer clears a Bonferroni threshold — **pre-registered in FULL_RUN_V3_PROTOCOL.md §6.1**, because that is the size a BDG-vs-plug effect is expected to be |
+> | size | **144** headline cells + **306** ablation = 450. Cost depends on n: see [V3_POWER.md](../results/V3_POWER.md) |
+> | how to choose n | **by power, not by budget.** `proj1/scripts/v3_power.py` prints the minimum detectable in-band difference against n. A BDG-vs-plug effect is expected at ~1 pp, which needs n in the **low thousands**; below ~1000 nothing under ~2 pp is resolvable and a null says little. Pre-registered in FULL_RUN_V3_PROTOCOL.md §6.1 |
+> | trees | `results/v3/<backend>/<stage>/n<N>/seed<S>/` — the **stage** directory separates the headline from the ablation, since n and the seeds no longer do |
+> | Modality 2 | **not a v3 backend.** Separate stack; see [MODALITY2_V3_PLAN.md](../protocol/MODALITY2_V3_PLAN.md) |
 >
 > **Cancelled 26 Sep:** the `basecmp` (base-model-comparison) chain queued 25 Sep.
 > Its target, strength rule and arm set differ from v3, so its cells could not be
@@ -461,8 +465,8 @@ se — or it collapses chemistry everywhere *and wins nothing*. Divergent cells
 ### Out of scope here, but on the critical path
 | item | status |
 |---|---|
-| **Modality 2 — DNA on the simplex** | ❌ **zero lines of code.** Timetable says 23–24 Sep |
-| VP-diffusion arm of M1 (trained, never swept) | ❌ |
+| **Modality 2 — DNA on the simplex** | ⚠️ **base model trained and validated, sweep built, NOT RUN.** This row said "zero lines of code" until 26 Sep, which was already false: `proj1/m2/` holds a 1500-epoch flow-matching model on the DeepFlyBrain 500 bp corpus, with its checkpoint and data **tracked in the repo**, two properties (`gc`, `cpg`), an in-band metric and a 300-cell sweep plan. What is outstanding is the RUN, plus four defects listed in [MODALITY2_V3_PLAN.md](../protocol/MODALITY2_V3_PLAN.md) §2.2 |
+| VP-diffusion arm of M1 (trained, never swept) | ❌ — and its checkpoint is **not** in the repo. The v3 QM9-diffusion backend is TFG's released EDMsecond (`--backend edm`), not ours |
 | paper + slides | ❌ |
 
 **The simplex transfer is the largest open risk.** [PLAN_AND_TIMETABLE.md](PLAN_AND_TIMETABLE.md)

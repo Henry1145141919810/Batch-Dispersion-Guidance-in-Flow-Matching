@@ -3,9 +3,11 @@
 Group 2 — Bobo Li · Henry Huang · Idea Idehpour · Haimo Fang
 
 Steer a **frozen** continuous generative model to hit a target property value at
-sampling time, without retraining it. Two modalities: **QM9 3D molecules**
-(this repo's current content) and **DNA sequences on the probability simplex**
-(not started).
+sampling time, without retraining it. Two modalities: **QM9 3D molecules** (most
+of this repo) and **DNA sequences on the probability simplex** — the Modality 2
+base model is **trained, validated and in this repository**
+([`proj1/m2/`](proj1/m2/)); its guidance sweep is built and has not been run.
+See [MODALITY2_V3_PLAN.md](docs/protocol/MODALITY2_V3_PLAN.md).
 
 ## Start here
 
