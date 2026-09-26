@@ -114,3 +114,11 @@ results/dist_fB_test_*.pt
 
 # ---------------------------------------------------------------- cluster logs
 logs/
+
+# ---------------------------------------------------- modality 2 artefacts
+# Checkpoints are regenerable from proj1/m2/simplex_fm.py and are tens of MB.
+proj1/m2/ckpt/
+proj1/m2/logs/
+proj1/m2/*.bak_*
+# The bundle directory IS tracked (blade needs it); the tarball duplicates it.
+proj1/m2/blade_bundle.tgz
