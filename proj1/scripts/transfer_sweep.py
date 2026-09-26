@@ -144,7 +144,7 @@ from evaluation import choose_delta, evaluate_samples        # noqa: E402
 from external.tfg_assets import (Calibrated, EDMGenerator, PROP_INDEX,  # noqa: E402
                                  PROP_UNITS, QM9_MAD, TFGGuide, TFGOracle,
                                  fit_calibration, metadata)
-from sampling import VPSampler, initial_noise, integrate     # noqa: E402
+from sampling import FlowSampler, VPSampler, initial_noise, integrate  # noqa: E402
 from external.equifm_backend import (EQUIFM_ARGS, EQUIFM_WEIGHTS,  # noqa: E402
                                      EquiFMGenerator, EquiFMSampler,
                                      OCFlowOracle)
@@ -155,6 +155,10 @@ sys.path.insert(0, os.path.join(ROOT, "proj1", "scripts"))
 from guidance_sweep import (DEFAULT_W, DIST_TARGET, FROZEN_SETS,  # noqa: E402
                             SHG_SCHEDULES, STRENGTHS, TARGETS, load_frozen,
                             scale_schedule, tfg_config)
+# `load_fm` builds OUR flow-matching generator -- the `fm` backend below runs
+# it through this file's EXTERNAL property pair, which is the only way our
+# base model and EquiFM can be compared without the pair changing underneath.
+from m1_signed_bias import load_fm                             # noqa: E402
 
 DATA = os.path.join(ROOT, "data", "qm9.pt")
 TFG_ROOT = os.path.join(ROOT, "audit", "fa_fb_search", "TFG")
@@ -165,9 +169,54 @@ BACKEND = "TFG/EDMsecond"
 # 23 Sep when FM was chosen as the project's base model; EquiFM is the
 # borrowed FM model (docs/protocol/EQUIFM_USABILITY_AUDIT.md,
 # proj1/src/external/equifm_backend.py).
-BACKENDS = {"equifm": "EquiFM", "edm": "TFG/EDMsecond"}
+# `fm` is OUR OWN generator driven through this file's external pair. It is not
+# a "transfer" -- nothing is borrowed but the guide and the oracle -- and it
+# exists for one reason: the base-model comparison (BASECMP below) has to hold
+# f_A, f_B, delta, targets, sampler, window and clip identical across the two
+# generators, and `guidance_sweep.py` cannot do that because it hardcodes our
+# own predictors. Running our base HERE is what makes the two bases comparable.
+BACKENDS = {"equifm": "EquiFM", "edm": "TFG/EDMsecond", "fm": "FM (ours)"}
 OUT_ROOTS = {"equifm": os.path.join(ROOT, "results", "transfer_equifm"),
-             "edm": OUT}
+             "edm": OUT,
+             "fm": os.path.join(ROOT, "results", "transfer_fm")}
+# Our generator, pinned the way v2_run.slurm pins it.
+FM_CKPT = os.path.join(ROOT, "proj1", "checkpoints", "fm_last.pt")
+
+# --------------------------------------------------------------------------
+# BASECMP: the base-model comparison (Henry, 25 Sep)
+# --------------------------------------------------------------------------
+# One question: for each guidance method, does its behaviour survive a change
+# of BASE MODEL, when nothing else changes? So both generators are run with
+#   * TFG's tf_predict_<p> as f_A and TFG's evaluate_<p> as f_B (the best
+#     available pair, and external to us -- see BASECMP_PROTOCOL.md section 2);
+#   * the local delta (delta_local below), which depends on f_B and QM9 only
+#     and is therefore IDENTICAL for both bases by construction;
+#   * v2's fixed q90 target per property, v2's chemistry floor, v2's metrics.
+#
+# Two axes are screened jointly, because the project has measured the window to
+# be its largest single effect (alpha MAE 10.02 -> 5.32 as t_min_guide goes
+# 0.05 -> 0.5) and has never measured any window between 0.05 and 0.5:
+#   strength w     log-spaced, and it REACHES PAST w = 4 -- the v1 grid stopped
+#                  at 4 and capped lgd_mc, which cleared the floor there; that
+#                  failure is designed out rather than discovered again
+#   t_start        the flow-time instant guidance switches ON. Guidance is
+#                  active on t in [t_start, 1). For a VP/EquiFM backend the
+#                  same instant is tau_max_guide = 1 - t_start, so ONE number
+#                  describes the window on both families.
+BASECMP_ROOT = os.path.join(ROOT, "results", "basecmp")
+BASECMP_STRENGTHS = [0.05, 0.25, 1.0, 4.0, 16.0]
+BASECMP_T_STARTS = [0.05, 0.25, 0.5, 0.75]
+BASECMP_TARGET = "q90"
+BASECMP_SEED = 20260925
+BASECMP_N = 1000
+BASECMP_FULL_SEEDS = (20261001, 20261002, 20261003)
+BASECMP_FLOOR = 0.9
+# v2's rule V2 selects on IN-BAND, not on MAE: "select on the metric that
+# decides the verdict". transfer_sweep's older FR3a/SELECT_METRIC selects on
+# decoded MAE, which is v1's rule; the basecmp stages deliberately do not use
+# it. Decoded, because soft type channels can move without moving the molecule.
+BASECMP_SELECT = "in_band_fraction_dec"
+BASECMP_SETS = ("floor", "free")     # floor = chemistry-constrained, free = not
 
 # --------------------------------------------------------------------------
 # the arms under test
@@ -193,7 +242,9 @@ OUR_ARMS = ["btvg", "btvg_var"]
 TRANSFER_SET = BASELINE + COMPARE_ARMS + OUR_ARMS
 # Arms a backend cannot run. Empty for both: `tfg`, a sampler-level arm, was
 # ported to EquiFM's two clocks on 23 Sep (equifm_backend.EquiFMSampler).
-NOT_PORTED = {"equifm": (), "edm": ()}
+# `fm` runs every arm by construction: these arms were written against
+# FlowSampler, which is our generator's own sampler.
+NOT_PORTED = {"equifm": (), "edm": (), "fm": ()}
 
 
 def backend_arms(backend):
@@ -255,19 +306,29 @@ def cell_name(prop, arm, tgt, w, cfg="", stage="compare"):
     end in `__full.json`, which is what full_run_table.py globs for.
     """
     return "tr__%s__%s__%s__w%g%s%s.json" % (
-        prop, arm, tgt, w, cfg, "__full" if stage == "full" else "")
+        prop, arm, tgt, w, cfg,
+        "__full" if stage in ("full", "basecmpfull") else "")
 
 
-def config_tag(args):
+def config_tag(args, t_start=None):
     """The run-configuration suffix baked into every cell name.
 
     The batch size is in it because it changes the SAMPLES, not just the
     speed: `initial_noise` draws one batch at a time from one generator, so
     batch 64 and batch 128 give every molecule different starting noise. Two
     arms are paired (same noise, same targets) only at the same batch.
+
+    `t_start` makes the WINDOW a per-cell property, which the basecmp stages
+    need: there the window is a screened axis, and at the full-run stage each
+    arm carries its own frozen window, so one job writes cells at several. It
+    is written into the name through the existing `win` slot as its VP image,
+    1 - t_start, so a cell named by the old global path and a cell named by the
+    new per-cell path at the same instant get BYTE-IDENTICAL names. Passing
+    None reproduces the old behaviour exactly.
     """
+    win = args.tau_max_guide if t_start is None else 1.0 - float(t_start)
     return "__n%d_s%d_%s_%s_win%g_b%d_seed%d%s" % (
-        args.n, args.steps, args.solver, args.grid, args.tau_max_guide,
+        args.n, args.steps, args.solver, args.grid, win,
         args.batch, args.seed,
         ("_blk%d" % args.block_start) if args.block_start else "")
 
@@ -386,6 +447,126 @@ def plan_full_cells(props, arms, frozen, sets=("primary",), exclude=()):
     return cells
 
 
+def with_t(cells, t_start):
+    """Give every 4-tuple cell the same window, so one code path downstream.
+
+    Every stage's plan becomes (prop, arm, tgt, w, t_start). For the pre-basecmp
+    stages t_start is the global window's flow-time image, so their cell names
+    and their behaviour are unchanged."""
+    return [(p, a, tg, w, float(t_start)) for (p, a, tg, w) in cells]
+
+
+def plan_basecmp_cells(props, arms, t_starts, strengths=None, target=None):
+    """The joint (strength x start-time) screen, at v2's fixed target.
+
+    UNGUIDED IS PLANNED ONCE PER PROPERTY, not once per window: with no guidance
+    the window is not read by anything, so a second unguided cell at another
+    window would be the same computation under another name and would then be
+    averaged into the chemistry floor as if it were independent evidence. It is
+    planned at the reference window (0.5), and `basecmp_freeze.py` uses that one
+    cell as the floor for every window -- which is correct precisely because the
+    floor is a property of the generator, not of the guidance.
+
+    Guided arms are ordered so a partial run is still a complete comparison at
+    the reference window: every (arm, strength) at t_start = 0.5 first, then the
+    other windows."""
+    ws = BASECMP_STRENGTHS if strengths is None else list(strengths)
+    tgt = BASECMP_TARGET if target is None else target
+    ts = sorted({float(t) for t in t_starts})
+    # The reference window is FIXED at 0.5, not "the middle of whatever was
+    # asked for". The screen is split across jobs by window, so a job given
+    # --t-starts 0.05 would otherwise plan its own unguided cell at 0.05, and
+    # the freeze would then find several unguided cells that disagree about the
+    # chemistry floor -- or, worse, agree by luck and set the floor from the
+    # wrong one. One unguided cell exists, at 0.5, and exactly one job writes it.
+    ref = 0.5
+    if "unguided" in arms and ref not in ts:
+        raise SystemExit(
+            "unguided is planned once, at t_start = %g, but --t-starts is %s. "
+            "Drop unguided from --arms for this job, or include %g."
+            % (ref, ",".join("%g" % t for t in ts), ref))
+    seen, cells = set(), []
+
+    def add(c):
+        if c not in seen:
+            seen.add(c)
+            cells.append(c)
+    for prop in props:
+        if "unguided" in arms:
+            add((prop, "unguided", tgt, float(DEFAULT_W), float(ref)))
+    # The reference window runs FIRST when it was asked for, so a job that is cut
+    # short still leaves a complete comparison at one window. It is NOT added
+    # when it was not asked for: the screen is split across jobs by window, and
+    # prepending it unconditionally would make every job also run the reference
+    # window's cells -- 180 duplicated cells across the array, each computed
+    # several times, and the same filename written by several jobs at once.
+    order = ([ref] if ref in ts else []) + [t for t in ts if t != ref]
+    for t in order:
+        for prop in props:
+            for arm in arms:
+                if arm == "unguided":
+                    continue
+                for w in ws:
+                    add((prop, arm, tgt, float(w), float(t)))
+    return cells
+
+
+def plan_basecmp_full_cells(props, arms, frozen, sets=BASECMP_SETS):
+    """One cell per (property, arm, set) at that arm's frozen (w, t_start).
+
+    The two sets -- `floor` (best in-band among windows/strengths clearing the
+    chemistry floor) and `free` (best in-band, floor ignored) -- routinely pick
+    the SAME (w, t) for a weak arm that never threatens the floor. Those cells
+    are de-duplicated, so the run does not pay twice for one number, and the
+    table reports the same cell under both sets. `unguided` has no strength or
+    window, so it is one cell per property whatever the sets are."""
+    fz = frozen["frozen"]
+    seen, cells = set(), []
+    for s in sets:
+        if s not in fz:
+            raise SystemExit("frozen file has no set %r (has %s)"
+                             % (s, ", ".join(sorted(fz))))
+        for prop in props:
+            for arm in arms:
+                if arm == "unguided":
+                    c = (prop, arm, BASECMP_TARGET, float(DEFAULT_W), 0.5)
+                else:
+                    pick = fz[s].get(arm, {}).get(prop)
+                    if pick is None:
+                        raise SystemExit("frozen file has no %s/%s in set %r"
+                                         % (arm, prop, s))
+                    c = (prop, arm, BASECMP_TARGET, float(pick["w"]),
+                         float(pick["t_start"]))
+                if c not in seen:
+                    seen.add(c)
+                    cells.append(c)
+    return cells
+
+
+def load_basecmp_frozen(path, props, arms, backend):
+    """Read basecmp_freeze.py's json and refuse one that does not belong here."""
+    fz = json.load(open(path))
+    if fz.get("study") != "basecmp":
+        raise SystemExit("%s is not a basecmp frozen file (study=%r)"
+                         % (path, fz.get("study")))
+    if fz.get("backend") != BACKENDS[backend]:
+        raise SystemExit("%s was frozen on %r; this run is --backend %s (%r). "
+                         "A window and a strength chosen on one generator do "
+                         "not transfer to another -- that is the whole point "
+                         "of the comparison." % (path, fz.get("backend"),
+                                                 backend, BACKENDS[backend]))
+    if fz.get("select_metric") != BASECMP_SELECT:
+        raise SystemExit("%s selected on %r, this run expects %r"
+                         % (path, fz.get("select_metric"), BASECMP_SELECT))
+    missing = [(s, a, p) for s in BASECMP_SETS for a in arms if a != "unguided"
+               for p in props if fz.get("frozen", {}).get(s, {}).get(a, {}).get(p) is None]
+    if missing:
+        raise SystemExit("%s is missing %d (set, arm, prop) picks, e.g. %s"
+                         % (path, len(missing),
+                            ", ".join("%s/%s/%s" % m for m in missing[:6])))
+    return fz
+
+
 # --------------------------------------------------------------------------
 # the backend: TFG's generator, TFG's guide, TFG's oracle
 # --------------------------------------------------------------------------
@@ -425,7 +606,83 @@ def generator_feat_scale(edm_dir):
                  ["normalize_factors"][1])
 
 
-def build_pair(prop, d, sel, dev, k_delta, sampler_scale):
+def local_delta(prop, d, raw_oracle, slope, intercept, dev, k=2.0,
+                q=0.90, h=0.05, batch=128):
+    """(delta, report): k x the oracle's MAE NEAR THE TARGET, on real molecules.
+
+    The rule settled on 24 Sep (`proj1/scripts/local_fb_mae.py`, status doc
+    section 6 "How delta is set"), applied here to the EXTERNAL oracle instead
+    of ours. The recipe transfers; the numbers do not, so they are recomputed.
+
+    delta = k x mean |f_B(x) - y| over `val` molecules whose TRUE property y
+    lies in [Q_train_a(q - h), Q_train_a(q + h)] -- the q90 target's own
+    neighbourhood, +-5 percentile points. Selection is by the TRUE property and
+    not by f_B's prediction: regression to the mean makes the two differ in the
+    tail, and selecting on the prediction would measure a different quantity.
+
+    WHY NEAR THE TARGET AT ALL. delta is the width of the band in-band counts
+    hits in, and every hit is near the target by definition. f_B's error
+    averaged over all of QM9 is dominated by the bulk, where the run never
+    scores anything.
+
+    WHY THIS IS IDENTICAL FOR BOTH BASE MODELS, and why that matters more than
+    its value. Nothing in this function touches a generator: it is f_B's error
+    on real QM9 molecules. So the two bases are scored against the same bar. A
+    delta recomputed per base -- e.g. from each generator's own samples -- would
+    make the bar easier for one generator than the other and would destroy the
+    comparison while looking more careful. `--delta-mode local` is asserted to
+    agree across backends by test_basecmp.py.
+
+    THE LIMIT THAT MATTERS MORE THAN THE WINDOW, carried from the original note
+    and made worse here. (a) This is f_B's error on REAL molecules; in-band
+    scores GENERATED ones, only ~35-40% of which are molecule-stable, and f_B's
+    error on that population is unmeasured and probably larger. (b) For OUR f_B
+    the split protocol guarantees `val` is not training data. For TFG's oracle
+    it guarantees nothing: `evaluate_<p>` trained on an unknown ~50% of QM9, so
+    some of these val molecules are very likely in its training set and this MAE
+    is optimistic -- delta is therefore TIGHTER than it should be. A tighter
+    band lowers in-band for every arm on both bases equally, so it does not
+    favour any arm or any generator; it makes the absolute coverage numbers
+    pessimistic and they must be read that way. This is caveat 2 of this file's
+    header, unchanged and unfixable from the released artifacts.
+    """
+    pi = PROP_INDEX[prop]
+    ya = d["y"][d["split"]["train_a"], pi].double()
+    lo = float(torch.quantile(ya, q - h))
+    hi = float(torch.quantile(ya, q + h))
+    one_sided = bool(hi >= float(ya.max()) - 1e-12)
+    va = d["split"]["val"]
+    y = d["y"][va, pi].double()
+    keep = ((y >= lo) & (y <= hi)).nonzero(as_tuple=True)[0]
+    if keep.numel() < 200:
+        raise SystemExit("%s: only %d val molecules in [%.4g, %.4g]; delta would "
+                         "be noise" % (prop, keep.numel(), lo, hi))
+    idx = va[keep]
+    truth = y[keep].to(dev)
+    preds = []
+    with torch.no_grad():
+        for i in range(0, idx.numel(), batch):
+            b = idx[i:i + batch]
+            preds.append(raw_oracle(d["coords"][b].to(dev).contiguous(),
+                                    d["feats"][b].to(dev).contiguous(),
+                                    d["mask"][b].to(dev).contiguous()).reshape(-1))
+    pred = torch.cat(preds).double() * slope + intercept
+    err = (pred - truth).abs()
+    mae = float(err.mean())
+    rep = {"rule": "delta = %g x MAE(f_B) over val molecules with true property "
+                   "in [Q_train_a(%.2f), Q_train_a(%.2f)]" % (k, q - h, q + h),
+           "k": k, "q": q, "h": h, "window": [lo, hi], "one_sided": one_sided,
+           "n": int(idx.numel()), "local_mae": mae,
+           "signed_err": float((pred - truth).mean()),
+           # k = 2 is justified by measured coverage, not convention: report it
+           "coverage_at_delta": float((err <= k * mae).double().mean()),
+           "coverage_at_1x": float((err <= mae).double().mean()),
+           "selected_by": "true property",
+           "split": "val", "generator_independent": True}
+    return k * mae, rep
+
+
+def build_pair(prop, d, sel, dev, k_delta, sampler_scale, delta_mode="local"):
     """(f_A, f_B, delta, report): TFG's guide and TFG's oracle, in physical
     units, calibrated on the SAME molecules with the SAME two-parameter least
     squares, so nothing about the comparison between them depends on it.
@@ -473,7 +730,16 @@ def build_pair(prop, d, sel, dev, k_delta, sampler_scale):
                      feat_scale=sampler_scale)
     # The project's pre-registered rule, via the same helper the main sweep
     # uses -- NOT a hardcoded 2.0.
-    delta = choose_delta(mae_o, k_delta)
+    delta_global = choose_delta(mae_o, k_delta)
+    if delta_mode == "local":
+        delta, drep = local_delta(prop, d, raw_oracle, ao, bo, dev, k=k_delta)
+    elif delta_mode == "global":
+        delta, drep = delta_global, {"rule": "delta = %g x MAE(f_B) over the "
+                                            "calibration molecules" % k_delta,
+                                    "k": k_delta, "local_mae": None,
+                                    "generator_independent": True}
+    else:
+        raise SystemExit("unknown --delta-mode %r" % delta_mode)
     report = {"guide": "TFG tf_predict_%s/model_ema_2000.npy" % prop,
               "oracle": "TFG evaluate_%s/best_checkpoint.npy" % prop,
               "guide_slope": ag, "guide_intercept": bg, "guide_mae": mae_g,
@@ -486,7 +752,11 @@ def build_pair(prop, d, sel, dev, k_delta, sampler_scale):
               "sampler_feat_scale": float(sampler_scale),
               "guide_feat_scale": float(guide_scale),
               "guide_input_multiplier": f_A.feat_scale,
-              "oracle_input_multiplier": f_B.feat_scale}
+              "oracle_input_multiplier": f_B.feat_scale,
+              # how delta was set travels with every cell, because the whole
+              # in-band column means something different if this changes
+              "delta_mode": delta_mode, "delta": delta,
+              "delta_global": delta_global, "delta_detail": drep}
     # A slope far from the published MAD means the adapter is feeding the
     # network the wrong units, and every number downstream would be
     # meaningless while looking fine. Fail loudly here instead.
@@ -534,18 +804,37 @@ def _load_stage(args, props, stage_label, targets, grid):
             return 2
         t = r["target_name"]
         present[t].add((r["prop"], r["arm"], float(r["w"])))
+        # `delta_mode` is in here because delta is NOT in a cell's filename: two
+        # cells can differ only in what their in-band column means, and a freeze
+        # that averaged across them would pick a frontier off a mixed metric with
+        # nothing on the page to show it. (delta itself is per property, so it is
+        # checked per property below, not here.)
         meta.add((r["n"], r["seed"], (r.get("prov") or {}).get("fm_md5"),
                   r.get("grid"), r.get("tau_max_guide"), r.get("batch"),
-                  tuple(r.get("dist_block") or ())))
+                  tuple(r.get("dist_block") or ()),
+                  (r.get("calibration") or {}).get("delta_mode")))
         if r.get("n_nonfinite", 0) > 0 or not math.isfinite(
                 float(r.get(SELECT_METRIC, float("nan")))):
             continue
         rows[t].append(r)
     if len(meta) != 1:
         print("INCONSISTENT %s cells in %s: (n, seed, fm_md5, grid, window, "
-              "batch, block) = %s" % (stage_label, args.out_dir,
-                                      sorted(map(str, meta))))
+              "batch, block, delta_mode) = %s" % (stage_label, args.out_dir,
+                                                  sorted(map(str, meta))))
         return 2
+    # delta is per property, so it cannot live in the tuple above. Cells with no
+    # recorded delta are skipped rather than compared: a missing value is not
+    # evidence of disagreement, and NaN != NaN would make every such set look
+    # inconsistent.
+    for p in props:
+        ds = {round(float(r["delta"]), 12)
+              for rr in rows.values() for r in rr
+              if r["prop"] == p and math.isfinite(float(r.get("delta") or
+                                                        float("nan")))}
+        if len(ds) > 1:
+            print("INCONSISTENT delta for %s: %s -- in-band means a different "
+                  "thing in each cell" % (p, sorted(ds)))
+            return 2
     for t in targets:
         holes = sorted((p, a, w) for p in props for (a, w) in grid
                        if (p, a, w) not in present[t])
@@ -687,8 +976,13 @@ def eqfreeze(args, props, arms):
     if fell_back:
         print("no strength clears the floor for: %s -> most stable used"
               % ", ".join(fell_back))
-    (n, seed, md5, grid_, win, batch, blk), = meta
-    out = {"backend": BACKENDS[args.backend], "gen_md5": md5, "arms": list(arms),
+    (n, seed, md5, grid_, win, batch, blk, dmode), = meta
+    # delta_mode travels with the frozen strengths: a strength chosen under one
+    # definition of in-band does not carry to a run scored under another, and
+    # --stage full / basecmpfull refuse the mismatch. It comes off the meta tuple,
+    # which _load_stage has already proved unique across the whole stage.
+    out = {"delta_mode": dmode or "global",
+           "backend": BACKENDS[args.backend], "gen_md5": md5, "arms": list(arms),
            "frozen_w": frozen,
            "rule": "FR3a on the tune block: best %s among strengths with "
                    "mol_stability >= %.1f x unguided" % (SELECT_METRIC, FLOOR),
@@ -820,8 +1114,13 @@ def freeze(args, props, arms):
     if fell_back:
         print("no strength clears the floor for: %s -> most stable used"
               % ", ".join(fell_back))
-    (n, seed, md5, grid_, win, batch, _blk), = meta
-    out = {"backend": BACKENDS[args.backend], "gen_md5": md5, "arms": list(arms),
+    (n, seed, md5, grid_, win, batch, _blk, dmode), = meta
+    # delta_mode travels with the frozen strengths: a strength chosen under one
+    # definition of in-band does not carry to a run scored under another, and
+    # --stage full / basecmpfull refuse the mismatch. It comes off the meta tuple,
+    # which _load_stage has already proved unique across the whole stage.
+    out = {"delta_mode": dmode or "global",
+           "backend": BACKENDS[args.backend], "gen_md5": md5, "arms": list(arms),
            "fr1_record_only": fr1,
            "frozen_w": frozen, "frozen_w_mae": frozen_mae,
            "rule": "frozen_w = FR3a: best MAE among strengths with "
@@ -854,12 +1153,36 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--stage", default="compare",
                     choices=["compare", "extend", "freeze", "full",
-                             "eqtune", "eqextend", "eqfreeze", "eqconfirm"])
+                             "eqtune", "eqextend", "eqfreeze", "eqconfirm",
+                             "basecmp", "basecmprefine", "basecmpfull"])
     ap.add_argument("--backend", default="equifm", choices=sorted(BACKENDS),
-                    help="the borrowed generator: equifm (the FM transfer) or "
-                         "edm (TFG's EDMsecond, dropped 23 Sep)")
+                    help="which generator: equifm (the borrowed FM base), fm "
+                         "(OURS, run through this file's external pair for the "
+                         "base-model comparison), or edm (TFG's EDMsecond, "
+                         "dropped 23 Sep)")
     ap.add_argument("--edm-dir", default=os.path.join(ROOT, "weights", "EDMsecond"),
                     help="--backend edm: directory holding generative_model_ema.npy + args.pickle")
+    ap.add_argument("--fm-ckpt", default=FM_CKPT,
+                    help="--backend fm: our generator checkpoint")
+    ap.add_argument("--t-starts", default="",
+                    help="--stage basecmp: comma list of flow-time instants at "
+                         "which guidance switches on (default %s). On a VP or "
+                         "EquiFM backend each is applied as tau_max_guide = "
+                         "1 - t_start, so one number means the same physical "
+                         "instant on both families."
+                         % ",".join("%g" % t for t in BASECMP_T_STARTS))
+    ap.add_argument("--delta-mode", default=None, choices=["local", "global"],
+                    help="how the in-band half-width is set. 'local' (the rule "
+                         "settled 24 Sep) is k x f_B's MAE over val molecules "
+                         "whose true property is near the q90 target; 'global' "
+                         "is k x its MAE over all calibration molecules. Both "
+                         "depend on f_B and QM9 only, never on the generator, so "
+                         "both are identical across backends -- which is what "
+                         "makes the base-model comparison a comparison. "
+                         "DEFAULTS BY STAGE: 'local' for the basecmp stages, "
+                         "which pre-register it; 'global' for every stage that "
+                         "existed before it, whose cells are already on disk "
+                         "under that definition.")
     ap.add_argument("--props", default="mu,alpha,gap")
     ap.add_argument("--targets", default=",".join(SCREEN_TARGETS),
                     help="--stage compare: which screen targets to run (to "
@@ -898,7 +1221,11 @@ def main():
                     help="run only these strengths (comma list) of the planned "
                          "cells -- splits a stage across jobs; unguided is kept")
     ap.add_argument("--frozen", default="",
-                    help="--stage full: the json --stage freeze wrote")
+                    help="--stage full: the json --stage freeze wrote; "
+                         "--stage basecmpfull: the json basecmp_freeze.py wrote")
+    ap.add_argument("--refine", default="",
+                    help="--stage basecmprefine: the json "
+                         "`basecmp_freeze.py --emit-refine` wrote")
     ap.add_argument("--sets", default="primary",
                     help="--stage full: strength sets (primary = FR3a, mae = FR3)")
     ap.add_argument("--exclude-sets", default="")
@@ -926,14 +1253,45 @@ def main():
                          % (unknown, ", ".join(ARM_CLASS)))
     if args.n is None:
         args.n = {"full": 5000, "eqconfirm": EQ_CONFIRM_N, "eqtune": EQ_TUNE_N,
-                  "eqextend": EQ_TUNE_N, "eqfreeze": EQ_TUNE_N}.get(args.stage, 512)
+                  "eqextend": EQ_TUNE_N, "eqfreeze": EQ_TUNE_N,
+                  "basecmp": BASECMP_N, "basecmprefine": BASECMP_N,
+                  "basecmpfull": 2000}.get(args.stage, 512)
     if args.seed is None:
-        if args.stage in ("full", "eqconfirm"):
+        if args.stage in ("full", "eqconfirm", "basecmpfull"):
             raise SystemExit("--stage %s needs --seed (one of %s)" % (
-                args.stage, ", ".join(map(str, FULL_SEEDS if args.stage == "full"
-                                          else EQ_CONFIRM_SEEDS))))
+                args.stage, ", ".join(map(str, {
+                    "full": FULL_SEEDS, "eqconfirm": EQ_CONFIRM_SEEDS,
+                    "basecmpfull": BASECMP_FULL_SEEDS}[args.stage]))))
         args.seed = (EQ_TUNE_SEED if args.stage in ("eqtune", "eqextend", "eqfreeze")
+                     else BASECMP_SEED if args.stage in ("basecmp", "basecmprefine")
                      else COMPARE_SEED)
+    basecmp = args.stage in ("basecmp", "basecmprefine", "basecmpfull")
+    # DELTA'S DEFAULT IS PER STAGE, and this is not a convenience. The local rule
+    # is pre-registered for the basecmp stages only. Every stage that existed
+    # before it has cells ON DISK computed with the global rule -- 216 EDMsecond
+    # compare cells among them -- and `delta` is not in a cell's filename, so
+    # defaulting `local` everywhere would let a resumed stage write cells whose
+    # in-band column means something different from its neighbours', with nothing
+    # to show it. `_load_stage` and the frozen-file gate below now also refuse a
+    # mixed set, but the default is what stops it arising.
+    if args.delta_mode is None:
+        args.delta_mode = "local" if basecmp else "global"
+    if args.delta_mode == "local" and not basecmp:
+        print("NOTE: --delta-mode local on --stage %s. The local window is fixed "
+              "at the q90 target's neighbourhood, so it is the WRONG "
+              "neighbourhood for a q50 or `dist` cell, and cells already on disk "
+              "for this stage used the global rule. Write them somewhere new."
+              % args.stage)
+    if basecmp and args.backend == "edm":
+        raise SystemExit("the base-model comparison is our FM base against "
+                         "EquiFM; --backend edm was dropped on 23 Sep")
+    t_starts = ([float(t) for t in args.t_starts.split(",") if t]
+                or list(BASECMP_T_STARTS))
+    for t in t_starts:
+        if not 0.0 < t < 1.0:
+            raise SystemExit("--t-starts must lie strictly in (0, 1); got %g. "
+                             "t is flow time: 0 is pure noise, 1 is data, and "
+                             "guidance runs on [t_start, 1)." % t)
     if args.block_start is None:
         args.block_start = {"eqtune": EQ_TUNE_START, "eqextend": EQ_TUNE_START,
                             "eqfreeze": EQ_TUNE_START,
@@ -942,9 +1300,21 @@ def main():
         # EquiFM integrates its own native tau grid (1 -> 0, uniform); the
         # --grid choice belongs to the EDM schedule and is recorded as such
         args.grid = "native"
-    root_out = OUT_ROOTS[args.backend]
+    elif args.backend == "fm":
+        # our generator integrates flow time 0 -> 1 on a uniform grid; the
+        # EDM schedule choice does not apply and must not be recorded as if it did
+        args.grid = "flow"
+    root_out = BASECMP_ROOT if basecmp else OUT_ROOTS[args.backend]
     if not args.out_dir:
-        if args.stage == "full":
+        if basecmp:
+            # the comparison keeps its OWN tree, per backend, so it can never be
+            # read into the transfer's freeze or the main sweep's
+            args.out_dir = (
+                os.path.join(root_out, args.backend, "full", "n%d" % args.n,
+                             "seed%d" % args.seed)
+                if args.stage == "basecmpfull"
+                else os.path.join(root_out, args.backend, "screen"))
+        elif args.stage == "full":
             args.out_dir = os.path.join(root_out, "full", "n%d" % args.n,
                                         "seed%d" % args.seed)
         elif args.stage == "eqconfirm":
@@ -963,10 +1333,45 @@ def main():
     # strengths), eqconfirm cells are full-scale `dist` cells
     cell_stage = {"compare": "compare", "extend": "compare", "full": "full",
                   "eqtune": "eqtune", "eqextend": "eqtune",
-                  "eqconfirm": "full"}[args.stage]
+                  "eqconfirm": "full",
+                  # refine cells ARE screen cells, at more strengths -- the same
+                  # convention `extend` already follows, so one glob reads both
+                  "basecmp": "basecmp", "basecmprefine": "basecmp",
+                  "basecmpfull": "basecmpfull"}[args.stage]
 
     frozen = None
-    if args.stage == "full":
+    if args.stage == "basecmp":
+        cells = plan_basecmp_cells(props, arms, t_starts)
+    elif args.stage == "basecmprefine":
+        # The cells to add are decided by basecmp_freeze.py --emit-refine, so
+        # the neighbour rule and the pick rule live in ONE place and cannot
+        # disagree about which cell is at a grid edge.
+        if not args.refine:
+            raise SystemExit("--stage basecmprefine needs --refine (the json "
+                             "`basecmp_freeze.py --emit-refine` wrote)")
+        plan = json.load(open(args.refine))
+        if plan.get("backend") != BACKENDS[args.backend]:
+            raise SystemExit("%s is a %r refine plan; this is --backend %s"
+                             % (args.refine, plan.get("backend"), args.backend))
+        cells = [(c["prop"], c["arm"], BASECMP_TARGET, float(c["w"]),
+                  float(c["t_start"])) for c in plan["cells"]
+                 if c["prop"] in props and c["arm"] in arms]
+    elif args.stage == "basecmpfull":
+        if not args.frozen:
+            raise SystemExit("--stage basecmpfull needs --frozen (the json "
+                             "`basecmp_freeze.py --json-out` wrote)")
+        frozen = load_basecmp_frozen(args.frozen, props, arms, args.backend)
+        # This stage's sets are ("floor", "free"), fixed by the protocol.
+        # --sets/--exclude-sets name FR3a/FR3, which do not exist here, so a
+        # caller passing them means something the plan cannot honour: refuse
+        # rather than ignore, and never record "primary" on a cell that is not.
+        if args.sets != "primary" or args.exclude_sets:
+            raise SystemExit("--stage basecmpfull does not take --sets / "
+                             "--exclude-sets (those name FR3a/FR3). Its sets are "
+                             "%s and every cell records which it belongs to."
+                             % ", ".join(BASECMP_SETS))
+        cells = plan_basecmp_full_cells(props, arms, frozen)
+    elif args.stage == "full":
         if not args.frozen:
             raise SystemExit("--stage full needs --frozen (the json "
                              "`--stage freeze --json-out` wrote)")
@@ -987,6 +1392,14 @@ def main():
                 raise SystemExit("frozen strengths were chosen at %s=%r, this "
                                  "run uses %r" % (k, frozen.get(k),
                                                   getattr(args, k)))
+        # a strength chosen under one definition of in-band does not carry to a
+        # run scored under another
+        fmode = frozen.get("delta_mode", "global")
+        if fmode != args.delta_mode:
+            raise SystemExit("frozen strengths were chosen with delta_mode=%r, "
+                             "this run uses %r -- in-band means a different thing "
+                             "in each, so the strengths do not transfer"
+                             % (fmode, args.delta_mode))
         cells = plan_full_cells(props, arms, frozen, sets, excl)
     elif args.stage == "eqconfirm":
         if not args.frozen:
@@ -1030,6 +1443,28 @@ def main():
                              % (bad, ",".join(SCREEN_TARGETS)))
         cells = plan_compare_cells(props, arms, tg)
 
+    # Every stage's cells are (prop, arm, tgt, w, t_start) from here down. The
+    # pre-basecmp stages take the single global window, so their names and their
+    # behaviour are byte-for-byte what they were.
+    if not basecmp:
+        cells = with_t(cells, 1.0 - args.tau_max_guide)
+    # VALIDATE EVERY PATH, not just --t-starts. t_start also arrives as
+    # 1 - tau_max_guide (any pre-basecmp stage), from a refine plan, and from a
+    # frozen file. On the flow backend t_start = 0 makes FlowSampler's guidance
+    # factor (1 - t)/t divide by zero at the first grid point -- and this file's
+    # own header recommends --tau-max-guide 1.0 as an ablation, which is exactly
+    # that. FlowSampler defaults t_min_guide to 0.05 for this reason.
+    bad_t = sorted({float(c[4]) for c in cells if not 0.0 < float(c[4]) < 1.0})
+    if bad_t:
+        raise SystemExit(
+            "these cells would start guidance at t_start = %s, outside (0, 1): "
+            "t is flow time, 0 is pure noise and 1 is data, and guidance runs on "
+            "[t_start, 1). On --backend fm, t_start = 0 divides by zero in "
+            "FlowSampler's score-to-velocity factor. If this came from "
+            "--tau-max-guide, note t_start = 1 - tau_max_guide, so "
+            "--tau-max-guide 1.0 is t_start = 0; use 0.99 for a guide-everywhere "
+            "ablation." % ", ".join("%g" % t for t in bad_t))
+
     if args.strengths:
         keep = {float(x) for x in args.strengths.split(",") if x}
         cells = [c for c in cells if c[1] == "unguided" or float(c[3]) in keep]
@@ -1046,10 +1481,12 @@ def main():
             seen.add(c[1])
             first.append(c)
         cells = first
-    cfg = config_tag(args)
-
     def name(c):
-        return cell_name(*c, cfg=cfg, stage=cell_stage)
+        # the window is per cell, so the tag is built per cell: at the basecmp
+        # full stage one job writes cells at several windows, because each arm
+        # carries its own frozen one
+        return cell_name(c[0], c[1], c[2], c[3],
+                         cfg=config_tag(args, c[4]), stage=cell_stage)
 
     todo = cells if args.preflight else [
         c for c in cells if not os.path.exists(os.path.join(out, name(c)))]
@@ -1072,37 +1509,58 @@ def main():
                 "gen_md5": file_md5(str(EQUIFM_WEIGHTS)),
                 "gen_args": str(EQUIFM_ARGS),
                 "path": "HB_path: coords linear+aligned, types VP (beta 0.1-20)"}
+        norm_values, nf, n_layers = net.norm_values, net.args["nf"], net.args["n_layers"]
+    elif args.backend == "fm":
+        if not os.path.exists(args.fm_ckpt):
+            raise SystemExit("--backend fm needs our generator at %s"
+                             % args.fm_ckpt)
+        net, ck = load_fm(args.fm_ckpt, len(types), dev)
+        # OUR sampler works in RAW one-hot: `evaluate_samples`' hot_value
+        # defaults to 1.0 in the main sweep and nothing divides the type
+        # channels. So the sampler's type divisor is 1, and `build_pair` gets
+        # the guide's multiplier (1/8) and the oracle's (1) from that.
+        norm_values = (1.0, 1.0, 1.0)
+        nf, n_layers = int(ck["args"]["hidden"]), int(ck["args"]["layers"])
+        prov = {"gen": "our flow-matching EGNN (this project), EMA",
+                "gen_md5": file_md5(args.fm_ckpt),
+                "gen_args": os.path.abspath(args.fm_ckpt),
+                "epoch": ck.get("epoch"),
+                "path": "linear flow path, independent Gaussian noise"}
     else:
         net, prov = load_backend(args.edm_dir, dev)
         prov["gen_md5"] = prov["edm_md5"]
         prov.update({"noise_schedule": net.args["diffusion_noise_schedule"],
                      "diffusion_steps": net.args["diffusion_steps"]})
+        norm_values, nf, n_layers = net.norm_values, net.args["nf"], net.args["n_layers"]
     prov.update({"fm_md5": prov["gen_md5"],   # the generator key full_run_table checks
                  "torch": torch.__version__, "cuda": torch.version.cuda,
                  "device": (torch.cuda.get_device_name(0)
                             if dev == "cuda" and torch.cuda.is_available()
                             else "cpu"),
-                 "norm_values": net.norm_values})
+                 "norm_values": list(norm_values)})
     if frozen is not None:
         prov.update({"frozen_path": os.path.abspath(args.frozen),
                      "frozen_md5": file_md5(args.frozen),
                      "frozen_source_stage": frozen.get("source_stage"),
                      "frozen_source_target": frozen.get("target"),
                      "frozen_source_seed": frozen.get("source_seed"),
-                     "frozen_sets": args.sets,
+                     # basecmpfull's sets are its own two, not FR3a/FR3
+                     "frozen_sets": (list(BASECMP_SETS)
+                                     if args.stage == "basecmpfull" else args.sets),
                      "frozen_exclude_sets": args.exclude_sets})
     print("base model: %s  md5 %s  nf=%d layers=%d  grid=%s"
-          % (BACKENDS[args.backend], prov["gen_md5"][:12], net.args["nf"],
-             net.args["n_layers"], args.grid))
+          % (BACKENDS[args.backend], prov["gen_md5"][:12], nf, n_layers,
+             args.grid))
 
     calib_sel = calibration_indices(d, args.n_calib)
-    sampler_scale = float(net.norm_values[1])
+    sampler_scale = float(norm_values[1])
     if args.backend == "edm":
         assert sampler_scale == generator_feat_scale(args.edm_dir)
     guides, evals, deltas, reports = {}, {}, {}, {}
     for prop in props:
         f_A, f_B, delta, rep = build_pair(prop, d, calib_sel, dev, args.k_delta,
-                                          sampler_scale)
+                                          sampler_scale,
+                                          delta_mode=args.delta_mode)
         guides[prop], evals[prop] = f_A, f_B
         deltas[prop], reports[prop] = delta, rep
         print("  %-6s guide MAE %.5f %s | oracle MAE %.5f | delta %.5f | "
@@ -1110,11 +1568,14 @@ def main():
               % (prop, rep["guide_mae"], PROP_UNITS[prop], rep["oracle_mae"],
                  delta, rep["slope_over_mad_guide"], rep["slope_over_mad_oracle"]))
     oracle2 = {}
-    if args.backend == "equifm":
+    if args.backend in ("equifm", "fm"):
         # A SECOND oracle: OC-Flow's clean EGNN, different weights, same
         # (first) half as evaluate_<p>, disjoint from the guide. Calibrated
         # exactly like the first, on the same molecules. Supplementary: it
         # tells whether a gain is a quirk of one network.
+        # It is on for BOTH comparison backends, not just EquiFM: a second
+        # opinion that existed for one generator and not the other would be a
+        # difference between the two columns that has nothing to do with them.
         idx_cal = calib_sel
         for prop in props:
             pi = PROP_INDEX[prop]
@@ -1127,11 +1588,22 @@ def main():
                 raise SystemExit("%s OC-Flow oracle slope/MAD %.3f" % (prop, a2 / QM9_MAD[prop]))
             f_B2 = Calibrated(raw2, a2, b2, prop, guides[prop].y_std,
                               feats_are_normalised=False, feat_scale=sampler_scale)
-            oracle2[prop] = (f_B2, choose_delta(mae2, args.k_delta),
+            # The second oracle's band is set the SAME way as the first's. It is a
+            # second opinion on the in-band number, so scoring it against a
+            # differently-defined band would make the two incomparable by
+            # construction -- the one thing a second opinion must not be.
+            if args.delta_mode == "local":
+                delta2, drep2 = local_delta(prop, d, raw2, a2, b2, dev,
+                                            k=args.k_delta)
+            else:
+                delta2, drep2 = choose_delta(mae2, args.k_delta), {"rule": "global"}
+            oracle2[prop] = (f_B2, delta2,
                              {"oracle2": "OC-Flow exp_class_%s/best_checkpoint.npy" % prop,
-                              "slope": a2, "intercept": b2, "mae": mae2})
-            print("  %-6s oracle2 (OC-Flow) MAE %.5f | delta2 %.5f"
-                  % (prop, mae2, oracle2[prop][1]))
+                              "slope": a2, "intercept": b2, "mae": mae2,
+                              "delta_mode": args.delta_mode,
+                              "delta_detail": drep2})
+            print("  %-6s oracle2 (OC-Flow) MAE %.5f | delta2 %.5f (%s)"
+                  % (prop, mae2, delta2, args.delta_mode))
 
     # q50/q90: sizes from val[:n], exactly as the main sweep's compare stage.
     # dist: sizes AND targets from the SAME test molecules test[:n], exactly
@@ -1145,7 +1617,22 @@ def main():
     mask_v, mask_t = d["mask"][va].to(dev), d["mask"][te].to(dev)
     clip = None if args.clip < 0 else args.clip
 
-    def run_cell(prop, arm, tgt, w):
+    def basecmp_sets_of(arm, prop, w, t_start):
+        """Which of ("floor", "free") this (w, t_start) is the pick for, or None
+        outside the basecmpfull stage."""
+        if args.stage != "basecmpfull" or frozen is None:
+            return None
+        hit = []
+        for s in BASECMP_SETS:
+            pk = frozen["frozen"].get(s, {}).get(arm, {}).get(prop)
+            if arm == "unguided":
+                hit.append(s)
+            elif pk and abs(float(pk["w"]) - float(w)) < 1e-12 \
+                    and abs(float(pk["t_start"]) - float(t_start)) < 1e-12:
+                hit.append(s)
+        return hit
+
+    def run_cell(prop, arm, tgt, w, t_start):
         f_A, f_B = guides[prop], evals[prop]
         delta = deltas[prop]
         extra = arm_kwargs(arm, delta)
@@ -1181,14 +1668,27 @@ def main():
                        y=y_t[i:i + m.shape[0]], s=s, mode=arm, w=w_applied,
                        clip=clip, n_probe=args.n_probe, n_mc=args.n_mc,
                        sigma_mc=args.sigma_mc, **extra)
+            # ONE window, expressed on each family's own clock. Flow time runs
+            # 0 (noise) -> 1 (data) and guidance is on for t >= t_min_guide; VP
+            # and EquiFM time runs 1 (noise) -> 0 (data) and guidance is on for
+            # tau <= tau_max_guide. The same physical instant is therefore
+            # t_start on one clock and 1 - t_start on the other, which is the
+            # mirror `FlowSampler`/`VPSampler` document. Getting this backwards
+            # would guide the wrong half of the trajectory on one base and
+            # nothing would raise -- the arm would just be a worse method
+            # wearing its name, and the base-model comparison would read it as
+            # a property of the generator.
             if args.backend == "equifm":
                 c0, f0 = initial_noise(m, 6, gen)     # 5 one-hot + charge
-                smp = EquiFMSampler(net, m, tau_max_guide=args.tau_max_guide, **skw)
+                smp = EquiFMSampler(net, m, tau_max_guide=1.0 - t_start, **skw)
+            elif args.backend == "fm":
+                c0, f0 = initial_noise(m, len(types), gen)
+                smp = FlowSampler(net, m, t_min_guide=t_start, **skw)
             else:
                 c0, f0 = initial_noise(m, len(types), gen)
                 smp = VPSampler(
                     net, m, tau_min=args.tau_min, noise_schedule=net.schedule,
-                    tau_max_guide=args.tau_max_guide, grid=args.grid, **skw)
+                    tau_max_guide=1.0 - t_start, grid=args.grid, **skw)
             c, f, nc = integrate(smp, c0, f0, args.steps, args.solver)
             cs.append(c)
             fs.append(f)
@@ -1251,8 +1751,8 @@ def main():
             "prop": prop, "arm": arm, "target_name": tgt, "target": target,
             "stage": cell_stage, "variant": args.stage,
             "study": ("eqchem" if args.stage in ("eqtune", "eqextend", "eqconfirm")
-                      else "headline"),
-            "extension": args.stage in ("extend", "eqextend"),
+                      else "basecmp" if basecmp else "headline"),
+            "extension": args.stage in ("extend", "eqextend", "basecmprefine"),
             "dist_block": ([args.block_start, args.block_start + args.n]
                            if tgt == DIST_TARGET else None),
             "arm_class": ARM_CLASS.get(arm, "?"),
@@ -1266,9 +1766,20 @@ def main():
             "n_probe": args.n_probe, "n_mc": args.n_mc, "sigma_mc": args.sigma_mc,
             "clip": args.clip, "k_delta": args.k_delta, "seed": args.seed,
             "guide_time": "zero", "tau_min": args.tau_min,
-            "tau_max_guide": args.tau_max_guide,
-            "t_min_guide": 1.0 - args.tau_max_guide,   # the flow-time image
-            "fm": "EquiFM" if args.backend == "equifm" else "EDMsecond",
+            # the window, per cell, on BOTH clocks and as the screened axis.
+            # `t_start` is the primary record: it is the one number that means
+            # the same instant on a flow base and a VP/EquiFM base.
+            "t_start": float(t_start),
+            "tau_max_guide": 1.0 - float(t_start),
+            "t_min_guide": float(t_start),
+            # WHICH STRENGTH SET(S) this cell is. A cell can be both: the two
+            # picks coincide whenever an arm never threatens the chemistry floor,
+            # and those cells are computed once. Without this the mapping from a
+            # cell back to its set lives only in the frozen json, and any reader
+            # would have to re-derive it by matching floats.
+            "basecmp_set": basecmp_sets_of(arm, prop, w, t_start),
+            "fm": {"equifm": "EquiFM", "fm": "FM (ours)"}.get(
+                args.backend, "EDMsecond"),
             "cost": cost, "field_evals": calls,
             "guided_steps": guided, "clipped_sample_steps": clipped,
             "schedule_used": sched_log,
@@ -1300,13 +1811,23 @@ def main():
         per_mol = r.pop("_per_mol", None)
         r["seconds"] = time.time() - cs_t
         if not args.preflight:
+            # The temporary paths carry the PID. Two array tasks are never
+            # planned the same cell (the basecmp tiling is gated), but if one
+            # ever were -- a stage resubmitted with overlapping --arms, or a
+            # sweeper started beside a live array -- a shared tmp path lets two
+            # writers interleave and then atomically publish a cell with
+            # embedded NULs. Resume is `os.path.exists` alone, so nothing would
+            # ever retry it and the corrupt cell would be read as data.
+            # (Found and fixed on the guidance_sweep side by project 1 main 2,
+            # 25 Sep; the same hazard is here.)
+            pid = os.getpid()
             if per_mol is not None:
                 # the sidecar lands BEFORE the json: the json is the
                 # completion marker, so a cell is never "done" without it
-                ptmp = os.path.join(out, nm + ".permol.tmp")
+                ptmp = os.path.join(out, "%s.permol.%d.tmp" % (nm, pid))
                 torch.save(per_mol, ptmp)
                 os.replace(ptmp, os.path.join(out, nm[:-5] + ".permol.pt"))
-            tmp = os.path.join(out, nm + ".tmp")
+            tmp = os.path.join(out, "%s.%d.tmp" % (nm, pid))
             with open(tmp, "w") as fh:
                 json.dump(r, fh, indent=1)
             os.replace(tmp, os.path.join(out, nm))
@@ -1314,10 +1835,11 @@ def main():
             if os.path.exists(stale):
                 os.remove(stale)
         done += 1
-        print("  [%3d/%3d] %-6s %-9s %-4s w=%-5g MAE %9.4f (%5.2f d)  in-band %.3f"
-              "  mol-stab %.3f  clipped %d  %.1fs"
-              % (done, len(todo), c[0], c[1], c[2], c[3], r["prop_mae_eval"],
-                 r["prop_mae_eval"] / r["delta"], r["in_band_fraction"],
+        print("  [%3d/%3d] %-6s %-9s %-4s w=%-5g t=%-4g MAE %9.4f (%5.2f d)  "
+              "in-band %.3f (dec %.3f)  mol-stab %.3f  clipped %d  %.1fs"
+              % (done, len(todo), c[0], c[1], c[2], c[3], c[4],
+                 r["prop_mae_eval"], r["prop_mae_eval"] / r["delta"],
+                 r["in_band_fraction"], r.get("in_band_fraction_dec", float("nan")),
                  r["mol_stability"], r["clipped_sample_steps"], r["seconds"]))
 
     if failed:
