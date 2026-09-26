@@ -114,7 +114,7 @@ def _const_grad(prop, L, device, dtype):
 
 
 def guidance_field(net, x_t, t, y, s, mode, eta=0.0, tau=None, onesided=False,
-                   n_mc=8, sigma_mc=0.02, gen=None, cost=None, prop="gc"):
+                   n_mc=8, sigma_mc=0.35, gen=None, cost=None, prop="gc"):
     """Returns the guidance field in SCORE units, plus the controller state.
 
     Identical in structure to proj1/src/guidance.py's shared tail: build the
@@ -203,21 +203,25 @@ def guidance_field(net, x_t, t, y, s, mode, eta=0.0, tau=None, onesided=False,
     if mode in ("lgd_mc", "tfg_mc"):
         B = fval.shape[0]
         if mode == "lgd_mc":
-            # tr(Sigma)/d by Hutchinson, one JVP, same finite-difference scheme
-            z0 = torch.randn(m.shape, generator=gen).to(m.device)
-            with torch.no_grad():
-                h0 = 1e-3 / z0.reshape(B, -1).norm(dim=1).clamp(min=1e-12)
-                xq = (xt + h0.view(-1, 1, 1) * z0).detach()
-                mq = xq + (1.0 - float(t)) * net(xq, tv)
-            Jz = (mq - m.detach()) / h0.view(-1, 1, 1)
-            k_t = (1.0 - float(t)) ** 2 / max(float(t), 1e-6)
-            # Rank, not element count: each row of x lies on the 3-simplex, so
-            # Sigma has rank 3 per position. Using 4L makes r 13% too small.
-            d_dim = 3 * z0.shape[1]
-            r2 = (k_t * (z0 * Jz).sum(dim=(1, 2)) / d_dim).clamp(min=0.0)
-            r = r2.sqrt().view(-1, 1, 1)
-            if cost is not None:
-                cost["guide_fwd"] += 1
+            # LGD marginalises over the model's own posterior. The draws are
+            # ISOTROPIC (Modality 1 is explicit that a true N(0, Sigma) draw
+            # needs Sigma^{1/2}, which one JVP cannot give), so the only free
+            # quantity is their SCALE. Modality 1 sets it by trace-matching
+            # Sigma = k J; here k is the transplanted Gaussian-diffusion constant
+            # that overstates the conditional variance by up to 2.0e4x, and using
+            # it gave r = 8.3 on an observable confined to [0, 1] -- the draws
+            # scrambled the property completely (obs_sd 0.51).
+            #
+            # Instead match the induced OBSERVABLE spread to the measured
+            # conditional variance: isotropic draws of scale r induce
+            # Var(f) = r^2 |g|^2, so r^2 = v_f / |g|^2. This is what LGD is
+            # trying to achieve, computed from data instead of from a constant.
+            gm = torch.autograd.grad(fval.sum(), m, retain_graph=True)[0]
+            g2 = (gm ** 2).sum(dim=(1, 2)).clamp(min=1e-30)
+            v_meas = (_vf_at(prop, float(t)) if VF_TABLE is not None
+                      else (1.0 - float(t)) ** 2 / max(float(t), 1e-6) * 0.004)
+            r = (torch.as_tensor(v_meas, device=m.device, dtype=m.dtype)
+                 / g2).clamp(min=0.0).sqrt().view(-1, 1, 1)
         else:
             r = torch.full((B, 1, 1), float(sigma_mc), device=m.device)
 
@@ -263,7 +267,7 @@ def _step(x, v, dt):
 
 def run_cell(net, ck, arm, variant, w, y, s, tau, eta, onesided,
              n, steps, t_min, clip, seed, delta, real_kmer,
-             n_mc=8, sigma_mc=0.02, prop="gc", dev="cpu"):
+             n_mc=8, sigma_mc=0.35, prop="gc", dev="cpu"):
     L = ck["crop"]
     g = torch.Generator().manual_seed(seed)
     # Dirichlet(1,...,1) is uniform on the simplex, and if E_i ~ Exp(1) i.i.d.
