@@ -1,0 +1,12 @@
+ckpt fm_m2_dfb500.pt  best_it 475600  val 0.06336 | n 4096  nfe 100 | reference = real test (10434 seqs)
+real test      A 0.2725 C 0.2282 G 0.2274 T 0.2719 | GC 0.4556 sd 0.0551 | maxrun 6.9  P(run>=20) 0.004 | JS3 0.0000 JS4 0.0000 JS6 0.0000 | conf -
+real train     A 0.2721 C 0.2272 G 0.2279 T 0.2728 | GC 0.4550 sd 0.0541 | maxrun 6.9  P(run>=20) 0.006 | JS3 0.0000 JS4 0.0000 JS6 0.0006 | conf -
+uniform rand   A 0.2502 C 0.2494 G 0.2504 T 0.2500 | GC 0.4999 sd 0.0221 | maxrun 5.2  P(run>=20) 0.000 | JS3 0.0170 JS4 0.0271 JS6 0.0528 | conf -
+iid real comp  A 0.2729 C 0.2277 G 0.2277 T 0.2717 | GC 0.4554 sd 0.0223 | maxrun 5.3  P(run>=20) 0.000 | JS3 0.0134 JS4 0.0225 JS6 0.0463 | conf -
+gen seed 0     A 0.2687 C 0.2234 G 0.2403 T 0.2677 | GC 0.4637 sd 0.0517 | maxrun 6.6  P(run>=20) 0.002 | JS3 0.0007 JS4 0.0010 JS6 0.0025 | conf 0.958
+gen seed 1     A 0.2684 C 0.2228 G 0.2390 T 0.2698 | GC 0.4618 sd 0.0512 | maxrun 6.7  P(run>=20) 0.004 | JS3 0.0006 JS4 0.0009 JS6 0.0024 | conf 0.959
+gen seed 2     A 0.2697 C 0.2223 G 0.2391 T 0.2689 | GC 0.4613 sd 0.0515 | maxrun 6.6  P(run>=20) 0.003 | JS3 0.0006 JS4 0.0009 JS6 0.0025 | conf 0.959
+nearest-train identity (first 512 seqs; 1.0 = exact copy of a training seq):
+  real test      mean 0.345  median 0.344  max 0.382  P(>=0.9) 0.000
+  gen seed 0     mean 0.343  median 0.342  max 0.372  P(>=0.9) 0.000
+  iid real comp  mean 0.339  median 0.338  max 0.362  P(>=0.9) 0.000
