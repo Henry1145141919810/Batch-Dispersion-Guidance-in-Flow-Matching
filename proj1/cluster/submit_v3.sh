@@ -7,12 +7,15 @@
 # stage refuses, and the only stage that can refuse is the table.
 #
 # THE CHAIN
-#   A  v3 headline,  array 0-17   7 arms x 3 properties x 3 seeds x 2 bases,
-#                                 tree results/v3/*/v3/n<N>
+#   A  v3 headline   the comparison set + BDG eta=4, on every base model,
+#                    3 properties x 3 seeds. Tree results/v3/*/v3/n<N>
 #   B  insurance after A          finishes whatever A's 4-hour window cut off
-#   C  v3 ablation,  array 0-17   the 17-arm (eta x tau_mult) grid, the SAME
-#                                 n and the SAME three seeds, its own stage
-#                                 tree (results/v3/*/v3abl/n<N>)
+#   C  v3 ablation   the 17-arm (eta x tau_mult) grid, the SAME n and the
+#                    SAME three seeds, its own stage tree
+#                    (results/v3/*/v3abl/n<N>). The QM9 diffusion base runs
+#                    unguided+plug only, so its ablation tasks exit 0 at once
+#
+# Both arrays are 0-$((NB*NPROPS*NSEEDS - 1)), derived below from the job file.
 #   D  insurance after C
 #   E  table                      one page per base model, plus both side by side
 #
@@ -53,6 +56,20 @@ BATCH="${V3_BATCH:-500}"
 # and the two stages are free to match. ABL_N is kept as one name for the
 # divisibility loop below.
 ABL_N="$N"
+# THE ARRAY RANGE IS DERIVED, not typed. It is backends x properties x seeds,
+# and it changed the moment a third base model was added; a hardcoded range
+# would have silently left the last 9 tasks unsubmitted. The job file is the
+# single source of the backend list, so read it from there.
+NB=$(grep -c . <<<"$(sed -n 's/^BACKENDS=(\(.*\))$//p' "$JOB" | tr ' ' '
+')")
+NPROPS=$(sed -n 's/^PROPS=(\(.*\))$//p' "$JOB" | wc -w)
+NSEEDS=$(sed -n 's/^SEEDS=(\(.*\))$//p' "$JOB" | wc -w)
+if [ "$NB" -lt 1 ] || [ "$NPROPS" -lt 1 ] || [ "$NSEEDS" -lt 1 ]; then
+  echo "STOP: could not read BACKENDS/PROPS/SEEDS out of $JOB." >&2
+  exit 1
+fi
+NTASKS=$(( NB * NPROPS * NSEEDS ))
+ARRAY="0-$(( NTASKS - 1 ))"
 for _n in "$N" "$ABL_N"; do
     if [ $(( _n % BATCH )) -ne 0 ]; then
         echo "STOP: V3_BATCH=$BATCH does not divide n=$_n." >&2
@@ -62,7 +79,12 @@ for _n in "$N" "$ABL_N"; do
         exit 1
     fi
 done
+# CGM_PROJ/CGM_VENV travel too, so a teammate running from their own checkout
+# does not have to edit the job file. Unset here means the job keeps its
+# default (Henry's Betty tree), which is what the existing chain expects.
 EXPORTS="ALL,V3_N=$N,V3_ABL_N=$ABL_N,V3_BATCH=$BATCH"
+[ -n "${CGM_PROJ:-}" ] && EXPORTS="$EXPORTS,CGM_PROJ=$CGM_PROJ"
+[ -n "${CGM_VENV:-}" ] && EXPORTS="$EXPORTS,CGM_VENV=$CGM_VENV"
 
 cd "$PROJ" || exit 1
 [ -f "$JOB" ] || { echo "STOP: $JOB not found -- ship the code tarball first" >&2; exit 1; }
@@ -125,11 +147,11 @@ if [ "$WHAT" != table ]; then
 fi
 
 if [ "$WHAT" = all ] || [ "$WHAT" = headline ]; then
-    A=$(sub head   0-17 "$(dep)" v3);    LAST=$A
+    A=$(sub head   "$ARRAY" "$(dep)" v3);    LAST=$A
     B=$(sub head2  ""   "$(dep)" v3);    LAST=$B
 fi
 if [ "$WHAT" = all ] || [ "$WHAT" = ablation ]; then
-    C=$(sub abl    0-17 "$(dep)" v3abl); LAST=$C
+    C=$(sub abl    "$ARRAY" "$(dep)" v3abl); LAST=$C
     D=$(sub abl2   ""   "$(dep)" v3abl); LAST=$D
 fi
 E=$(sub table  ""   "$(dep)" table)
@@ -142,9 +164,9 @@ protocol v3 "$WHAT" submitted, batch = $BATCH
   separates results/v3/<be>/v3/ from results/v3/<be>/v3abl/
 
 ${P:+  $P  preflight               every arm on both bases, and the batch
-}${A:+  $A  headline array (0-17)   comparison set + BDG eta=4, both bases
+}${A:+  $A  headline array ($ARRAY)  comparison set + BDG eta=4, every base
 }${B:+  $B  headline insurance
-}${C:+  $C  ablation array (0-17)   17-arm eta x tau_mult grid, same n, 3 seeds
+}${C:+  $C  ablation array ($ARRAY)  17-arm eta x tau_mult grid, same n, 3 seeds
 }${D:+  $D  ablation insurance
 }  $E  table                   refuses if anything is missing
 $( [ "$WHAT" = headline ] && echo "

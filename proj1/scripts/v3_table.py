@@ -56,8 +56,14 @@ sys.path.insert(0, HERE)
 
 NL = chr(10)
 PROPS = ("mu", "alpha", "gap")
-BACKENDS = ("fm", "equifm")
-BACKEND_LABEL = {"fm": "ours (flow-matching EGNN)", "equifm": "EquiFM (borrowed)"}
+# The base models, and the property pair each is scored with. Kept in step
+# with transfer_sweep.V3_BACKENDS by a gate in test_v3.py -- this module must
+# not import torch (the cluster runs it on a login node), so it restates the
+# names rather than importing the registry at module scope.
+BACKENDS = ("fm", "equifm", "edm")
+BACKEND_LABEL = {"fm": "ours (flow-matching EGNN), our property pair",
+                 "equifm": "EquiFM (borrowed), TFG's property pair",
+                 "edm": "QM9 diffusion (TFG/EDMsecond), our property pair"}
 SIGMA = 3.0
 UNIQ_MIN = 0.95
 
@@ -79,8 +85,12 @@ def NORM_Q(p):
             hi = mid
     return 0.5 * (lo + hi)
 # every cell of one v3 run must agree on these or it is not one experiment
+# Every cell pooled into one table must agree on all of these. `pair` is here
+# because delta = k x MAE(f_B): two cells scored with different property pairs
+# have different BAND WIDTHS, so averaging their in_band would compare a wide
+# band against a narrow one and call the difference a result.
 SAME_KEYS = ("n", "steps", "solver", "batch", "target_name", "w", "t_start",
-             "delta_mode")
+             "delta_mode", "pair")
 # a cell's delta_mode must be a real rule, not None: see load()
 KNOWN_DELTA_MODES = ("global", "local")
 
@@ -136,6 +146,12 @@ def load(root, backend, n, seeds, stage="v3"):
             # global and local rules would have been pooled silently.
             r["delta_mode"] = ((r.get("calibration") or {}).get("delta_mode")
                                or r.get("delta_mode"))
+            # cells written before 26 Sep have no `pair` because every backend
+            # used TFG's; label them so they group with the cells they match
+            # rather than against a None that agrees with everything
+            r["pair"] = (r.get("pair")
+                         or (r.get("calibration") or {}).get("pair")
+                         or "tfg")
             got.setdefault((r["prop"], r["arm"]), []).append(r)
     cells = {}
     for k, rows in sorted(got.items()):
@@ -148,7 +164,7 @@ def load(root, backend, n, seeds, stage="v3"):
     return cells, problems
 
 
-def check(cells, problems, stage="v3"):
+def check(cells, problems, stage="v3", backend=None):
     rows = [r for rs in cells.values() for r in rs]
     if not rows:
         return problems + ["no v3 cells found"]
@@ -169,6 +185,10 @@ def check(cells, problems, stage="v3"):
                                   tau_mults=T.V3_ABL_TAU_MULTS, compare=False))
         else:
             want = list(T.v3_arms())
+        # AND PER BACKEND. The QM9 diffusion base is declared unguided+plug
+        # only, so expecting the full set there would refuse a complete run.
+        if backend is not None:
+            want = T.v3_backend_arms(backend, want)
     except Exception as exc:                       # noqa: BLE001
         problems.append("cannot import transfer_sweep to learn the planned arms "
                         "(%s), so a missing arm cannot be detected" % exc)
@@ -283,7 +303,8 @@ def emit(L, backend, cells, n, seeds):
     arms = order_arms({a for (_p, a) in cells}, measured=meas)
     any_row = next(iter(cells.values()))[0]
     prov = any_row.get("prov") or {}
-    L.append("## Base model: %s (`--backend %s`)" % (BACKEND_LABEL[backend], backend))
+    L.append("## Base model: %s (`--backend %s`)"
+             % (BACKEND_LABEL.get(backend, backend), backend))
     L.append("")
     L.append("| setting | value |")
     L.append("|---|---|")
@@ -510,7 +531,7 @@ def main():
     loaded, problems = {}, []
     for be in backends:
         c, pr = load(args.root, be, args.n, seeds, stage=args.stage)
-        problems += check(c, pr, stage=args.stage)
+        problems += check(c, pr, stage=args.stage, backend=be)
         loaded[be] = c
     if problems:
         print("REFUSING: the v3 run is not complete or not consistent.")

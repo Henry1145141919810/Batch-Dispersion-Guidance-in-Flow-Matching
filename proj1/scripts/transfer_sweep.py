@@ -68,14 +68,28 @@ WHAT DIFFERS FROM THE MAIN SWEEP, and must be disclosed with every number:
      alpha, and alpha(1.0) = 0.0032 under EDM's schedule, so guiding near
      tau = 1 amplifies epsilon error by ~300x. Run `--tau-max-guide 1.0` as a
      labelled comparison if the window's effect on this backend is wanted.
-  6. f_A AND f_B ARE TFG'S, NEVER OURS. The guide is `tf_predict_<p>` and the
-     oracle is `evaluate_<p>` (EDM's own `main_qm9_prop` classifier), both
-     loaded from `audit/fa_fb_search/TFG/` by `build_pair`. Nothing in this
-     file reads `weights/f_*.pt` or `proj1/checkpoints/f_*.pt`; every cell
-     records `guide` / `oracle` so that can be checked after the fact.
-     Both are calibrated to physical units on train_a + train_b only, so the
-     `test` split -- where the `dist` targets come from -- is touched by no
-     fit, the same claim the main sweep makes for its own pair.
+  6. WHICH f_A / f_B IS PER BACKEND, and was not always. Until 26 Sep this
+     file used TFG's pair for every backend -- guide `tf_predict_<p>`, oracle
+     `evaluate_<p>`, both from `audit/fa_fb_search/TFG/` via `build_pair` --
+     and the docstring said "never ours". Henry changed that: `fm` and the
+     QM9 diffusion base now score with OUR pair (`weights/f_{A,B}_<p>.pt`,
+     via `build_pair_ours`), `equifm` keeps TFG's. The table is V3_BACKENDS;
+     `--pair` overrides it; every cell records `pair`, `guide` and `oracle`,
+     so which was used can be checked after the fact.
+
+     WHAT THAT COSTS. delta = k x MAE(f_B), so the pair sets the BAND WIDTH.
+     Our f_B is the less accurate of the two on all three properties, so an
+     ours-pair backend is scored in a wider band and its in_band is higher
+     for that reason alone. IN_BAND IS THEREFORE NOT COMPARABLE ACROSS
+     BACKENDS THAT USE DIFFERENT PAIRS. Within one backend every arm shares
+     one delta, so the arm-vs-arm comparison -- the question this project
+     asks -- is untouched. What it buys is that our pair is disjoint by
+     construction, where TFG's `evaluate_<p>` saw an unknown part of QM9 and
+     its delta is optimistically tight.
+
+     Both pairs are calibrated (or, for ours, scale-checked) on train_a +
+     train_b only, so the `test` split -- where the `dist` targets come from
+     -- is touched by no fit, the same claim the main sweep makes.
 
 THE PROTOCOL, the main sweep's, stage for stage (amended 23 Sep, before any
 transfer cell existed -- TRANSFER_EXPERIMENT_PLAN.md section 9):
@@ -141,6 +155,8 @@ ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
 sys.path.insert(0, os.path.join(ROOT, "proj1", "src"))
 
 from evaluation import choose_delta, evaluate_samples        # noqa: E402
+from checkpoint_paths import default_generator, require_predictor  # noqa: E402
+from m1_signed_bias import PhysicalProperty  # noqa: E402
 from external.tfg_assets import (Calibrated, EDMGenerator, PROP_INDEX,  # noqa: E402
                                  PROP_UNITS, QM9_MAD, TFGGuide, TFGOracle,
                                  fit_calibration, metadata)
@@ -179,8 +195,22 @@ BACKENDS = {"equifm": "EquiFM", "edm": "TFG/EDMsecond", "fm": "FM (ours)"}
 OUT_ROOTS = {"equifm": os.path.join(ROOT, "results", "transfer_equifm"),
              "edm": OUT,
              "fm": os.path.join(ROOT, "results", "transfer_fm")}
-# Our generator, pinned the way v2_run.slurm pins it.
-FM_CKPT = os.path.join(ROOT, "proj1", "checkpoints", "fm_last.pt")
+# OUR GENERATOR, resolved rather than hardcoded.
+#
+# It used to be the literal proj1/checkpoints/fm_last.pt, which is the file on
+# Henry's Betty tree and is NOT in the repository: it is 57.5 MB of weights
+# plus optimiser and scheduler state, and .gitignore excludes it twice. A
+# teammate cloning this repo got "needs our generator at
+# proj1/checkpoints/fm_last.pt" and could not run `--backend fm` at all.
+#
+# weights/fm_ema.pt IS in the repository and carries the SAME EMA tensors --
+# weights/README.md records `max |w_slim - w_full| = 0.0` across every
+# parameter, and the slim file stores `source_md5 = <fm_last.pt's md5>` to say
+# so. checkpoint_paths.default_generator() prefers the full file where it
+# exists (Betty, then a local checkpoints dir) and falls back to the slim one,
+# which is exactly the right order: identical weights either way, and the
+# cluster keeps using the file it already has.
+FM_CKPT = default_generator()
 
 # --------------------------------------------------------------------------
 # BASECMP: the base-model comparison (Henry, 25 Sep)
@@ -334,6 +364,86 @@ V3_ABL_SEEDS = V3_SEEDS
 # lets both stages run at whatever n bobo picks.
 V3_STAGE_DIRS = {"v3": "v3", "v3abl": "v3abl"}
 V3_COMPARE_ARMS = ["unguided", "plug", "tmpd", "lgd_mc", "tfg"]
+# --------------------------------------------------------------------------
+# WHICH BACKEND GETS WHICH PROPERTY PAIR, AND WHICH ARMS (Henry, 26 Sep)
+# --------------------------------------------------------------------------
+# One declaration instead of scattered `if args.backend ==` branches. Adding a
+# base model should be a row here plus a loader, not an archaeology exercise.
+#
+#   pair   "ours" -> weights/f_A_<p>.pt + f_B_<p>.pt  (build_pair_ours)
+#          "tfg"  -> TFG's tf_predict_<p> + evaluate_<p>  (build_pair)
+#   arms   None   -> the stage's full arm set
+#          tuple  -> only these, whatever the stage plans
+#
+# READ THIS BEFORE COMPARING in_band ACROSS BACKENDS. delta = k x MAE(f_B), so
+# the pair sets the BAND WIDTH. Our f_B is less accurate than TFG's on all
+# three properties -- measured in BASECMP_PROTOCOL.md, roughly 1.2x on mu, 3x
+# on alpha, 2x on gap -- so an ours-pair backend is scored in a WIDER band and
+# its in_band is higher for that reason alone, before any base model or any
+# arm is considered.
+#
+# That is a deliberate trade, not an oversight. Our pair is disjoint by
+# CONSTRUCTION (f_A and f_B trained on disjoint halves), where TFG's is
+# disjoint only by inference and its evaluate_<p> saw an unknown part of QM9,
+# which makes its delta optimistically tight. The cost is that
+#
+#     ACROSS BACKENDS WITH DIFFERENT PAIRS, in_band IS NOT COMPARABLE.
+#
+# Within one backend every arm shares one delta, so the arm comparison -- which
+# is what this project is actually about -- is unaffected. v3_table prints the
+# pair and delta on every row and refuses to mix pairs inside one table.
+V3_BACKENDS = {
+    "fm":     {"pair": "ours", "arms": None,
+               "label": "FM (ours)"},
+    "equifm": {"pair": "tfg",  "arms": None,
+               "label": "EquiFM"},
+    # QM9 diffusion. TFG's released EDMsecond, driven through our sampler --
+    # the diffusion base model the comparison needs. UNGUIDED AND PLUG ONLY
+    # (Henry, 26 Sep): it is here as a base-model reference point, not as a
+    # seventh arm-by-arm column, and the full set on a third base would cost
+    # more than the question is worth.
+    "edm":    {"pair": "ours", "arms": ("unguided", "plug"),
+               "label": "QM9 diffusion (TFG/EDMsecond)"},
+}
+# Modality 2 is NOT here, and cannot simply be added. Its state is a [B, L, 4]
+# simplex rather than coords+feats+mask over an EGNN, its properties are
+# analytic (gc/cpg) rather than learned nets, and it has its own driver in
+# proj1/m2/. See docs/protocol/MODALITY2_V3_PLAN.md for what bridging it
+# requires; until that is done it runs through proj1/m2/run_sweep.py.
+
+
+def backend_pair(backend):
+    """Which property pair this backend scores with. Default: TFG's."""
+    return V3_BACKENDS.get(backend, {}).get("pair", "tfg")
+
+
+def v3_backend_arms(backend, planned):
+    """`planned` restricted to what this backend runs, order preserved.
+
+    Named v3_* because `backend_arms` already exists further down for the
+    TRANSFER stage's portability filter -- a different question entirely, and
+    defining a second function under that name silently shadowed the first.
+    """
+    allow = V3_BACKENDS.get(backend, {}).get("arms")
+    if allow is None:
+        return list(planned)
+    keep = [a for a in planned if a in allow]
+    missing = [a for a in allow if a not in planned]
+    # NONE of them planned -> this backend does not take part in this stage.
+    # That is the QM9 diffusion base against the BDG ablation: it runs
+    # unguided+plug, and the ablation plans neither. Return empty and let the
+    # caller exit 0.
+    #
+    # SOME but not all -> the registry names an arm the stage does not have,
+    # which is a typo or a stale declaration, and silently narrowing it away
+    # would run a smaller experiment than the one declared. Refuse.
+    if missing and keep:
+        raise SystemExit(
+            "--backend %s is declared to run %s, but the stage did not plan "
+            "%s. The registry and the planner disagree."
+            % (backend, ", ".join(allow), ", ".join(missing)))
+    return keep
+
 
 
 def bdg_arm(eta, tau_mult):
@@ -872,6 +982,126 @@ def local_delta(prop, d, raw_oracle, slope, intercept, dev, k=2.0,
     return k * mae, rep
 
 
+# OUR OWN PROPERTY PAIR, as an alternative to TFG's borrowed one.
+#
+# Henry, 26 Sep: `fm` and the QM9-diffusion backend score with OUR f_A/f_B;
+# `equifm` keeps TFG's. Which pair a backend uses is declared in V3_BACKENDS
+# below, not decided here.
+#
+# WHY THIS IS NOT JUST "LOAD OUR NETS". Two things have to be right or the
+# numbers are quietly wrong rather than loudly broken:
+#
+#   1. FEATURE SCALE. `PhysicalProperty` was trained on the data file's raw
+#      one-hot and has no feat_scale of its own, so it is only correct when
+#      the sampler also works in raw one-hot. That is true for `fm`
+#      (norm_values (1,1,1)) and FALSE for every diffusion backend, whose
+#      state is one-hot/4. Handed those features unconverted it would read
+#      types 4x too small, return finite numbers, and nothing downstream could
+#      see it: stability and validity go through argmax. So our nets are
+#      wrapped in `Calibrated` too -- slope 1, intercept 0, because they are
+#      already in physical units -- purely to get `feat_scale`.
+#
+#   2. A GUARD THAT CAN ACTUALLY FIRE. build_pair's defence against exactly
+#      that bug is `slope_over_mad`, and it cannot work here: our nets have no
+#      fitted slope to compare against QM9's MAD. So a calibration IS fitted,
+#      on the same molecules and with the same least squares -- and then
+#      DISCARDED -- and its slope is asserted to be ~1. A well-calibrated
+#      predictor fed the right features fits slope 1; one fed features 4x too
+#      small does not. The fit is a thermometer, not a correction.
+#
+# The delta rule is the SAME rule (k x MAE of f_B), measured here on the same
+# 3000 calibration molecules rather than read off the checkpoint's `val_mae`,
+# so `delta_mode` keeps its two documented values and a cell from either pair
+# is scored the same way. `val_mae` is recorded beside it for comparison.
+def build_pair_ours(prop, d, sel, dev, k_delta, sampler_scale,
+                    delta_mode="local"):
+    """(f_A, f_B, delta, report) using weights/f_A_<p>.pt and f_B_<p>.pt.
+
+    Same signature and same return shape as `build_pair`, so the caller does
+    not care which pair it asked for.
+    """
+    idx = PROP_INDEX[prop]
+    if d["props"].index(prop) != idx:
+        raise SystemExit("PROP_INDEX[%r]=%d but the data file puts it at %d"
+                         % (prop, idx, d["props"].index(prop)))
+    c = d["coords"][sel].to(dev)
+    f = d["feats"][sel].to(dev)
+    m = d["mask"][sel].to(dev)
+    truth = d["y"][sel, idx].to(dev)
+    n_types = len(d["types"])
+
+    ga_path = require_predictor("f_A_%s.pt" % prop)
+    gb_path = require_predictor("f_B_%s.pt" % prop)
+    raw_guide = PhysicalProperty(ga_path, n_types, dev)
+    raw_oracle = PhysicalProperty(gb_path, n_types, dev)
+
+    # Fit ONLY to check the scale (see the note above); the fit is not applied.
+    ag, bg, mae_g = fit_calibration(raw_guide, c, f, m, truth)
+    ao, bo, mae_o = fit_calibration(raw_oracle, c, f, m, truth)
+
+    y_std = float(truth.double().std())
+    # slope 1, intercept 0: already physical. feat_scale converts the SAMPLER's
+    # space to raw one-hot, which is the space both nets were trained in.
+    f_A = Calibrated(raw_guide, 1.0, 0.0, prop, y_std,
+                     feats_are_normalised=False, feat_scale=sampler_scale)
+    f_B = Calibrated(raw_oracle, 1.0, 0.0, prop, y_std,
+                     feats_are_normalised=False, feat_scale=sampler_scale)
+
+    delta_global = choose_delta(mae_o, k_delta)
+    if delta_mode == "local":
+        # local_delta takes (raw_oracle, slope, intercept) positionally and
+        # applies them; identity is correct here for the same reason as above.
+        delta, drep = local_delta(prop, d, raw_oracle, 1.0, 0.0, dev, k=k_delta)
+    elif delta_mode == "global":
+        delta, drep = delta_global, {"rule": "delta = %g x MAE(f_B) over the "
+                                             "calibration molecules" % k_delta,
+                                     "k": k_delta, "local_mae": None,
+                                     "generator_independent": True}
+    else:
+        raise SystemExit("unknown --delta-mode %r" % delta_mode)
+
+    def _val_mae(path):
+        try:
+            return float(torch.load(path, map_location="cpu",
+                                    weights_only=False)["val_mae"])
+        except Exception:                          # noqa: BLE001
+            return None
+
+    report = {"pair": "ours",
+              "guide": "ours %s (arch %s)" % (os.path.relpath(ga_path, ROOT),
+                                              raw_guide.arch),
+              "oracle": "ours %s (arch %s)" % (os.path.relpath(gb_path, ROOT),
+                                               raw_oracle.arch),
+              # fitted and DISCARDED -- the scale thermometer, not a correction
+              "fitted_slope_guide": ag, "fitted_intercept_guide": bg,
+              "fitted_slope_oracle": ao, "fitted_intercept_oracle": bo,
+              "guide_slope": 1.0, "guide_intercept": 0.0, "guide_mae": mae_g,
+              "oracle_slope": 1.0, "oracle_intercept": 0.0, "oracle_mae": mae_o,
+              "qm9_mad": QM9_MAD[prop], "y_std": y_std,
+              "guide_val_mae": _val_mae(ga_path),
+              "oracle_val_mae": _val_mae(gb_path),
+              "n_calibration": int(len(sel)),
+              "calibration_set": "train_a+train_b, seed %d" % CALIB_SEED,
+              "sampler_feat_scale": float(sampler_scale),
+              "guide_input_multiplier": f_A.feat_scale,
+              "oracle_input_multiplier": f_B.feat_scale,
+              "delta_mode": delta_mode, "delta": delta,
+              "delta_global": delta_global, "delta_detail": drep}
+    # THE SCALE GUARD. A predictor already in physical units, fed the features
+    # it was trained on, fits slope ~1. Fed them on the wrong scale it does
+    # not -- which is the one failure mode that is otherwise invisible.
+    for who, sl in (("guide", ag), ("oracle", ao)):
+        if not 0.85 < sl < 1.15:
+            raise SystemExit(
+                "%s our %s fits calibration slope %.3f; expected ~1. Our "
+                "predictors are already in physical units, so a slope far "
+                "from 1 means the sampler's features are reaching them on the "
+                "wrong scale (sampler_feat_scale=%g). Every number downstream "
+                "would look fine and be wrong."
+                % (prop, who, sl, sampler_scale))
+    return f_A, f_B, delta, report
+
+
 def build_pair(prop, d, sel, dev, k_delta, sampler_scale, delta_mode="local"):
     """(f_A, f_B, delta, report): TFG's guide and TFG's oracle, in physical
     units, calibrated on the SAME molecules with the SAME two-parameter least
@@ -1347,10 +1577,11 @@ def main():
                              "basecmp", "basecmprefine", "basecmpfull",
                              "v3", "v3abl"])
     ap.add_argument("--backend", default="equifm", choices=sorted(BACKENDS),
-                    help="which generator: equifm (the borrowed FM base), fm "
-                         "(OURS, run through this file's external pair for the "
-                         "base-model comparison), or edm (TFG's EDMsecond, "
-                         "dropped 23 Sep)")
+                    help="which generator: equifm (the borrowed FM base, "
+                         "scored with TFG's pair), fm (OURS, scored with OUR "
+                         "pair), or edm (TFG's EDMsecond as the QM9 diffusion "
+                         "base, our pair, unguided+plug only). See "
+                         "V3_BACKENDS.")
     ap.add_argument("--edm-dir", default=os.path.join(ROOT, "weights", "EDMsecond"),
                     help="--backend edm: directory holding generative_model_ema.npy + args.pickle")
     ap.add_argument("--fm-ckpt", default=FM_CKPT,
@@ -1431,6 +1662,13 @@ def main():
                          "results/transfer/full/n<N>/seed<seed> for full")
     ap.add_argument("--max-minutes", type=float, default=0.0)
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--pair", default="", choices=["", "ours", "tfg"],
+                    help="which property pair scores this run. Default: the "
+                         "backend's own, declared in V3_BACKENDS -- `ours` "
+                         "for fm and the QM9 diffusion base, `tfg` for "
+                         "equifm. delta = k x MAE(f_B), so THE PAIR SETS THE "
+                         "BAND WIDTH and in_band is not comparable across "
+                         "backends that use different pairs.")
     ap.add_argument("--preflight", action="store_true",
                     help="one throwaway cell per arm at minimum cost, writes "
                          "nothing, exits nonzero if any arm raises")
@@ -1594,6 +1832,25 @@ def main():
         else:
             v3set = v3_arms(etas=V3_ABL_ETAS, tau_mults=V3_ABL_TAU_MULTS,
                             compare=False)
+        # THE BACKEND MAY RUN FEWER ARMS THAN THE STAGE PLANS. The QM9
+        # diffusion base is declared unguided+plug only (V3_BACKENDS), so the
+        # filter is applied to whatever was planned OR passed with --arms. It
+        # is applied last, so a --arms typo still fails loudly rather than
+        # being silently narrowed away.
+        v3set = v3_backend_arms(args.backend, v3set)
+        if not v3set:
+            # NOT an error. The QM9 diffusion base runs unguided+plug, which
+            # the BDG ablation does not plan, so its v3abl tasks have nothing
+            # to do. The array grid is uniform (every backend x property x
+            # seed) because a ragged one is how stride bugs happen, so those
+            # tasks exist and must succeed having done nothing -- loudly.
+            print("nothing to run: --backend %s is declared to run %s, and "
+                  "--stage %s plans none of them. Exiting 0."
+                  % (args.backend,
+                     ", ".join(V3_BACKENDS.get(args.backend, {}).get("arms")
+                               or ["all arms"]),
+                     args.stage))
+            return 0
         arms = v3set
         cells = plan_v3_cells(props, v3set)
     elif args.stage == "basecmp":
@@ -1815,19 +2072,38 @@ def main():
     sampler_scale = float(norm_values[1])
     if args.backend == "edm":
         assert sampler_scale == generator_feat_scale(args.edm_dir)
+    # WHICH PAIR: declared per backend in V3_BACKENDS, not decided here.
+    # `--pair` overrides it for a one-off, and is recorded on every cell.
+    pair = args.pair or backend_pair(args.backend)
+    if pair not in ("ours", "tfg"):
+        raise SystemExit("--pair must be 'ours' or 'tfg', got %r" % pair)
+    _build = build_pair_ours if pair == "ours" else build_pair
+    print("property pair: %s (%s)"
+          % (pair, "weights/f_{A,B}_<p>.pt" if pair == "ours"
+             else "TFG tf_predict_<p> + evaluate_<p>"))
     guides, evals, deltas, reports = {}, {}, {}, {}
     for prop in props:
-        f_A, f_B, delta, rep = build_pair(prop, d, calib_sel, dev, args.k_delta,
-                                          sampler_scale,
-                                          delta_mode=args.delta_mode)
+        f_A, f_B, delta, rep = _build(prop, d, calib_sel, dev, args.k_delta,
+                                      sampler_scale,
+                                      delta_mode=args.delta_mode)
+        rep.setdefault("pair", pair)
         guides[prop], evals[prop] = f_A, f_B
         deltas[prop], reports[prop] = delta, rep
         print("  %-6s guide MAE %.5f %s | oracle MAE %.5f | delta %.5f | "
-              "slope/MAD %.3f (guide) %.3f (oracle)"
+              "scale check %.3f (guide) %.3f (oracle)"
               % (prop, rep["guide_mae"], PROP_UNITS[prop], rep["oracle_mae"],
-                 delta, rep["slope_over_mad_guide"], rep["slope_over_mad_oracle"]))
+                 delta,
+                 rep.get("slope_over_mad_guide",
+                         rep.get("fitted_slope_guide", float("nan"))),
+                 rep.get("slope_over_mad_oracle",
+                         rep.get("fitted_slope_oracle", float("nan")))))
     oracle2 = {}
-    if args.backend in ("equifm", "fm"):
+    # THE SECOND ORACLE runs for every backend in the v3 registry, not for a
+    # hardcoded pair of names. A second opinion present for one generator and
+    # absent for another would be a difference between those columns that has
+    # nothing to do with the generators -- which is the whole reason the
+    # comment below gives for running it on both.
+    if args.backend in V3_BACKENDS:
         # A SECOND oracle: OC-Flow's clean EGNN, different weights, same
         # (first) half as evaluate_<p>, disjoint from the guide. Calibrated
         # exactly like the first, on the same molecules. Supplementary: it
@@ -2045,8 +2321,16 @@ def main():
             # cell back to its set lives only in the frozen json, and any reader
             # would have to re-derive it by matching floats.
             "basecmp_set": basecmp_sets_of(arm, prop, w, t_start),
-            "fm": {"equifm": "EquiFM", "fm": "FM (ours)"}.get(
-                args.backend, "EDMsecond"),
+            # WHICH PROPERTY PAIR SCORED THIS CELL. delta = k x MAE(f_B), so
+            # the pair sets the band width: two cells with different `pair`
+            # values have different in_band definitions and may not be
+            # compared on that column. v3_table refuses to mix them.
+            "pair": pair,
+            # the generator's human label. It used to default to "EDMsecond"
+            # for anything not in a two-name dict, so ANY new backend stamped
+            # the wrong generator onto every cell it wrote. BACKENDS is the
+            # one table that must know all of them.
+            "fm": BACKENDS[args.backend],
             "cost": cost, "field_evals": calls,
             "guided_steps": guided, "clipped_sample_steps": clipped,
             "schedule_used": sched_log,

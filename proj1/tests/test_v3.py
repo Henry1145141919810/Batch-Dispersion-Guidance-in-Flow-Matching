@@ -35,7 +35,12 @@ sys.path.insert(0, os.path.join(ROOT, "proj1", "src"))
 import transfer_sweep as T                     # noqa: E402
 
 PROPS = ["mu", "alpha", "gap"]
-BE = ["fm", "equifm"]
+# read from the job file, not restated: the backend list grew to three on
+# 26 Sep and a hardcoded pair here would have passed while the array left a
+# third of its tasks unproduced
+BE = re.findall(r"^BACKENDS=\((.*)\)$",
+                io.open(os.path.join(ROOT, "proj1", "cluster", "v3_run.slurm"),
+                        encoding="utf-8").read(), re.M)[0].split()
 R = {}
 
 
@@ -108,6 +113,55 @@ gate("out_dir_includes_the_stage_level",
      "V3_STAGE_DIRS[args.stage]" in _ts_src,
      "results/v3/<backend>/<stage>/n<N>/seed<S>/ -- without the stage level "
      "the two stages collide at equal n")
+# ---- the backend registry: one declaration, three files ------------------
+#
+# V3_BACKENDS says which property pair each base model is scored with and
+# which arms it runs. The job file lists the backends, and v3_table names them
+# again (it must not import torch, so it cannot read the registry). All three
+# have to agree or the array runs backends the table cannot read.
+gate("slurm_backends_are_registry_backends",
+     set(BE) == set(T.V3_BACKENDS),
+     "slurm %s vs registry %s" % (sorted(BE), sorted(T.V3_BACKENDS)))
+gate("table_backends_are_registry_backends",
+     set(re.findall(r'^BACKENDS = \((.*)\)$',
+                    io.open(os.path.join(ROOT, "proj1", "scripts",
+                                         "v3_table.py"),
+                            encoding="utf-8").read(), re.M)[0]
+         .replace('"', "").replace("'", "").replace(",", " ").split())
+     == set(T.V3_BACKENDS),
+     "v3_table.BACKENDS must name exactly the registry's backends")
+gate("every_backend_is_a_real_backend_choice",
+     set(T.V3_BACKENDS) <= set(T.BACKENDS),
+     "%s not in --backend's choices %s"
+     % (sorted(set(T.V3_BACKENDS) - set(T.BACKENDS)), sorted(T.BACKENDS)))
+gate("every_backend_declares_a_known_pair",
+     all(b["pair"] in ("ours", "tfg") for b in T.V3_BACKENDS.values()),
+     str({k: v["pair"] for k, v in T.V3_BACKENDS.items()}))
+# A reduced arm set must be a SUBSET of what the headline plans, or the
+# backend is declared to run something the stage never produces.
+for _be, _cfg in sorted(T.V3_BACKENDS.items()):
+    if _cfg["arms"] is not None:
+        gate("backend_%s_arms_are_planned" % _be,
+             set(_cfg["arms"]) <= set(T.v3_arms()),
+             "%s declares %s; the headline plans %s"
+             % (_be, list(_cfg["arms"]), T.v3_arms()))
+# The pair sets delta, and delta sets the band, so a cell must record which
+# pair scored it and the table must refuse to average across pairs.
+gate("cells_record_the_pair", '"pair": pair,' in _ts_src,
+     "delta = k x MAE(f_B), so two cells with different pairs have different "
+     "in_band definitions; the pair has to travel with the cell")
+gate("table_refuses_to_mix_pairs",
+     '"delta_mode", "pair")' in io.open(
+         os.path.join(ROOT, "proj1", "scripts", "v3_table.py"),
+         encoding="utf-8").read(),
+     "`pair` must be in v3_table.SAME_KEYS or a wide band and a narrow one "
+     "get averaged and the difference reported as a result")
+gate("ours_pair_has_a_scale_guard",
+     "fits calibration slope" in _ts_src,
+     "our predictors have no fitted slope to check against QM9's MAD, so "
+     "build_pair_ours must fit one purely to catch a wrong feature scale -- "
+     "the failure that is otherwise invisible (argmax metrics cannot see it)")
+
 gate("ablation_covers_headline_eta", T.V3_BDG_ETA in T.V3_ABL_ETAS)
 gate("ablation_covers_headline_taus",
      set(T.V3_BDG_TAU_MULTS) <= set(T.V3_ABL_TAU_MULTS))
@@ -296,11 +350,15 @@ sub = io.open(os.path.join(ROOT, "proj1", "cluster", "submit_v3.sh"),
               encoding="utf-8").read()
 # Both stages are the same shape now, so ONE range covers both.
 N_TASKS = NB * NP * NS
-gate("submit_uses_the_array_range",
-     sub.count("0-%d" % (N_TASKS - 1)) >= 2,
-     "both stages are %d tasks (%d backends x %d props x %d seeds), so "
-     "submit_v3.sh must use 0-%d for each"
-     % (N_TASKS, NB, NP, NS, N_TASKS - 1))
+# submit_v3.sh DERIVES the range from the job file rather than restating it,
+# so the gate checks that it derives rather than that it matches a literal --
+# a literal is exactly what went stale when the third backend landed.
+gate("submit_derives_the_array_range",
+     "NTASKS=$(( NB * NPROPS * NSEEDS ))" in sub
+     and 'ARRAY="0-$(( NTASKS - 1 ))"' in sub
+     and "0-17" not in sub,
+     "submit_v3.sh must compute the array range from the job file's "
+     "BACKENDS/PROPS/SEEDS (now %d tasks), never hardcode it" % N_TASKS)
 
 # ---- the batch: BDG's estimator IS the batch ------------------------------
 #
@@ -384,7 +442,20 @@ for _m in re.findall(r'read -r ([A-Z_ ]+)', _code):
 # including loop variables and same-line assignments, which are now detected.
 _env = {"SLURM_CONF", "SLURM_JOB_ID", "SLURM_ARRAY_JOB_ID", "SLURM_ARRAY_TASK_ID",
         "PATH", "USER", "HOME", "IFS",
-        "V3_N", "V3_ABL_N", "V3_BATCH", "BUDGET_MIN", "STAGE"}
+        "V3_N", "V3_ABL_N", "V3_BATCH", "BUDGET_MIN", "STAGE",
+        # the checkout and venv a teammate runs from; both have in-file
+        # defaults, and submit_v3.sh forwards them through --export
+        "CGM_PROJ", "CGM_VENV"}
+# An assignment INSIDE a quoted echo is not an assignment. CGM_PROJ was
+# whitelisted by the string `CGM_PROJ=/path/to/repo` in a help message while
+# CGM_VENV, named only in a ${...:-default}, was reported undefined -- the two
+# are equally safe, so the discrepancy was the detector, not the code.
+_echoed = set()
+for _line in _code.split('\n'):
+    if 'echo "' in _line:
+        _echoed |= set(re.findall(r'([A-Z_][A-Z0-9_]*)=', _line))
+_defined -= {n for n in _echoed
+             if not re.search(r'^\s*%s=' % n, _code, re.M)}
 _read = set(re.findall(r'\$\{?([A-Z_][A-Z0-9_]*)', _code))
 _undef = sorted(n for n in _read - _defined - _env)
 gate("shell_references_only_defined_vars", not _undef,

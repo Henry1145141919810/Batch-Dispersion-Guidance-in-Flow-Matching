@@ -129,3 +129,10 @@ proj1/m2/logs/
 proj1/m2/*.bak_*
 # The bundle directory IS tracked (blade needs it); the tarball duplicates it.
 proj1/m2/blade_bundle.tgz
+
+# a build artefact: 35 MB of weights already tracked under audit/ and weights/
+bobo_v3_benchmark.zip
+*.zip
+
+# editor state
+.vscode/

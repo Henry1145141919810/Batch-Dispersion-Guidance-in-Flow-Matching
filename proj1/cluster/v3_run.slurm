@@ -113,11 +113,25 @@ export PATH="/cm/local/apps/slurm/current/bin:$PATH"
 # DNS SRV lookup. Recorded in BETTY_RUNBOOK and hit twice before.
 export SLURM_CONF="${SLURM_CONF:-/cm/shared/apps/slurm/etc/slurm/slurm.conf}"
 
-PROJ=/vast/projects/ajw/wharton/hyhuang/cgm
+# PROJ: the checkout to run from. Overridable, because this file is no longer
+# run only on one person's tree -- the default is Henry's Betty path and a
+# teammate sets CGM_PROJ to their own. The default is kept so nothing about
+# the existing chain changes.
+PROJ="${CGM_PROJ:-/vast/projects/ajw/wharton/hyhuang/cgm}"
+if [ ! -d "$PROJ" ]; then
+  echo "FATAL: PROJ=$PROJ does not exist." >&2
+  echo "Set CGM_PROJ to your checkout:  CGM_PROJ=/path/to/repo sbatch ..." >&2
+  echo "(submit_v3.sh forwards it for you.)" >&2
+  exit 1
+fi
 cd "$PROJ" || exit 1
 mkdir -p "$PROJ/logs"
 # shellcheck disable=SC1091
-source "$PROJ/.venv/bin/activate" || exit 1
+VENV="${CGM_VENV:-$PROJ/.venv}"
+# shellcheck disable=SC1091
+source "$VENV/bin/activate" || {
+  echo "FATAL: no virtualenv at $VENV. Set CGM_VENV if yours is elsewhere." >&2
+  exit 1; }
 
 TS=proj1/scripts/transfer_sweep.py
 VT=proj1/scripts/v3_table.py
@@ -168,8 +182,22 @@ SEEDS=(20261001 20261002 20261003)
 # The ablation uses ALL THREE, the same three (Henry, 26 Sep, final). It ran a
 # single seed for two days; every v3 row now carries an across-seed spread, so
 # an ablation row and a headline row at the same n ARE comparable.
-BACKENDS=(fm equifm)
-FM_CKPT=proj1/checkpoints/fm_last.pt
+# THE BASE MODELS. Which property pair each is scored with, and which arms it
+# runs, are declared ONCE in transfer_sweep.V3_BACKENDS -- not here:
+#   fm      our flow-matching EGNN   our pair    all arms
+#   equifm  the borrowed EquiFM      TFG's pair  all arms
+#   edm     QM9 diffusion (TFG's EDMsecond), our pair, UNGUIDED + PLUG ONLY
+# The job passes the stage's full arm list for every backend and the filter is
+# applied inside transfer_sweep, so this array does not have to know about the
+# reduced set -- adding a backend is one word here plus a row there.
+#
+# n_tasks is NB * NP * NS, so the array range changes when this does:
+# submit_v3.sh derives it, and test_v3.py gates that they agree.
+BACKENDS=(fm equifm edm)
+# RESOLVED, not hardcoded: prefer the full training checkpoint where it
+# exists (Betty has it), fall back to the tracked weights/fm_ema.pt that every
+# clone has. Same EMA tensors either way -- see verify_generator.py.
+FM_CKPT="$(python -u proj1/scripts/verify_generator.py --print-path)"
 FM_MD5=a190ac8394902027d4a951f8d30e8c5c
 V3_ARMS="unguided,plug,tmpd,lgd_mc,tfg,bdg_e4t0.5,bdg_e4t1"
 # ALL 17 grid arms, in one list. They are not split into halves any more and the
@@ -198,16 +226,14 @@ echo "stage   : $STAGE"
 echo "n,batch : $N, $BATCH"
 
 if [ "$STAGE" != "table" ]; then
-  if [ ! -f "$FM_CKPT" ]; then
-    echo "FATAL: $FM_CKPT not found." >&2; exit 1
-  fi
-  GOT=$(md5sum "$FM_CKPT" | cut -d' ' -f1)
-  if [ "$GOT" != "$FM_MD5" ]; then
-    echo "FATAL: $FM_CKPT md5 $GOT, expected $FM_MD5." >&2
-    echo "Every cell in this project used a190ac83. A different generator would" >&2
-    echo "make v3's two halves incomparable to each other and to v2." >&2
-    exit 1
-  fi
+  # THE PIN IS THE MODEL, NOT THE FILE. This used to be a raw md5sum against
+  # proj1/checkpoints/fm_last.pt, which is 57.5 MB of weights-plus-optimiser
+  # state that .gitignore excludes and only Betty has. A teammate with a clean
+  # clone has weights/fm_ema.pt -- the SAME EMA tensors, optimiser state
+  # dropped, `max |w_slim - w_full| = 0.0` -- and the file-md5 gate told them
+  # their generator was wrong. verify_generator.py accepts either: the file's
+  # own md5, or the `source_md5` the slim file records naming its parent.
+  python -u proj1/scripts/verify_generator.py --pinned "$FM_MD5" || exit 1
   python -u proj1/scripts/fetch_tfg_assets.py --verify --models "" || {
       echo "FATAL: TFG assets missing or corrupt (the guide and the oracle)." >&2
       exit 1; }
