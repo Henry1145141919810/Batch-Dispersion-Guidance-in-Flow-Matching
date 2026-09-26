@@ -57,7 +57,8 @@ class _Base:
                  w=1.0, n_probe=1, probe_seed=0, clip=1.0,
                  n_mc=4, sigma_mc=0.1, want_kappa3=False, rch=None,
                  band_tau=None, band_eta=1.0, band_radius=None,
-                 tau=None, spbc_eta=1.0, spbc_radius=None, schedule=None,
+                 tau=None, spbc_eta=1.0, spbc_radius=None,
+                 bdg_eta=1.0, bdg_tau=None, bdg_onesided=False, schedule=None,
                  update_rule="euler", update_kw=None, log_velocity=False,
                  tfg=None):
         self.net, self.mask = net, mask
@@ -84,6 +85,8 @@ class _Base:
         self.want_kappa3, self.rch = want_kappa3, rch
         self.band_tau, self.band_eta, self.band_radius = band_tau, band_eta, band_radius
         self.tau, self.spbc_eta, self.spbc_radius = tau, spbc_eta, spbc_radius
+        # BDG: dispersion gain, spread setpoint, and the one-sided ablation
+        self.bdg_eta, self.bdg_tau, self.bdg_onesided = bdg_eta, bdg_tau, bdg_onesided
         # SHG: [(t_lo, t_hi, mode, w), ...]. The first interval containing t
         # wins; outside every interval, guidance is off. `mode`/`w` on the
         # sampler are the fallback when no schedule is given.
@@ -164,7 +167,15 @@ class _Base:
                  # tfg has not collapsed into plug -- and how far the raw
                  # correction sits above the shared velocity clip
                  "tfg_var_rescaled", "tfg_d0_rescaled", "tfg_d0_frac",
-                 "tfg_corr_over_v")
+                 "tfg_corr_over_v",
+                 # BDG's controller state. Without these the run is
+                 # unauditable: you can see what the samples did but not what
+                 # the servo was doing, which is the gap the osc arm left
+                 # (obs_var computed every step and never persisted).
+                 # bdg_e is the error signal, and its SIGN is the whole claim --
+                 # e < 0 means the controller was in its widening branch.
+                 "bdg_V_b", "bdg_tau", "bdg_e", "bdg_dev", "bdg_disp",
+                 "bdg_widening")
 
     def _accumulate_diag(self, diag):
         """Running mean of each diagnostic over every guided step and batch."""
@@ -331,7 +342,9 @@ class _Base:
             self.n_mc, self.sigma_mc, want_kappa3=self.want_kappa3,
             rch=self.rch, band_tau=self.band_tau, band_eta=self.band_eta,
             band_radius=self.band_radius, t_scalar=t,
-            tau=self.tau, spbc_eta=self.spbc_eta, spbc_radius=self.spbc_radius)
+            tau=self.tau, spbc_eta=self.spbc_eta, spbc_radius=self.spbc_radius,
+            bdg_eta=self.bdg_eta, bdg_tau=self.bdg_tau,
+            bdg_onesided=self.bdg_onesided)
         self.last_diag = diag
         self._accumulate_diag(diag)
         if self.want_kappa3 and "kappa3_skew" in diag:

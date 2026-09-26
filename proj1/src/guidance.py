@@ -1278,7 +1278,10 @@ KNOWN_MODES = {"plug", "smg_mean", "smg_var", "smg", "smg2", "smg2_curv",
                "btvg2", "btvg2_nogate", "btvg2_noorth", "btvg2_nocap",
                "btvg2_band",
                # chemistry-safe guidance: any base arm + the valence guard
-               "lgd_mc_chem", "plug_chem"}
+               "lgd_mc_chem", "plug_chem",
+               # BDG (25 Sep): two-sided setpoint control of the ACROSS-BATCH
+               # variance of the predicted property. See the bdg block below.
+               "bdg"}
 # the base arm each CSG mode wraps; the guard never changes the base field's
 # own computation, so `X_chem - X` isolates the guard exactly
 CHEM_BASE = {"lgd_mc_chem": "lgd_mc", "plug_chem": "plug"}
@@ -1317,7 +1320,8 @@ def guidance_field(f_net, post_fn, coords, feats, mask, y, s,
                    mode="plug", n_probe=1, generator=None, cost=_NOCOST,
                    n_mc=4, sigma_mc=0.1, want_kappa3=False, rch=None,
                    band_tau=None, band_eta=1.0, band_radius=None, t_scalar=None,
-                   tau=None, spbc_eta=1.0, spbc_radius=None):
+                   tau=None, spbc_eta=1.0, spbc_radius=None,
+                   bdg_eta=1.0, bdg_tau=None, bdg_onesided=False):
     """Return (G_coords, G_feats, diagnostics) in SCORE units.
 
     mode:
@@ -1565,6 +1569,56 @@ def guidance_field(f_net, post_fn, coords, feats, mask, y, s,
                                       m_c, m_f, k, n_probe, generator, cost)
 
     num = y - fval - c_term
+    if mode == "bdg":
+        # BATCH-DISPERSION GUIDANCE. Add a two-sided servo on the ACROSS-BATCH
+        # variance of the predicted property to plug's centring term.
+        #
+        #   F_bar = mean_i f(m_i)            over the BATCH axis, not over draws
+        #   V_b   = var_i  f(m_i)            the summand of Var[f(x_1)] that
+        #                                    SURVIVES: the law of total variance
+        #                                    splits it into E[Var(f|x_t)], which
+        #                                    vanishes because k = (1-t)^2/t -> 0,
+        #                                    and Var[E(f|x_t)], which is V_b.
+        #   e     = (V_b - tau^2) / tau^2    relative error against the setpoint.
+        #                                    Scale-free, so one eta transfers
+        #                                    across mu/alpha/gap.
+        #
+        # dV_b/dm_i = 2/(B-1) (F_i - F_bar) g_i exactly, because
+        # sum_j (F_j - F_bar) = 0 kills the mean's own dependence. The 2/(B-1)
+        # is absorbed into eta so the gain does not depend on batch size, and
+        # the direction is (F_i - F_bar) g_i -- the same g_i plug already has,
+        # so both terms share ONE J^T pullback and the cost dict is identical
+        # to plug's. No extra forward, no extra backward.
+        #
+        # WHY THERE IS NO CLAMP, which is the whole point. `btvg` clamps its
+        # coefficient at <= 0 (see the comment at the btvg branch above) because
+        # it servos the PER-SAMPLE posterior variance g^T Sigma g, which goes to
+        # 0 by construction, so V < tau^2 becomes true on EVERY trajectory late
+        # in t and forces the widening branch unconditionally (measured runaway
+        # coefficients +5.3, +110.8, +78.6). V_b does not vanish, so e changes
+        # sign only when the batch genuinely crosses the setpoint and the fixed
+        # point at V_b = tau^2 is stable. That is what buys the widening branch.
+        if bdg_tau is None:
+            raise ValueError("mode='bdg' needs bdg_tau (target property sd)")
+        tau_b = torch.as_tensor(float(bdg_tau), device=fval.device,
+                                dtype=fval.dtype)
+        if not torch.isfinite(tau_b) or tau_b <= 0:
+            raise ValueError("mode='bdg' needs bdg_tau > 0, got %r" % (bdg_tau,))
+        B_eff = int(fval.shape[0])
+        if B_eff < 2:
+            # a variance needs two samples; degenerate to plug rather than NaN
+            e_V = torch.zeros((), device=fval.device, dtype=fval.dtype)
+            fbar = fval.mean()
+            V_b = torch.zeros((), device=fval.device, dtype=fval.dtype)
+        else:
+            fbar = fval.mean()
+            V_b = fval.var(unbiased=True)
+            e_V = (V_b - tau_b ** 2) / (tau_b ** 2)
+        if bdg_onesided:
+            # the ablation: BTVG's restriction, contract-only
+            e_V = e_V.clamp(min=0.0)
+        disp = float(bdg_eta) * e_V * (fval - fbar)
+        num = num - disp
     den = s ** 2 + v_f + v2
     scale = (num / den).view(-1, 1, 1)
     w_c, w_f = scale * g_c, scale * g_f
@@ -1583,6 +1637,15 @@ def guidance_field(f_net, post_fn, coords, feats, mask, y, s,
 
     diag = {"f": fval, "c": c_term, "v_f": v_f, "v2": v2, "k": k,
             "num": num, "den": den}
+    if mode == "bdg":
+        # persist the controller state: without these the run cannot be
+        # audited afterwards, which is the mistake the osc arm made.
+        diag.update({"bdg_V_b": V_b.expand_as(fval).detach(),
+                     "bdg_tau": tau_b.expand_as(fval).detach(),
+                     "bdg_e": e_V.expand_as(fval).detach(),
+                     "bdg_dev": (fval - fbar).detach(),
+                     "bdg_disp": disp.detach(),
+                     "bdg_widening": (e_V < 0).to(fval.dtype).expand_as(fval).detach()})
     if want_kappa3:
         if sg_c is None:
             sg_c, sg_f = sigma_times_vector(post_fn, coords, feats, mask,
