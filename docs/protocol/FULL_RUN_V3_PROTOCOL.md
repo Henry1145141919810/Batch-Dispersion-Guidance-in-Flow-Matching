@@ -17,7 +17,7 @@ arm set, so its cells could not be pooled with v3's anyway.
 | setting | v3 | v2, for contrast |
 |---|---|---|
 | target | **q50** (the median) for every property | q90 |
-| strength | **w = 1 for every arm** | per-arm, frozen under a chemistry floor |
+| strength | **w = 1 for every arm** — not normalised, see §2.2 | per-arm, frozen under a chemistry floor |
 | guidance window | **t ≥ 0.5** for every arm | t ≥ 0.5 |
 | seeds | 20261001 / 20261002 / 20261003, **for both stages** | the same three |
 | n | **not pre-registered — the operator picks it** (§6.1) | 5000, batch 128 |
@@ -274,8 +274,9 @@ gate.
 | `edm` (QM9 diffusion) | 2 | 2 × 3 × 3 = **18** |
 | | | **144 headline cells** |
 
-The ablation adds 17 × 3 × 3 × 2 = **306** (`edm` sits it out), for **450** in
-all. The array is a uniform backend × property × seed grid — 27 tasks per
+The ablation adds 17 arms × **2 strengths** × 3 × 3 × 2 = **612** (`edm` sits
+it out), for **756** in all — it is much the larger stage, roughly 3× the
+headline's cost. The array is a uniform backend × property × seed grid — 27 tasks per
 stage — because a ragged one is how stride bugs happen; `edm`'s nine ablation
 tasks exit 0 immediately having planned nothing, and say so.
 
@@ -399,8 +400,10 @@ duplication is deliberate: it is what makes each stage's tree readable on its
 own, and it also gives a free consistency check, since the two copies should
 agree within seed noise.
 
-Union of the two arm sets: **22 arms.** Cells: **144** headline + **306**
-ablation = **450**.
+Union of the two arm sets: **22 arms.** Cells: **144** headline + **612**
+ablation = **756**. The ablation's factor of two over its arm count is the
+strength sweep, w ∈ {1, 4} — the headline has no strength axis
+([ABLATION_V3_PROTOCOL.md §1.1](ABLATION_V3_PROTOCOL.md)).
 
 ### 4.1 What the two knobs actually do — **measured on real trajectories**
 
@@ -635,17 +638,29 @@ holds.
   targets invert which lever matters: at q90 the batch sits 10–20 δ from target
   and bias dominates, while at q50 spread does.
 - **A cross-base-model statistical difference.** Not paired (§3).
-- **That BDG's spread control is what did anything.** v3 has no variance-only
-  rung: `btvg_var` went with `btvg` (§1). Within v3, η = 0 is exactly `plug`, so
-  `bdg − plug` bounds the whole dispersion term's effect, but nothing separates
-  "controlling spread helped" from "pushing harder helped" — **at q50 those are
-  the same dial**, because the target sits near the batch mean, so the deviation
-  term dominates and `w_eff` acts as an effective strength spanning **4.03×**
-  across the headline's **two** BDG arms — measured 1019 at τ_mult 0.5 and 253 at
-  1.0 (§4.1). (An earlier draft said "13× across three arms"; 13× was the
-  withdrawn closed form, and there are two arms now.) The **`w_eff` ladder is a dose-response
-  argument, not an ablation of the mechanism**, and any BDG gain must be reported
-  with that confound stated.
+- **That BDG's spread control is what did anything — FROM THE HEADLINE ALONE.**
+  v3 has no variance-only rung: `btvg_var` went with `btvg` (§1). Within the
+  headline, η = 0 is exactly `plug`, so `bdg − plug` bounds the whole
+  dispersion term's effect, but nothing there separates "controlling spread
+  helped" from "pushing harder helped" — **at one strength those are the same
+  dial**, because the target sits near the batch mean, so the deviation term
+  dominates and `w_eff` acts as an effective strength spanning **4.03×** across
+  the headline's **two** BDG arms — measured 1019 at τ_mult 0.5 and 253 at 1.0
+  (§4.1). (An earlier draft said "13× across three arms"; 13× was the withdrawn
+  closed form, and there are two arms now.) The headline's **`w_eff` ladder is a
+  dose-response argument, not an ablation of the mechanism.**
+
+  **The ablation now carries the control this caveat asks for.** It sweeps
+  **w ∈ {1, 4}** at every (η, τ_mult), and `w` and `w_eff` are *not* the same
+  knob: `w` scales the mean and deviation terms together, `w_eff` reweights the
+  deviation term alone —
+  `correction ∝ w·[(y − c − F̄) − w_eff·(F_i − F̄)]`, read off
+  [`sampling.py:595-597`](../../proj1/src/sampling.py#L595-L597). So the
+  separation is available **in the ablation, not here**, and it carries its own
+  hazard: the clip is applied *after* `w`, so a w = 4 row may be clip-limited
+  rather than controller-limited. See
+  [ABLATION_V3_PROTOCOL.md §1.1](ABLATION_V3_PROTOCOL.md). A headline BDG gain
+  still has to be reported with the confound stated.
 - **A monotone reading of the τ_mult ladder.** On 62 % of guided steps at
   τ_mult 1.5 the deviation term reverses (§4.1). Order rows by **measured**
   `w_eff`, never by τ_mult and never by the withdrawn closed form.

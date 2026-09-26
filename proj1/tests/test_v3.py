@@ -213,7 +213,36 @@ gate("ablation_arm_count", len(abl) == 1 + 4 * 4, "%d" % len(abl))
 cells = T.plan_v3_cells(PROPS, head)
 gate("plan_one_cell_per_prop_arm", len(cells) == len(PROPS) * len(head))
 gate("plan_unique", len(set(cells)) == len(cells))
-gate("plan_all_w_one", {c[3] for c in cells} == {1.0})
+gate("plan_headline_all_w_one", {c[3] for c in cells} == {1.0},
+     "the HEADLINE pre-registers one strength for every arm. Normalising the "
+     "strengths instead was considered and declined (Henry, 26 Sep); the "
+     "caveat that equal w is not equal FORCE stands in section 2.2")
+
+# ---- the ablation's strength axis ----------------------------------------
+#
+# The ablation runs each grid arm at BOTH w = 1 and w = 4. This is the control
+# the BDG confound needs: w multiplies the whole correction, so it scales the
+# mean and deviation terms together, while w_eff = 1 + eta*e reweights the
+# deviation term alone. Section 6 of the headline protocol says the two cannot
+# be told apart at q50; this axis is what separates them.
+gate("ablation_sweeps_two_strengths",
+     tuple(T.V3_ABL_WS) == (1.0, 4.0), str(T.V3_ABL_WS))
+gate("ablation_includes_the_headline_strength",
+     T.V3_W in T.V3_ABL_WS,
+     "w = %g must be in the ablation's axis %s, or no ablation row is "
+     "comparable to a headline row" % (T.V3_W, T.V3_ABL_WS))
+abl_cells = T.plan_v3_cells(PROPS, abl, ws=T.V3_ABL_WS)
+gate("ablation_plans_every_arm_at_every_strength",
+     len(abl_cells) == len(PROPS) * len(abl) * len(T.V3_ABL_WS),
+     "%d cells; expected %d props x %d arms x %d strengths"
+     % (len(abl_cells), len(PROPS), len(abl), len(T.V3_ABL_WS)))
+gate("ablation_plan_unique", len(set(abl_cells)) == len(abl_cells),
+     "w is part of the cell name, so the two strengths must not collide")
+gate("ablation_covers_both_strengths",
+     {c[3] for c in abl_cells} == set(T.V3_ABL_WS), str({c[3] for c in abl_cells}))
+gate("headline_plan_untouched_by_the_sweep",
+     {c[3] for c in T.plan_v3_cells(PROPS, head)} == {1.0},
+     "passing no `ws` must still give the headline exactly one strength")
 gate("plan_all_q50", {c[2] for c in cells} == {"q50"})
 gate("plan_one_window", {c[4] for c in cells} == {T.V3_T_START})
 gate("plan_unguided_first", all(c[1] == "unguided" for c in cells[:len(PROPS)]),

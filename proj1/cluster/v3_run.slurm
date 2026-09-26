@@ -333,8 +333,14 @@ elif [ "$STAGE" = "table" ]; then
   ALL_SEEDS="$(IFS=,; echo "${SEEDS[*]}")"
   # a tree with no cells is SKIPPED, not failed: submitting only the ablation
   # must not make its table job red over a headline that was never run
-  for SPEC in "v3|" "v3abl|_ABL"; do
-    TST="${SPEC%%|*}"; SUF="${SPEC#*|}"
+  # THE ABLATION SWEEPS STRENGTH, so it gets one table PER w: pooling w = 1
+  # and w = 4 cells into one row would average the axis it exists to sweep,
+  # and v3_table refuses to do it. The headline has a single strength.
+  for SPEC in "v3||" "v3abl|_ABL_w1|1" "v3abl|_ABL_w4|4"; do
+    TST="${SPEC%%|*}"; REST="${SPEC#*|}"
+    SUF="${REST%%|*}"; TW="${REST#*|}"
+    WFLAG=""
+    [ -n "$TW" ] && WFLAG="--w $TW"
     FOUND=0
     for BE in "${BACKENDS[@]}"; do
       [ -d "$PROJ/results/v3/$BE/$TST/n$N" ] && FOUND=1
@@ -344,10 +350,12 @@ elif [ "$STAGE" = "table" ]; then
       continue
     fi
     echo "=== table: stage=$TST n=$N seeds=$ALL_SEEDS -> V3_RESULTS$SUF*.md ==="
-    srun python -u "$VT" --both --stage "$TST" --n "$N" --seeds "$ALL_SEEDS" \
+    # shellcheck disable=SC2086
+    srun python -u "$VT" --both --stage "$TST" --n "$N" --seeds "$ALL_SEEDS" $WFLAG \
         --md-out "$PROJ/docs/results/V3_RESULTS$SUF.md" || RC=$?
     for BE in "${BACKENDS[@]}"; do
-      srun python -u "$VT" --backend "$BE" --stage "$TST" --n "$N" --seeds "$ALL_SEEDS" \
+      # shellcheck disable=SC2086
+      srun python -u "$VT" --backend "$BE" --stage "$TST" --n "$N" --seeds "$ALL_SEEDS" $WFLAG \
           --md-out "$PROJ/docs/results/V3_RESULTS${SUF}_$BE.md" || RC=$?
     done
   done
@@ -379,11 +387,15 @@ for BE in "${BACKENDS[@]}"; do
   # a literal 198 that counted results/v3/$BE entire, swept in the ablation's
   # cells and could never be reached. Each count is scoped to its OWN stage
   # subtree, which is what now separates them.
-  if [ "$STAGE" = "v3abl" ]; then N_ARMS=$(( $(echo "$ABL_ARMS" | tr ',' '
-' | wc -l) ))
-  else N_ARMS=$(( $(echo "$V3_ARMS" | tr ',' '
-' | wc -l) )); fi
-  WANT=$(( N_ARMS * NP * NS ))
+  # the ablation runs every arm at BOTH strengths, so its cell count doubles
+  if [ "$STAGE" = "v3abl" ]; then
+    N_ARMS=$(( $(echo "$ABL_ARMS" | tr ',' '
+' | wc -l) )); N_W=2
+  else
+    N_ARMS=$(( $(echo "$V3_ARMS" | tr ',' '
+' | wc -l) )); N_W=1
+  fi
+  WANT=$(( N_ARMS * NP * NS * N_W ))
   TREE="$PROJ/results/v3/$BE/$STAGE/n$N"
   echo "cells $BE: $(find "$TREE" -name 'tr__*.json' 2>/dev/null | wc -l) / $WANT"
 done

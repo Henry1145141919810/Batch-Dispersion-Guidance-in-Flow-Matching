@@ -28,7 +28,8 @@ Submission **29 Sep 08:30**, defence **30 Sep**.
 > | seeds | **three, for BOTH stages** (the ablation ran one seed until 26 Sep) |
 > | n | **not pre-registered** — the operator picks it. Batch stays **500** whatever n is, so a cell runs n ÷ 500 BDG controllers, each estimating V_b from 500 samples (6.3 % se, independent of n). n must divide by 500 |
 > | BDG τ_mult | headline **{0.5, 1.0}** (0.75 dropped 26 Sep; it runs in the ablation). This is the SETPOINT knob, not the t ≥ 0.5 window |
-> | size | **144** headline cells + **306** ablation = 450. Cost depends on n: see [V3_POWER.md](../results/V3_POWER.md) |
+> | size | **144** headline cells + **612** ablation = 756. The ablation is ~3× the headline's cost. Cost depends on n: see [V3_POWER.md](../results/V3_POWER.md) |
+> | strength | headline **w = 1, fixed** for every arm; normalising the strengths instead was considered and **declined** 26 Sep, so §2.2's "equal w is not equal force" caveat stands. The ABLATION sweeps **w ∈ {1, 4}** — `w` scales the mean and deviation terms together while `w_eff = 1 + ηe` reweights the deviation term alone, so this is the control that separates "pushed harder" from "controlled spread". Watch `clipped_sample_steps`: the clip is applied after `w`, so a w = 4 row can be clip-limited |
 > | how to choose n | **by power, not by budget.** `proj1/scripts/v3_power.py` prints the minimum detectable in-band difference against n. A BDG-vs-plug effect is expected at ~1 pp, which needs n in the **low thousands**; below ~1000 nothing under ~2 pp is resolvable and a null says little. Pre-registered in FULL_RUN_V3_PROTOCOL.md §6.1 |
 > | trees | `results/v3/<backend>/<stage>/n<N>/seed<S>/` — the **stage** directory separates the headline from the ablation, since n and the seeds no longer do |
 > | Modality 2 | **not a v3 backend.** Separate stack; see [MODALITY2_V3_PLAN.md](../protocol/MODALITY2_V3_PLAN.md) |

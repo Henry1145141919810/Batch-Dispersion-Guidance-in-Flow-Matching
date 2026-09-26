@@ -31,13 +31,17 @@ is wrong.
 | seeds | **the same three** | the same three |
 | properties | mu, alpha, gap | the same |
 | base models | **`fm` and `equifm`** | those two **+ `edm`** |
-| target / strength / window | q50, w = 1, t ≥ 0.5 | the same |
+| target | q50 | the same |
+| **strength** | **w ∈ {1, 4} — swept** | w = 1, fixed |
+| window | t ≥ 0.5 | the same |
 | property pair | per backend, inherited (`fm` ours, `equifm` TFG's) | the same |
 | chemistry floor | none | none |
-| **cells** | **306** = 17 × 3 × 3 × 2 | 144 |
+| **cells** | **612** = 17 arms × **2 strengths** × 3 props × 3 seeds × 2 backends | 144 |
 | tree | `results/v3/<backend>/v3abl/n<N>/seed<S>/` | `…/v3/n<N>/…` |
 
-**This stage is the LARGER of the two** — 17 arms against 7 — so
+**This stage is much the LARGER of the two** — 17 arms at two strengths
+against 7 arms at one, so roughly **3× the headline's cost** (at n = 2000:
+~50 GPU-h against ~15; see [V3_POWER.md](../results/V3_POWER.md)). That is why
 `submit_v3.sh` defaults to the headline and leaves this for a second window,
 once the headline's `[timing]` lines have settled the real per-pass rate.
 
@@ -59,7 +63,59 @@ that duplication is useful: the two copies are at the same n and the same
 seeds, so they should agree within seed noise, which is a free consistency
 check on the whole harness.
 
-### 1.1 This stage carries the τ_mult 0.75 and 1.5 rungs alone
+### 1.1 Why the strength is swept here and nowhere else
+
+The headline fixes **w = 1 for every arm** and keeps the caveat that equal `w`
+is equal *dial setting*, not equal *force* (headline §2.2). Normalising the
+strengths instead — equalising applied correction share, or chemistry cost, or
+renormalising the field — was considered and **declined** (Henry, 26 Sep). The
+headline is unchanged.
+
+This stage sweeps **w ∈ {1, 4}**, and not for coverage. It is the control the
+BDG confound needs.
+
+**The algebra, read off the code.** BDG's numerator is
+`num_i = (y − F_i − c) − η·e·(F_i − F̄)`, and
+[`sampling.py:595-597`](../../proj1/src/sampling.py#L595-L597) multiplies the
+whole guidance field by `w`. Grouping the terms:
+
+> **correction ∝ w · [ (y − c − F̄) − w_eff·(F_i − F̄) ] / den**, with
+> **w_eff = 1 + η·e**
+
+So **`w` scales the mean term and the deviation term together, while `w_eff`
+reweights the deviation term alone.** They are two different knobs on one
+field, not one knob under two names.
+
+That matters because the headline protocol's §6 lists, as something v3
+*cannot* settle: *"nothing separates 'controlling spread helped' from 'pushing
+harder helped' — at q50 those are the same dial."* With a strength axis they
+are no longer the same dial. If raising `w` at fixed (η, τ_mult) reproduces
+what raising `w_eff` does, the dispersion term is doing nothing that a larger
+strength would not have done; if it does not, the controller is contributing
+something of its own.
+
+**⚠️ A w = 4 row may be clip-limited rather than controller-limited, and you
+must check before reading it.** The correction passes a velocity-relative clip
+that is applied **after** `w` ([`sampling.py:598-602`](../../proj1/src/sampling.py#L598-L602)).
+At τ_mult 0.5 the measured `w_eff` is already of order **10³**, with **2516**
+clipped sample steps against `plug`'s 884
+([BDG_LADDER_MEASURED.md](../results/BDG_LADDER_MEASURED.md)). Quadrupling `w`
+on a request the clip is already truncating may change nothing except how much
+is thrown away.
+
+Every cell records `clipped_sample_steps`. **Compare it across the two
+strengths before attributing any w = 1 → w = 4 difference to strength**, and
+if the clipped count rises while the metrics do not move, report the rung as
+clip-limited rather than as evidence about the controller. The clip cannot
+simply be widened: removing it produced 222 non-finite samples against 0
+([CLIP_PILOT.md](../results/CLIP_PILOT.md)).
+
+**Tables are per strength.** `v3_table.py` refuses to pool cells whose `w`
+disagrees — averaging w = 1 and w = 4 would average the axis this stage exists
+to sweep — so the chain writes `V3_RESULTS_ABL_w1*.md` and
+`V3_RESULTS_ABL_w4*.md` and they are read side by side.
+
+### 1.2 This stage carries the τ_mult 0.75 and 1.5 rungs alone
 
 The headline keeps only the endpoints, 0.5 and 1.0. So **any claim that the τ
 ladder is monotone, or that it curves, must be read off this grid's four
@@ -129,10 +185,13 @@ Four things this pre-registers as the expectation:
 
 ## 4. What this ablation can and cannot settle
 
-**Can.** Whether the deviation weight moves coverage at q50 at all; whether that
-effect is monotone in **measured** `w_eff`; whether η does anything beyond
-rescaling an already-saturated term; whether the η = 0 identity holds; and whether
-any of it looks different on a borrowed base model.
+**Can.** Whether the deviation weight moves coverage at q50 at all; whether
+that effect is monotone in **measured** `w_eff`; whether η does anything beyond
+rescaling an already-saturated term; whether the η = 0 identity holds; whether
+any of it looks different on a borrowed base model; and — new with the strength
+axis (§1.1) — **whether the dispersion term does anything a larger `w` would
+not have done**, since `w` scales the mean and deviation terms together while
+`w_eff` reweights the deviation term alone.
 
 **Cannot, and must not be claimed:**
 
@@ -158,7 +217,15 @@ any of it looks different on a borrowed base model.
 - **That a rung's result came from the controller rather than the clip**
   (§3.4). Measured: `plug` clips on 884 sample steps, `bdg_e4t0.5` on
   **2516**. This is the single most likely explanation for a null and must be
-  offered as such, not as "spread control does not help".
+  offered as such, not as "spread control does not help". **The w = 4 rows are
+  the most exposed to it**, because the clip is applied after `w` — check
+  `clipped_sample_steps` across the two strengths before reading anything into
+  a strength difference (§1.1).
+- **That `w` and `w_eff` are the same knob.** They are not (§1.1), and the
+  strength axis is what demonstrates it. But the converse claim also needs
+  care: showing that `w` and `w_eff` move a metric *similarly* does not prove
+  the controller is useless, only that at these settings it buys nothing a
+  cheaper dial would not.
 - **Anything about the setpoint regime.** No rung is within 28× of it (§3.1).
   If the grid comes back flat, the honest reading includes "we never tested
   τ_mult near the value where the controller could equilibrate" — τ_mult ≈ 2–8
@@ -177,7 +244,9 @@ V3_N=<n> bash proj1/cluster/submit_v3.sh ablation
 
 **`V3_N` is required and must match the headline's** — that is what makes the
 two stages comparable, and nothing enforces it across separate submissions, so
-check it. Four chained jobs: **preflight → array → insurance → table**. The
+check it. **This stage is ~3× the headline's cost** (17 arms at two strengths
+against 7 at one); price it with `v3_power.py` before submitting. Four chained
+jobs: **preflight → array → insurance → table**. The
 preflight is joined with `afterok`, so a broken arm or a batch that will not
 fit stops everything before the grid runs. The array range is derived from the
 job file (backends × properties × seeds) rather than typed.
@@ -188,6 +257,7 @@ job file (backends × properties × seeds) rather than typed.
 | grid | `V3_ABL_ETAS` × `V3_ABL_TAU_MULTS` in `transfer_sweep.py` |
 | arms literal | `ABL_ARMS` in `proj1/cluster/v3_run.slurm` |
 | cells | `results/v3/<backend>/v3abl/n<N>/seed<S>/tr__*.json` |
-| table | `v3_table.py --stage v3abl --n <n>` → `docs/results/V3_RESULTS_ABL*.md` |
+| strengths | `V3_ABL_WS` in `transfer_sweep.py` |
+| tables | `v3_table.py --stage v3abl --n <n> --w 1` and `--w 4` → `V3_RESULTS_ABL_w1*.md`, `V3_RESULTS_ABL_w4*.md`. Pooling the two is refused |
 | power | [V3_POWER.md](../results/V3_POWER.md) |
 | gates | `proj1/tests/test_v3.py` |

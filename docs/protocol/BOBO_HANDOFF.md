@@ -83,11 +83,14 @@ python proj1/scripts/v3_power.py --md-out docs/results/V3_POWER.md
 
 | n per cell | min. detectable in-band difference | headline GPU-h | ablation GPU-h |
 |---|---|---|---|
-| 500 | 3.13 pp | 3.8 | 6.2 |
-| 1000 | 2.21 pp | 7.7 | 12.5 |
-| **2000** | **1.56 pp** | **15.3** | **24.9** |
-| 3000 | 1.28 pp | 23.0 | 37.4 |
-| 5000 | 0.99 pp | 38.3 | 62.3 |
+| 500 | 3.13 pp | 3.8 | 12.5 |
+| 1000 | 2.21 pp | 7.7 | 24.9 |
+| **2000** | **1.56 pp** | **15.3** | **49.9** |
+| 3000 | 1.28 pp | 23.0 | 74.8 |
+| 5000 | 0.99 pp | 38.3 | 124.7 |
+
+**The ablation is ~3× the headline.** It runs 17 arms at **two strengths**
+(w ∈ {1, 4}) against the headline's 7 at one. Submit the headline first.
 
 **A BDG-vs-plug effect is expected at about 1 pp**, and a null is only evidence
 against BDG if the run could have seen it. If you cannot afford an n that
@@ -135,7 +138,8 @@ of `v3` (headline) or `v3abl` (ablation). Tables:
 
 ```
 python proj1/scripts/v3_table.py --both --stage v3    --n 2000
-python proj1/scripts/v3_table.py --both --stage v3abl --n 2000
+python proj1/scripts/v3_table.py --both --stage v3abl --n 2000 --w 1
+python proj1/scripts/v3_table.py --both --stage v3abl --n 2000 --w 4
 ```
 
 ### ⚠️ Do not compare `in_band` between backends
@@ -148,6 +152,12 @@ decision):
 | `fm` | ours | **ours** | all 7 |
 | `equifm` | EquiFM | **TFG's** | all 7 |
 | `edm` | QM9 diffusion (EDMsecond) | **ours** | `unguided`, `plug` only |
+
+**The ablation needs `--w`.** It sweeps w ∈ {1, 4}, so its tree holds two
+cells per (property, arm) per seed. `v3_table` refuses to pool them —
+averaging the two would average the axis the sweep exists to measure — and
+tells you which strengths are present if you forget the flag. The headline has
+one strength and needs no flag.
 
 δ = k × MAE(f_B), so **the pair sets the width of the acceptance band**, and
 the two oracles are not equally accurate. Measured on the same 3000

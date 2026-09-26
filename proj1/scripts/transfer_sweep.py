@@ -348,6 +348,35 @@ V3_BDG_TAU_MULTS = (0.5, 1.0)
 # the samples: all four tau_mults would be ONE computation under four names,
 # and averaging them would look like four independent measurements of the same
 # thing. The planner emits eta = 0 exactly once, at the reference tau_mult.
+# THE ABLATION SWEEPS STRENGTH; THE HEADLINE DOES NOT (Henry, 26 Sep).
+#
+# The headline stays at w = 1 for every arm -- one dial setting, one cell per
+# (property, arm, seed) -- and the caveat that equal w is not equal FORCE
+# stands as written in FULL_RUN_V3_PROTOCOL.md section 2.2. Normalising the
+# strengths instead was considered and declined.
+#
+# The ablation runs each grid arm at BOTH w = 1 and w = 4, and this is not a
+# budget decision -- it is the control the BDG confound needs. BDG's numerator
+# is
+#     num_i = (y - F_i - c) - eta * e * (F_i - F_bar)
+# and w multiplies the resulting correction as a whole, so w scales the mean
+# and deviation terms TOGETHER while w_eff = 1 + eta*e reweights the deviation
+# term ALONE. They are separate knobs on the same field. Section 6 of the
+# headline protocol says that at q50 "controlling spread" and "pushing harder"
+# cannot be told apart, because w_eff acts as an effective strength; a w sweep
+# at fixed (eta, tau_mult) is exactly the axis that separates them. If raising
+# w reproduces what raising w_eff does, the dispersion term is doing nothing a
+# larger strength would not.
+#
+# READ THE CLIP COUNTS BEFORE BELIEVING A w = 4 ROW. The correction passes a
+# velocity-relative clip, and at tau_mult 0.5 the measured w_eff is already of
+# order 10^3 with 2516 clipped sample steps against plug's 884
+# (docs/results/BDG_LADDER_MEASURED.md). At w = 4 the clip may simply truncate
+# more of the same request, in which case the w row is clip-limited rather
+# than controller-limited and says nothing about the mechanism. Every cell
+# records `clipped_sample_steps`; compare it across w before reading anything
+# into the difference.
+V3_ABL_WS = (1.0, 4.0)
 V3_ABL_ETAS = (0.0, 1.0, 2.0, 4.0, 8.0)
 V3_ABL_TAU_MULTS = (0.5, 0.75, 1.0, 1.5)
 V3_ABL_ETA0_REF_TAU = 1.0
@@ -507,31 +536,47 @@ def v3_arms(etas=None, tau_mults=None, compare=True):
     return out
 
 
-def plan_v3_cells(props, arms, target=None, w=None, t_start=None):
-    """One cell per (property, arm). No strength sweep, no window sweep.
+def plan_v3_cells(props, arms, target=None, w=None, t_start=None, ws=None):
+    """One cell per (property, arm, strength). No window sweep.
 
-    v3 fixes w and t_start, so there is exactly one cell per (property, arm)
-    per seed -- unlike the basecmp stages, which screen a grid and then freeze.
+    `ws` is the strength axis. The HEADLINE passes none and gets the single
+    w = 1 it pre-registers; the ABLATION passes V3_ABL_WS and gets each grid
+    arm at both strengths, which is the control that separates "pushed harder"
+    from "reweighted the deviation term" (see V3_ABL_WS).
+
     `unguided` is planned first, because it is every comparison's reference and
-    a job cut short must not be the one that lacks it.
+    a job cut short must not be the one that lacks it. It is planned ONCE PER
+    STRENGTH even though it ignores w -- an unguided cell is the same
+    computation at any w, but giving it a row at each strength keeps every
+    comparison inside one (w, property) block rather than reaching across
+    blocks for its reference. The resume check makes the duplicate cheap only
+    if the names differ, and they do: w is in `cell_name`.
     """
     tgt = V3_TARGET if target is None else target
-    ww = V3_W if w is None else float(w)
     ts = V3_T_START if t_start is None else float(t_start)
+    if ws is not None:
+        strengths = [float(x) for x in ws]
+    elif w is not None:
+        strengths = [float(w)]
+    else:
+        strengths = [V3_W]
+    if not strengths:
+        raise SystemExit("plan_v3_cells: empty strength axis")
     seen, cells = set(), []
 
     def add(c):
         if c not in seen:
             seen.add(c)
             cells.append(c)
-    for prop in props:
-        if "unguided" in arms:
-            add((prop, "unguided", tgt, ww, ts))
-    for prop in props:
-        for arm in arms:
-            if arm == "unguided":
-                continue
-            add((prop, arm, tgt, ww, ts))
+    for ww in strengths:
+        for prop in props:
+            if "unguided" in arms:
+                add((prop, "unguided", tgt, ww, ts))
+        for prop in props:
+            for arm in arms:
+                if arm == "unguided":
+                    continue
+                add((prop, arm, tgt, ww, ts))
     return cells
 # Arms a backend cannot run. Empty for both: `tfg`, a sampler-level arm, was
 # ported to EquiFM's two clocks on 23 Sep (equifm_backend.EquiFMSampler).
@@ -1915,7 +1960,9 @@ def main():
                      args.stage))
             return 0
         arms = v3set
-        cells = plan_v3_cells(props, v3set)
+        # the ablation sweeps strength, the headline does not (V3_ABL_WS)
+        cells = plan_v3_cells(props, v3set,
+                              ws=(V3_ABL_WS if args.stage == "v3abl" else None))
     elif args.stage == "basecmp":
         cells = plan_basecmp_cells(props, arms, t_starts)
     elif args.stage == "basecmprefine":

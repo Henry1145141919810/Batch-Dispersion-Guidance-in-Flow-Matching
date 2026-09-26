@@ -114,7 +114,7 @@ def stage_units(arms, n, comp_units, per_bdg):
     return units * (n / float(N_REF))
 
 
-def gpu_hours(n, stage_arms, props, seeds, registry, ratio):
+def gpu_hours(n, stage_arms, props, seeds, registry, ratio, n_w=1):
     """GPU-hours for one stage, summed over the backends that run it.
 
     Each backend is charged for the arms IT runs (the registry), not for the
@@ -130,8 +130,9 @@ def gpu_hours(n, stage_arms, props, seeds, registry, ratio):
             continue                       # this backend sits this stage out
         u = stage_units(arms, n, UNITS_AT_5000["compare_set"],
                         UNITS_AT_5000["per_bdg_arm"])
+        # the ablation runs every arm at EVERY strength in its sweep
         rate = 1.0 if be == "fm" else ratio
-        total_min += u * MIN_PER_UNIT * props * seeds * rate
+        total_min += u * MIN_PER_UNIT * props * seeds * rate * n_w
     return total_min / 60.0
 
 
@@ -181,7 +182,9 @@ def main():
     L.append("| in_band sized against | p = %.3f (contrast vs p = %.3f) |" % (p, p_ref))
     L.append("| seeds | %d, pooling to 3n per (arm, property) |" % seeds)
     L.append("| headline arms | %d (%s) |" % (len(head), ", ".join(head)))
-    L.append("| ablation arms | %d |" % len(abl))
+    L.append("| ablation arms | %d, each at %d strengths (w = %s) |"
+             % (len(abl), len(T.V3_ABL_WS),
+                ", ".join("%g" % x for x in T.V3_ABL_WS)))
     L.append("| contrasts | %d = %d guided arms x %d properties |"
              % (n_contrasts, n_contrasts // a.props, a.props))
     L.append("| threshold | Bonferroni alpha=%.3f/%d, two-sided: **z = %.3f** |"
@@ -205,8 +208,9 @@ def main():
         sp = se_pooled(p, n, seeds) * 100
         sx = se_contrast(p, p_ref, n, seeds) * 100
         mdd = z * sx
-        gh = gpu_hours(n, head, a.props, seeds, registry, EQUIFM_RATIO)
-        ga = gpu_hours(n, abl, a.props, seeds, registry, EQUIFM_RATIO)
+        gh = gpu_hours(n, head, a.props, seeds, registry, EQUIFM_RATIO, n_w=1)
+        ga = gpu_hours(n, abl, a.props, seeds, registry, EQUIFM_RATIO,
+                       n_w=len(T.V3_ABL_WS))
         L.append("| %d | %.3f | %.3f | %.3f | **%.2f** | %.1f | %.1f |"
                  % (n, sc, sp, sx, mdd, gh, ga))
     L.append("")
@@ -221,6 +225,14 @@ def main():
              "not scale with n, so these are a **floor**; read the real "
              "number off the `[timing]` line once the first tasks land."
              % (N_REF, EQUIFM_RATIO))
+    L.append("")
+    L.append("**The ablation is the expensive stage**, and doubly so now: it "
+             "runs %d arms at %d strengths, against the headline's %d arms at "
+             "one. The strength sweep is the control that separates \"pushed "
+             "harder\" (w scales the whole correction) from \"reweighted the "
+             "deviation term\" (w_eff = 1 + eta*e), which the headline "
+             "protocol's section 6 says cannot otherwise be told apart at q50."
+             % (len(abl), len(T.V3_ABL_WS), len(head)))
     L.append("")
     L.append("**The number that should decide it** is the minimum detectable "
              "difference. `BDG_REVIEW.md` found no floor-clearing BDG cell "
