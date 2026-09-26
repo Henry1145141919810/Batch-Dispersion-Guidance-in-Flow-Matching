@@ -156,11 +156,19 @@ gate("table_refuses_to_mix_pairs",
          encoding="utf-8").read(),
      "`pair` must be in v3_table.SAME_KEYS or a wide band and a narrow one "
      "get averaged and the difference reported as a result")
-gate("ours_pair_has_a_scale_guard",
+gate("ours_pair_has_a_calibration_check",
      "fits calibration slope" in _ts_src,
      "our predictors have no fitted slope to check against QM9's MAD, so "
-     "build_pair_ours must fit one purely to catch a wrong feature scale -- "
-     "the failure that is otherwise invisible (argmax metrics cannot see it)")
+     "build_pair_ours must fit one purely as a check that the predictor is "
+     "in physical units. NOTE it runs on raw one-hot and is therefore "
+     "invariant to sampler_scale -- it is NOT the sampler-scale defence, "
+     "which is that sampler_scale is read off the generator's checkpoint")
+gate("ours_pair_wraps_for_feature_scale",
+     "feat_scale=sampler_scale" in _ts_src,
+     "PhysicalProperty has no feat_scale and was trained on raw one-hot, so "
+     "it MUST be wrapped for any backend whose sampler works in one-hot/k "
+     "(every diffusion backend) or it reads types k times too small and "
+     "returns finite, wrong numbers that argmax metrics cannot see")
 
 gate("ablation_covers_headline_eta", T.V3_BDG_ETA in T.V3_ABL_ETAS)
 gate("ablation_covers_headline_taus",

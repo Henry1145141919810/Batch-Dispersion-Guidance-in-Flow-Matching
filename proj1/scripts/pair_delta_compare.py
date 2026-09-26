@@ -98,11 +98,18 @@ def main():
     for (p, _do, _dt, _mo, _mt, _go, _gt, sg, so, ys) in rows:
         L.append("| %s | %.4f | %.4f | %.5f |" % (p, sg, so, ys))
     L += ["",
-          "All six sit within 0.6 % of 1, comfortably inside the guard's "
-          "0.85-1.15 window, so the guard will not fire spuriously on a "
-          "correctly configured run. On a backend whose sampler works in "
-          "one-hot/4 the same fit would land near 4x or 0.25x and the run "
-          "would stop at startup, which is the point.", ""]
+          "All six sit within 0.6 % of 1, comfortably inside the check's "
+          "0.85-1.15 window, so it will not fire spuriously on a correctly "
+          "configured run.",
+          "",
+          "**What it does not catch.** This fit runs on the data file's raw "
+          "one-hot, so its slope is **invariant to `sampler_scale`** -- "
+          "verified by building the pair at 1.0 and at 4.0 and getting the "
+          "same 0.9999 / 0.9922. It catches a predictor that is mis-scaled in "
+          "itself or loaded wrong. The defence against a mis-wired sampler is "
+          "separate: `sampler_scale` is read off the generator's own "
+          "checkpoint, and the `edm` branch asserts it against "
+          "`generator_feat_scale`.", ""]
     out = "\n".join(L)
     print(out)
     if a.md_out:

@@ -1004,13 +1004,25 @@ def local_delta(prop, d, raw_oracle, slope, intercept, dev, k=2.0,
 #      wrapped in `Calibrated` too -- slope 1, intercept 0, because they are
 #      already in physical units -- purely to get `feat_scale`.
 #
-#   2. A GUARD THAT CAN ACTUALLY FIRE. build_pair's defence against exactly
-#      that bug is `slope_over_mad`, and it cannot work here: our nets have no
-#      fitted slope to compare against QM9's MAD. So a calibration IS fitted,
-#      on the same molecules and with the same least squares -- and then
-#      DISCARDED -- and its slope is asserted to be ~1. A well-calibrated
-#      predictor fed the right features fits slope 1; one fed features 4x too
-#      small does not. The fit is a thermometer, not a correction.
+#   2. A CALIBRATION CHECK. build_pair asserts `slope_over_mad` ~ 1, which
+#      cannot work here: our nets have no fitted slope to compare against
+#      QM9's MAD. So a calibration IS fitted, on the same molecules with the
+#      same least squares -- and then DISCARDED -- and its slope asserted to
+#      be ~1. Measured, all six guide/oracle x property fits land within 0.6 %
+#      of 1 (V3_PAIR_DELTA.md), so the check is tight without being brittle.
+#
+#      WHAT IT DOES *NOT* CATCH, and an earlier version of this comment
+#      claimed it did: a wrong `sampler_scale`. The fit runs on the DATA
+#      FILE's raw one-hot, not on sampler-space features, so its slope is
+#      invariant to sampler_scale -- verified by passing 1.0 and 4.0 and
+#      getting the same 0.9999/0.9922. It catches a predictor that is not in
+#      physical units or was loaded wrong, which is worth having and is the
+#      same thing build_pair's check does.
+#
+#      The real defence against a wrong sampler_scale is that it is READ OFF
+#      THE GENERATOR'S OWN CHECKPOINT (`norm_values[1]`), plus the assert at
+#      the edm branch against `generator_feat_scale(edm_dir)`. That is where
+#      to look if this is ever suspected.
 #
 # The delta rule is the SAME rule (k x MAE of f_B), measured here on the same
 # 3000 calibration molecules rather than read off the checkpoint's `val_mae`,
@@ -1090,17 +1102,20 @@ def build_pair_ours(prop, d, sel, dev, k_delta, sampler_scale,
               "oracle_input_multiplier": f_B.feat_scale,
               "delta_mode": delta_mode, "delta": delta,
               "delta_global": delta_global, "delta_detail": drep}
-    # THE SCALE GUARD. A predictor already in physical units, fed the features
-    # it was trained on, fits slope ~1. Fed them on the wrong scale it does
-    # not -- which is the one failure mode that is otherwise invisible.
+    # THE CALIBRATION CHECK. A predictor already in physical units, fed the
+    # features it was trained on, fits slope ~1. This runs on the data file's
+    # raw one-hot, so it does NOT vary with sampler_scale (see the note at the
+    # top of this function) -- it catches a predictor that is mis-scaled in
+    # itself or loaded wrong, not a mis-wired sampler.
     for who, sl in (("guide", ag), ("oracle", ao)):
         if not 0.85 < sl < 1.15:
             raise SystemExit(
-                "%s our %s fits calibration slope %.3f; expected ~1. Our "
-                "predictors are already in physical units, so a slope far "
-                "from 1 means the sampler's features are reaching them on the "
-                "wrong scale (sampler_feat_scale=%g). Every number downstream "
-                "would look fine and be wrong."
+                "%s our %s fits calibration slope %.3f on the data file's raw "
+                "one-hot; expected ~1, since our predictors are already in "
+                "physical units. This is the predictor itself being wrong -- "
+                "mis-trained, mis-loaded, or a checkpoint from a different "
+                "target -- not a sampler-scale problem (this fit does not see "
+                "sampler_feat_scale, which is %g here)."
                 % (prop, who, sl, sampler_scale))
     return f_A, f_B, delta, report
 

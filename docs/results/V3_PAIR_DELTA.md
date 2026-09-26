@@ -30,4 +30,6 @@ Both pairs built on the **same 3000 calibration molecules** (`train_a` + `train_
 | alpha | 1.0002 | 0.9992 | 8.26987 |
 | gap | 1.0025 | 0.9987 | 0.04769 |
 
-All six sit within 0.6 % of 1, comfortably inside the guard's 0.85-1.15 window, so the guard will not fire spuriously on a correctly configured run. On a backend whose sampler works in one-hot/4 the same fit would land near 4x or 0.25x and the run would stop at startup, which is the point.
+All six sit within 0.6 % of 1, comfortably inside the check's 0.85-1.15 window, so it will not fire spuriously on a correctly configured run.
+
+**What it does not catch.** This fit runs on the data file's raw one-hot, so its slope is **invariant to `sampler_scale`** -- verified by building the pair at 1.0 and at 4.0 and getting the same 0.9999 / 0.9922. It catches a predictor that is mis-scaled in itself or loaded wrong. The defence against a mis-wired sampler is separate: `sampler_scale` is read off the generator's own checkpoint, and the `edm` branch asserts it against `generator_feat_scale`.
