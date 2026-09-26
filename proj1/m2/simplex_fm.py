@@ -281,10 +281,13 @@ def main():
             # best_state living only in memory would be lost. Every improved
             # checkpoint is durable, so a killed run still yields a usable
             # model and the recorded sample_views say how far it got.
-            os.makedirs(os.path.dirname(a.out), exist_ok=True)
+            _d = os.path.dirname(a.out)
+            if _d:
+                os.makedirs(_d, exist_ok=True)
             torch.save({"state_dict": best_state, "hidden": a.hidden,
                         "layers": a.layers, "crop": a.crop,
-                        "steps": a.steps, "seed": a.seed,
+                        "steps": total_steps, "epochs": a.epochs,
+                        "epoch_at_best": ep, "seed": a.seed,
                         "final_loss": best_val, "best_it": it,
                         "sample_views": it * a.batch, "val_loss": vl,
                         "device": dev, "gc_mean": float(gc.mean()),
@@ -308,7 +311,9 @@ def main():
         net.load_state_dict(best_state)
     best = best_val
 
-    os.makedirs(os.path.dirname(a.out), exist_ok=True)
+    _d = os.path.dirname(a.out)
+    if _d:
+        os.makedirs(_d, exist_ok=True)
     torch.save({"state_dict": {k: v.cpu() for k, v in net.state_dict().items()},
                 "hidden": a.hidden, "layers": a.layers, "crop": a.crop,
                 "steps": total_steps, "epochs": a.epochs, "seed": a.seed,
