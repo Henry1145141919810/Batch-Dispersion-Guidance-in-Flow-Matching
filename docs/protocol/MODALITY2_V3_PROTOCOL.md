@@ -310,6 +310,36 @@ which is the one thing the transfer claim cannot afford.
 **reported as a diagnostic**, because whether w = 1 is a strong or a weak
 setting on DNA is itself part of "what had to be adapted for the new modality".
 
+**The force confound, measured before the run (`docs/results/M2_SHARE.md`).**
+v3 §2.2 warns that equal `w` is not equal push and measures the applied
+correction share to say by how much. On M2 that spread is far wider than on M1,
+and it runs in BDG's favour:
+
+| arm | share at w = 1 | at w = 4 | M1's `plug` at w = 1, for scale |
+|---|---|---|---|
+| `plug`, `tmpd`, `lgd_mc` | 0.0122 | 0.0479 | **0.055** |
+| `tfg_mc` | 0.0109 | 0.0430 | |
+| **`bdg_e4t0.5`** | **0.1164** | 0.3066 | |
+| `bdg_e4t1` | 0.0066 | 0.0230 | |
+
+So at the shared dial setting the baselines push **~4.5× weaker than M1's do**,
+while `bdg_e4t0.5` pushes **~10× harder than they do**. Two consequences, and
+both must travel with every M2 headline number:
+
+1. **A weak baseline result at w = 1 is a statement about strength, not about
+   the method.** The baselines only reach M1's own force at w = 4.
+2. **Part of any BDG gain at w = 1 is force, not control.** This is not a
+   defect of BDG — the extra force *is* the η feedback term, and `bdg` at
+   η = 0 is `plug` exactly (§4.1) — but an in-band gain at 10× the push is not
+   evidence that the controller is what helped.
+
+**What separates them is the ablation's η sweep**, which holds `w` fixed and
+varies only the feedback: η ∈ {0, 1, 2, 4, 8} at each of w ∈ {1, 4}. If the
+gain tracks η at fixed w, it is the controller; if it only tracks w, it is
+force. That is the comparison the M2 write-up should lead with, not the raw
+headline ordering. The clip is not a confound at these strengths — 0.0 % of
+guided steps clip at w = 1 and 0.1 % at w = 4.
+
 **Pairing.** Every arm sees the same seed, the same batch, the same initial
 noise, the same target and the same δ, so arms are paired and a paired test is
 valid — exactly as in v3 §3.
