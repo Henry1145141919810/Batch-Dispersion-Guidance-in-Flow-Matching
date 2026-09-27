@@ -9,7 +9,7 @@ import re
 import pathlib
 import sys
 
-SRC = pathlib.Path(__file__).resolve().parent.parent / "body.tex"
+SRC = pathlib.Path(__file__).resolve().parent.parent / "main.tex"
 
 
 def strip(body: str) -> str:
@@ -24,7 +24,7 @@ def strip(body: str) -> str:
 
 def main() -> int:
     src = SRC.read_text(encoding="utf-8")
-    body = src
+    body = src.split("% MAIN_TEXT_START", 1)[1].split("% MAIN_TEXT_END", 1)[0]
     words = strip(body).split()
     print(f"main-text prose words: {len(words)}")
 

@@ -1,0 +1,19 @@
+<section id="s1f" style="background:#F7F6F2; color:#3A4553; font-family:'IBM Plex Sans', Arial, sans-serif; padding:80px 128px 116px; display:flex; flex-direction:column; gap:24px">
+<div style="display:flex; flex-direction:column; gap:4px">
+<p style="font-size:24px; font-weight:600; letter-spacing:2px; text-transform:uppercase; color:#1F5FA9">Part 1 · Set up the study</p>
+<h2 style="font-family:'Source Serif 4', Georgia, serif; font-size:56px; font-weight:600; line-height:1.1; color:#16202C">Study overview</h2>
+</div>
+<div style="display:flex; gap:28px; align-items:start">
+<div style="flex:none; background:#FFFFFF; border:1px solid #DDD9CF; border-radius:14px; padding:12px">
+<img src="/_blob/5fdb04a1a50719f0fbb3105bb5605d83" alt="Study overview. (a) Modality 1: a shared representation feeds a flow-matching and a diffusion model; a matched protocol selects flow matching; guidance differentiates the frozen property net f_A at the endpoint estimate; the plug-in baseline applies one gain; BDG servoes only the deviation gain; Euler sampler with trust-region clip; held-out evaluator f_B scores. (b) Modality 2: simplex flow matching, analytic GC property, BDG unchanged, argmax decoding and exact GC count. Colour key: trained by us, trained and frozen at sampling, external pretrained and frozen, changed by the innovation." style="width:1240px; height:719px; object-fit:contain">
+</div>
+<div style="flex:1; display:flex; flex-direction:column; gap:18px">
+<p style="font-size:24px; line-height:1.35"><span style="color:#16202C"><b>(a) Modality 1 [2, 6].</b></span> One representation feeds flow matching and diffusion; a matched protocol picks the family carried forward. Guidance differentiates the frozen f_A at the endpoint estimate. Plug-in applies one gain to (y − Fᵢ); <span style="color:#B3261E"><b>BDG holds the centring gain at w and servoes only w_eff = 1 + η·e</b></span>. Scoring: frozen f_B, trained on the disjoint half.</p>
+<p style="font-size:24px; line-height:1.35"><span style="color:#16202C"><b>(b) Modality 2 [4].</b></span> The controller transfers unchanged; state space, generator, property map and decoder are modality specific.</p>
+<p style="font-size:24px; line-height:1.35">Colour marks trained, frozen, external pretrained, and <span style="color:#B3261E"><b>changed by the innovation</b></span>.</p>
+</div>
+</div>
+<p style="position:absolute; left:1616px; top:52px; width:176px; font-size:48px; font-weight:700; line-height:1.15; text-align:center; color:#F7F6F2; background:#1F5FA9; border-radius:14px; padding:8px 12px">1f</p>
+<p style="position:absolute; left:128px; bottom:40px; width:300px; font-size:18px; color:#5F6A77">CIS 6270 · Group 2 · 11 / 29</p>
+<p style="position:absolute; left:448px; bottom:40px; width:1344px; font-size:18px; line-height:1.3; text-align:right; color:#5F6A77">Original figure (this work). Components after [6] Lipman et al. 2022, [2] Hoogeboom et al. 2022, [4] Stark et al. 2024</p>
+</section>

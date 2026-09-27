@@ -14,3 +14,8 @@
 # figs/overview.tex is a standalone document and leaves its own droppings
 figs/*.aux
 figs/*.log
+
+# Local v3 rendering and build diagnostics, regenerated during review.
+tmp/
+build_v3.txt
+bib_v3.txt

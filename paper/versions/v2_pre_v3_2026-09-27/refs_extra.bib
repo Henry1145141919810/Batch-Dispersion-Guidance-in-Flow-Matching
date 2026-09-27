@@ -1,0 +1,179 @@
+% =====================================================================
+% refs_extra.bib
+% Additional references beyond the course-supplied citation.bib.
+%
+% PROVENANCE RULE FOLLOWED HERE: every entry below carries only fields
+% that are recorded somewhere in this repository (arXiv id, venue, year,
+% author surnames).  Where the repo does not record a complete author
+% list, the entry is marked with a  % VERIFY:  comment naming exactly
+% what is missing.  Nothing has been invented.  Complete the VERIFY
+% entries against the arXiv listing before submission.
+%
+% Sources inside the repo:
+%   docs/results/QM9_INFERENCE_TIME_GUIDANCE_BASELINES.md   [S1,S2,S5,S7,S9]
+%   docs/methods/BDG_HANDOFF.md            section 8
+%   docs/methods/BDG_REVIEW.md             section 4.8
+%   docs/methods/INNOVATION_IDEAS_INDEX.md
+% =====================================================================
+
+
+% ---------- Modality 1 external guidance baselines (section 4.5) ----------
+
+@inproceedings{chung2023dps,
+  title     = {Diffusion Posterior Sampling for General Noisy Inverse Problems},
+  author    = {Chung, Hyungjin and Kim, Jeongsol and McCann, Michael T. and
+               Klasky, Marc L. and Ye, Jong Chul},
+  booktitle = {International Conference on Learning Representations (ICLR)},
+  year      = {2023},
+  note      = {arXiv:2209.14687},
+}
+
+@article{song2023lgd,
+  title   = {Loss-Guided Diffusion Models for Plug-and-Play Controllable Generation},
+  author  = {Song, Jiaming and Zhang, Qinsheng and Yin, Hongxu and Mardani, Morteza and
+             Liu, Ming-Yu and Kautz, Jan and Chen, Yongxin and Vahdat, Arash},
+  journal = {Proceedings of the 40th International Conference on Machine Learning (PMLR v202)},
+  year    = {2023},
+  note    = {https://proceedings.mlr.press/v202/song23k.html},
+}
+
+@article{boys2024tmpd,
+  title   = {Tweedie Moment Projected Diffusions for Inverse Problems},
+  author  = {Boys, Benjamin and Girolami, Mark and Pidstrigach, Jakiw and
+             Reich, Sebastian and Mosca, Alan and Akyildiz, O. Deniz},
+  journal = {Transactions on Machine Learning Research (TMLR)},
+  year    = {2024},
+  note    = {arXiv:2310.06721},
+}
+
+@inproceedings{ye2024tfg,
+  title     = {TFG: Unified Training-Free Guidance for Diffusion Models},
+  author    = {Ye, Haotian and Lin, Haoxuan and Han, Jiaqi and Xu, Minkai and
+               Liu, Sheng and Liang, Yitao and Ma, Jianzhu and Zou, James and
+               Ermon, Stefano},
+  booktitle = {Advances in Neural Information Processing Systems (NeurIPS)},
+  year      = {2024},
+  note      = {arXiv:2409.15761},
+}
+
+@inproceedings{benhamu2024dflow,
+  title     = {D-Flow: Differentiating through Flows for Controlled Generation},
+  author    = {Ben-Hamu, Heli and Puny, Omri and Gat, Itai and Karrer, Brian and
+               Singer, Uriel and Lipman, Yaron},
+  booktitle = {International Conference on Machine Learning (ICML)},
+  year      = {2024},
+  note      = {arXiv:2402.14017},
+}
+
+
+% ---------- Prior art that occupies BDG's neighbouring framings ----------
+% Section 2 and section 3.5 cite these to bound the novelty claim.
+
+@inproceedings{corso2024particle,
+  title     = {Particle Guidance: Non-{I.I.D.} Diverse Sampling with Diffusion Models},
+  author    = {Corso, Gabriele and Xu, Yilun and De Bortoli, Valentin and
+               Barzilay, Regina and Jaakkola, Tommi},
+  booktitle = {International Conference on Learning Representations (ICLR)},
+  year      = {2024},
+  note      = {arXiv:2310.13102},
+}
+
+@article{kynkaanniemi2024interval,
+  title   = {Applying Guidance in a Limited Interval Improves Sample and Distribution
+             Quality in Diffusion Models},
+  author  = {Kynk{\"a}{\"a}nniemi, Tuomas and Aittala, Miika and Karras, Tero and
+             Laine, Samuli and Aila, Timo and Lehtinen, Jaakko},
+  journal = {arXiv preprint arXiv:2404.07724},
+  year    = {2024},
+}
+
+@article{ventura2026negative,
+  title   = {Negative Guidance Reduces Means and Expands Variances in Diffusion Models},
+  author  = {Ventura, Enrico and Achilli, Beatrice and Ambrogioni, Luca and
+             Lucibello, Carlo},
+  journal = {arXiv preprint arXiv:2602.00716},
+  year    = {2026},
+  % VERIFY: title is paraphrased from the mechanism sentence quoted in
+  % docs/methods/BDG_HANDOFF.md section 8; confirm the exact title on arXiv.
+}
+
+@article{mgd2026moment,
+  title   = {{MGD}: Moment Guided Diffusion for Maximum Entropy Generation},
+  author  = {Lempereur, Etienne and Cuvelle-Magar, Nathana{\"e}l and
+             Coeurdoux, Florentin and Mallat, St{\'e}phane and
+             Vanden-Eijnden, Eric},
+  journal = {arXiv preprint arXiv:2602.17211},
+  year    = {2026},
+  % VERIFY: the repo records only the arXiv id and the method's behaviour
+  % (empirical ensemble moments against a target moment, two-sided,
+  % quadratic moments included).  Fill in title and authors from arXiv.
+}
+
+@article{vtd2026variance,
+  title   = {Variance-Tilted Diffusion Models for Diverse Sampling},
+  author  = {Azangulov, Iskander and Zhang, Leo and Ashouritaklimi, Kianoosh},
+  journal = {arXiv preprint arXiv:2606.22239},
+  year    = {2026},
+  % VERIFY: repo records the arXiv id and that the method is widen-only on a
+  % fixed linear feature, with an interaction term that repels the batch's
+  % denoised means.  Fill in title and authors from arXiv.
+}
+
+@article{fbg2025feedback,
+  title   = {Feedback Guidance of Diffusion Models},
+  author  = {Koulischer, Felix and Handke, Florian and Deleu, Johannes and
+             Demeester, Thomas and Ambrogioni, Luca},
+  journal = {arXiv preprint arXiv:2506.06085},
+  year    = {2025},
+  % VERIFY: authors.  Title as recorded in docs/methods/BDG_REVIEW.md section 4.8.
+}
+
+@article{cfgctrl2026,
+  title   = {{CFG-Ctrl}: Control-Based Classifier-Free Diffusion Guidance},
+  author  = {Wang, Hanyang and Liu, Yiyang and Chi, Jiawei and
+             Liu, Fangfu and Xue, Ran and Duan, Yueqi},
+  journal = {arXiv preprint arXiv:2603.03281},
+  year    = {2026},
+  % VERIFY: exact title and authors.  The repo records that the paper calls
+  % vanilla CFG "a proportional controller (P-control) with fixed gain".
+}
+
+@article{ensemblevar2025,
+  title   = {Controlling Ensemble Variance in Diffusion Models: An Application
+             for Reanalyses Downscaling},
+  author  = {Merizzi, Fabio and Evangelista, Davide and Loukos, Harilaos},
+  journal = {arXiv preprint arXiv:2501.14822},
+  year    = {2025},
+  % VERIFY: authors.  Title as recorded in docs/methods/BDG_REVIEW.md section 4.8.
+}
+
+
+% ---------- Modality 1 base-model lineage ----------
+
+@article{song2023equifm,
+  title   = {Equivariant Flow Matching with Hybrid Probability Transport
+             for 3D Molecule Generation},
+  author  = {Song, Yuxuan and Gong, Jingjing and Xu, Minkai and Cao, Ziyao and
+             Lan, Yanyan and Ermon, Stefano and Zhou, Hao and Ma, Wei-Ying},
+  journal = {Advances in Neural Information Processing Systems (NeurIPS)},
+  year    = {2023},
+}
+
+@article{bao2023eegsde,
+  title   = {Equivariant Energy-Guided {SDE} for Inverse Molecular Design},
+  author  = {Bao, Fan and Zhao, Min and Hao, Zhongkai and Li, Peiyao and
+             Li, Chongxuan and Zhu, Jun},
+  journal = {International Conference on Learning Representations (ICLR)},
+  year    = {2023},
+}
+
+
+% ---------- Modality 2: probability-simplex sequence generation ----------
+
+@article{chen2025mogdfm,
+  title   = {Multi-Objective-Guided Discrete Flow Matching for Controllable
+             Biological Sequence Design},
+  author  = {Chen, Tong and Zhang, Yinuo and Tang, Sophia and Chatterjee, Pranam},
+  journal = {arXiv preprint arXiv:2505.07086},
+  year    = {2025},
+}

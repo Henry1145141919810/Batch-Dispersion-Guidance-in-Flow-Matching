@@ -1,7 +1,44 @@
 # Paper versions
 
-`v1_*` and `v2_*` are the `.tex` sources and the built PDF at each point. The live
-files are `paper/body.tex` and `paper/main.tex`.
+`v1_*` and `v2_*` preserve the earlier sources and PDFs. The live manuscript is
+now `paper/main.tex`; `paper/body.tex` points readers there. Numbered snapshots
+are retained when the live paper changes. Paper version numbers and experiment
+protocol version numbers are independent.
+
+## v3 - 27 Sep 2026
+
+**BDG selected; final results pending.** Revised against the assignment rubric,
+paper template, Chatterjee Lab guide, current protocols, and implemented method.
+
+- BDG is the sole proposed innovation; BTVG is absent from the current manuscript.
+- Removed final-performance and transfer conclusions inferred from older pilots.
+  Unreleased comparisons use a defined `P` marker. No experimental results were invented.
+- Corrected the setpoint scale, net-widening condition, zero-gain factorization,
+  one-sided identity condition, detached pullback, and scope of efficiency claims.
+- Aligned the molecular description with q50, w=1, batch 500, three seeds,
+  operator-selected n, and no chemistry-floor exclusion.
+- Updated DNA to the shipped 500-bp DeepFlyBrain setup. Final sequence settings
+  and the three external comparisons remain explicitly pending.
+- Restored the exact introduction structure and retained all required sections.
+  Consolidated prose, tables, overview, algorithm, and appendix in main.tex.
+- Fixed BibTeX parsing and verified active reference records; corrected EquiFM's
+  title, used the published Dirichlet FM reference, and added the QM9 source.
+- Five-page main text, standard template typography; references and appendix
+  follow. The separate rationale maps each rubric item to the remaining evidence.
+
+Files:
+
+- `v3_main.pdf` and `v3_main.tex`: numbered manuscript release.
+- `v3_2026-09-27/`: complete rebuildable source snapshot and PDF, with hashes.
+- `v3_revision_notes.md` and `v3_revision_notes.pdf`: explanation and rubric map.
+- `v2_pre_v3_2026-09-27/`: exact live source, PDF, bibliographies, style, and
+  figures found before this revision. The original v1/v2 snapshots are unchanged.
+
+The built-in compiler could not initialize; the existing local LaTeX installation
+produced the PDF. Validation includes compilation, five-page enforcement,
+resolved citations/references, float references, house-style checks, and a visual
+review of every manuscript and rationale page. This validates the draft's form,
+not completion of its pending empirical requirements.
 
 ## v2 — 26 Sep 2026
 

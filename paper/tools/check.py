@@ -10,11 +10,11 @@ import pathlib
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-BODY = (ROOT / "body.tex").read_text(encoding="utf-8")
 MAIN = (ROOT / "main.tex").read_text(encoding="utf-8")
+BODY = MAIN.split("% MAIN_TEXT_START", 1)[1].split("% MAIN_TEXT_END", 1)[0]
 # Labels and references live in both files: the main text in body.tex, the
 # appendix in main.tex, and each may point at the other.
-BOTH = BODY + MAIN
+BOTH = MAIN
 
 # Phrases our own adversarial review refuted; none may appear.
 BANNED = [

@@ -1,0 +1,39 @@
+<section id="s2c1" style="background:#F7F6F2; color:#3A4553; font-family:'IBM Plex Sans', Arial, sans-serif; padding:80px 128px 116px; display:flex; flex-direction:column; gap:24px">
+<div style="display:flex; flex-direction:column; gap:4px">
+<p style="font-size:24px; font-weight:600; letter-spacing:2px; text-transform:uppercase; color:#1F5FA9">Part 2 · Evidence for Modality 1 · innovation 1 of 4</p>
+<h2 style="font-family:'Source Serif 4', Georgia, serif; font-size:56px; font-weight:600; line-height:1.1; color:#16202C">Motivating the innovation</h2>
+</div>
+<div style="display:flex; gap:32px">
+<div style="flex:1; display:flex; flex-direction:column; gap:20px">
+<div style="display:flex; gap:20px">
+<div style="flex:1; display:flex; flex-direction:column; gap:4px; background:#FDFCFA; border:1px solid #DDD9CF; border-radius:14px; padding:18px 24px">
+<p style="font-family:'Source Serif 4', Georgia, serif; font-size:64px; font-weight:600; line-height:1.1; color:#16202C">1–2</p>
+<p style="font-size:24px; line-height:1.3">band widths from the target (centring error)</p>
+</div>
+<div style="flex:1; display:flex; flex-direction:column; gap:4px; background:#FBF1F0; border:1px solid #E7C9C5; border-radius:14px; padding:18px 24px">
+<p style="font-family:'Source Serif 4', Georgia, serif; font-size:64px; font-weight:600; line-height:1.1; color:#B3261E">5–9</p>
+<p style="font-size:24px; line-height:1.3">band widths of batch spread</p>
+</div>
+</div>
+<p style="font-size:24px; line-height:1.35"><span style="color:#16202C"><b>The weakness.</b></span> At a centred target, coverage is a <i>dispersion</i> problem: guided batches sit 1–2 band widths from the target while their spread is 5–9 band widths. Yet every guidance rule optimises a <i>centring</i> objective and exposes <b>one dial, w</b>, which moves centring and spread together in a ratio the user never chooses.</p>
+<p style="font-size:24px; line-height:1.35"><span style="color:#16202C"><b>The hypothesis.</b></span> If the sampler <i>measures</i> its own batch dispersion and servoes toward a <i>requested</i> value, the user trades spread against centring deliberately, in the units of the property rather than in units of push.</p>
+</div>
+<div style="flex:1.2; display:flex; flex-direction:column; gap:20px">
+<table style="font-size:24px; color:#2B3440">
+<tr style="background:#ECEAE3"><th style="width:44%; text-align:left">Prior art</th><th style="width:56%; text-align:left">What it already owns</th></tr>
+<tr><td>CFG-Ctrl [16], Feedback Guidance [17]</td><td>the guidance scale read as a control gain</td></tr>
+<tr><td>MGD [18]</td><td>ensemble moments driven to a target, two-sided</td></tr>
+<tr><td>Variance-Tilted Diffusion [19]</td><td>batch-spread targeting; widen-only, fixed linear feature</td></tr>
+<tr><td>Particle Guidance [20]</td><td>batch-coupled repulsion, no setpoint</td></tr>
+<tr><td>Negative-guidance window [21]</td><td>negative weight widens the distribution</td></tr>
+</table>
+<div style="display:flex; flex-direction:column; gap:8px; background:#E4ECF6; border-left:8px solid #1F5FA9; border-radius:10px; padding:18px 24px">
+<h3 style="font-size:28px; font-weight:600; line-height:1.25; color:#16202C">We claim none of these ingredients</h3>
+<p style="font-size:24px; line-height:1.35; color:#2B3440">In a bounded search (about eight queries, abstracts only, 25 Sep 2026) we did not find a scalar guidance weight set by the batch variance of a <i>learned property predictor's own endpoint prediction</i>, against a <i>two-sided, user-chosen</i> setpoint, <i>signed so the weight passes through zero</i>. That bounds our claim; it is not a priority claim.</p>
+</div>
+</div>
+</div>
+<p style="position:absolute; left:1616px; top:52px; width:176px; font-size:48px; font-weight:700; line-height:1.15; text-align:center; color:#F7F6F2; background:#1F5FA9; border-radius:14px; padding:8px 12px">2c</p>
+<p style="position:absolute; left:128px; bottom:40px; width:300px; font-size:18px; color:#5F6A77">CIS 6270 · Group 2 · 15 / 29</p>
+<p style="position:absolute; left:448px; bottom:40px; width:1344px; font-size:18px; line-height:1.3; text-align:right; color:#5F6A77">[16] Wang et al. 2026 (CFG-Ctrl) · [17] Koulischer et al. 2025 (Feedback Guidance) · [18] Lempereur et al. 2026 (MGD) · [19] Azangulov et al. 2026 (Variance-Tilted Diffusion) · [20] Corso et al. 2024 (Particle Guidance) · [21] Ventura et al. 2026 (negative guidance)</p>
+</section>

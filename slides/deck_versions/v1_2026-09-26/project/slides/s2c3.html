@@ -1,0 +1,36 @@
+<section id="s2c3" style="background:#F7F6F2; color:#3A4553; font-family:'IBM Plex Sans', Arial, sans-serif; padding:80px 128px 116px; display:flex; flex-direction:column; gap:24px">
+<div style="display:flex; flex-direction:column; gap:4px">
+<p style="font-size:24px; font-weight:600; letter-spacing:2px; text-transform:uppercase; color:#1F5FA9">Part 2 · Evidence for Modality 1 · innovation 3 of 4</p>
+<h2 style="font-family:'Source Serif 4', Georgia, serif; font-size:56px; font-weight:600; line-height:1.1; color:#16202C">BDG: the reduction, and its bounds</h2>
+</div>
+<div style="display:flex; flex-direction:column; gap:10px; background:#FBF1F0; border:3px solid #B3261E; border-radius:14px; padding:20px 28px">
+<h3 style="font-size:28px; font-weight:600; line-height:1.25; color:#B3261E">We state the reduction ourselves: numᵢ is affine in Fᵢ, so it factors exactly</h3>
+<img src="/_blob/381614c549d83b474a325b61375dab22" alt="(y − F_i) − η e (F_i − F̄) = (1 + η e)(y_eff − F_i),  y_eff = (y + η e F̄)/(1 + η e)" style="width:1056px; height:100px; object-fit:contain">
+<p style="font-size:24px; line-height:1.35">Verified to <b>3.0e-15</b> analytically and <b>6.5e-7</b> on the real field.</p>
+</div>
+<div style="display:flex; gap:24px">
+<div style="flex:1; display:flex; flex-direction:column; gap:8px; background:#FDFCFA; border:1px solid #DDD9CF; border-radius:14px; padding:20px 28px">
+<h3 style="font-size:28px; font-weight:600; line-height:1.25; color:#16202C">What that means</h3>
+<p style="font-size:24px; line-height:1.35">At any instant BDG is the <b>plug-in field at a rescaled weight aiming at a shifted target</b>. It adds no new direction: any guidance whose per-sample coefficient is affine in Fᵢ is the plug-in rule reweighted.</p>
+</div>
+<div style="flex:1; display:flex; flex-direction:column; gap:8px; background:#FDFCFA; border:1px solid #DDD9CF; border-radius:14px; padding:20px 28px">
+<h3 style="font-size:28px; font-weight:600; line-height:1.25; color:#16202C">What it does not remove</h3>
+<p style="font-size:24px; line-height:1.35">w_eff is set <b>online</b> from a measured quantity and may <b>change sign</b>, which w cannot do without also reversing the centring term.</p>
+</div>
+</div>
+<div style="display:flex; gap:24px">
+<div style="flex:1; display:flex; flex-direction:column; gap:8px; background:#FDFCFA; border:1px solid #DDD9CF; border-radius:14px; padding:20px 28px">
+<h3 style="font-size:28px; font-weight:600; line-height:1.25; color:#16202C">Bound, for any batch</h3>
+<img src="/_blob/27df7caa58c09c9250635ec7f39c675a" alt="V_b ≥ 0 ⇒ e ≥ −1 ⇒ w_eff ≥ 1 − η" style="width:605px; height:46px; object-fit:contain">
+<p style="font-size:24px; line-height:1.35">This licenses running two-sided with no clamp. <b>Design constraint η &gt; 1</b>, or w_eff never goes negative and the controller cannot expand at all.</p>
+</div>
+<div style="flex:1; display:flex; flex-direction:column; gap:8px; background:#FDFCFA; border:1px solid #DDD9CF; border-radius:14px; padding:20px 28px">
+<h3 style="font-size:28px; font-weight:600; line-height:1.25; color:#16202C">Equilibrium, stated honestly</h3>
+<img src="/_blob/0ad97ecaab089af7b1504e3e1c31a1cc" alt="w_eff = 0 ⇒ V* = τ²(1 − 1/η)" style="width:515px; height:54px; object-fit:contain">
+<p style="font-size:24px; line-height:1.35">An <b>asymptote the 50-step window never reaches</b>. We never say the controller holds its setpoint, and we order every table by <i>measured</i> w_eff.</p>
+</div>
+</div>
+<p style="position:absolute; left:1616px; top:52px; width:176px; font-size:48px; font-weight:700; line-height:1.15; text-align:center; color:#F7F6F2; background:#1F5FA9; border-radius:14px; padding:8px 12px">2c</p>
+<p style="position:absolute; left:128px; bottom:40px; width:300px; font-size:18px; color:#5F6A77">CIS 6270 · Group 2 · 17 / 29</p>
+<p style="position:absolute; left:448px; bottom:40px; width:1344px; font-size:18px; line-height:1.3; text-align:right; color:#5F6A77">Original formulation (this work)</p>
+</section>

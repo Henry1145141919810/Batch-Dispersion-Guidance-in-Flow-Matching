@@ -1,0 +1,477 @@
+% =====================================================================
+%  CIS 6270 Project 1 -- Group 2.   BDG: Batch-Dispersion Guidance.
+%
+%  Build:  pdflatex main && bibtex main && pdflatex main && pdflatex main
+%  Check:  ../.venv/Scripts/python.exe tools/pagecheck.py   (5-page main text)
+%
+%  SCOPE (fixed 26 Sep 2026): the q50 target only.  No q90 number appears.
+%  \TODO{...} marks a number the v3 run has not produced.  Table structure,
+%  row labels, units and captions around them are final.
+%
+%  The 5-page limit excludes references and appendix, so full hyperparameters,
+%  split details and extended caveats live in the appendix by design.
+% =====================================================================
+\documentclass{article}
+
+\PassOptionsToPackage{numbers,compress}{natbib}
+\usepackage[final,main]{neurips_2026}
+
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{hyperref}
+\hypersetup{hidelinks}
+\usepackage{url}
+\usepackage{booktabs}
+\usepackage{amsfonts}
+\usepackage{nicefrac}
+\usepackage{microtype}
+\usepackage{xcolor}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{subcaption}
+\usepackage{enumitem}
+
+% --------------------------------------------------------------------------
+%  Pending-result markers.  Three kinds, so a reader can always tell what is
+%  measured, what is reserved, and what produces it.  Set \DRAFTfalse to hide
+%  every marker at submission time.
+% --------------------------------------------------------------------------
+\definecolor{pendcol}{HTML}{B3261E}
+\newif\ifDRAFT \DRAFTtrue
+
+% (1) an inline note, for prose
+\newcommand{\TODO}[1]{\ifDRAFT\textcolor{pendcol}{\tiny[#1]}\fi}
+
+% (2) a pending value inside a table.  Fixed width, so columns stay aligned
+%     whether the cell holds a number or a placeholder.
+\newcommand{\pend}{\ifDRAFT\textcolor{pendcol}{\rule[0.28ex]{1.15em}{0.6pt}}%
+                   \else\phantom{0.0000}\fi}
+
+% (3) a reserved block for a figure the pending run will produce.  Takes the
+%     final height, so the layout does not reflow when the data lands.
+%     #1 height, #2 short name, #3 what the finished panel will show.
+% \textcolor is not \long, so the colour is set inside a group instead: the
+% reserved block's body is a paragraph and would otherwise break the macro.
+\newcommand{\phfig}[3]{%
+  \begingroup
+  \setlength{\fboxsep}{3pt}%
+  \color{pendcol}%
+  \fbox{\parbox[c][#1][c]{\dimexpr\linewidth-2\fboxsep-2\fboxrule\relax}{%
+    \centering\footnotesize\textbf{RESERVED: #2}\\[3pt]
+    \normalcolor\scriptsize\itshape #3\par}}%
+  \endgroup}
+
+\newcommand{\Fbar}{\bar{F}}
+\newcommand{\weff}{w_{\mathrm{eff}}}
+\newcommand{\Vb}{V_{b}}
+\newcommand{\ib}{\textsc{in-band}}
+
+% tighter display math / float spacing, to hold the 5-page limit
+\abovedisplayskip 3pt \belowdisplayskip 3pt
+\abovedisplayshortskip 1pt \belowdisplayshortskip 1pt
+\setlength{\textfloatsep}{7pt}
+\setlength{\floatsep}{7pt}
+\setlength{\intextsep}{7pt}
+
+% Nineteen headings at the class defaults cost about half a page of white space.
+\usepackage{titlesec}
+\titlespacing*{\section}{0pt}{7pt plus 2pt minus 1pt}{3pt}
+\titlespacing*{\subsection}{0pt}{6pt plus 2pt minus 1pt}{2pt}
+
+% Five tables and a figure in five pages: LaTeX's default float fractions defer
+% them to a page of their own, which costs a whole page.  These let a page carry
+% more float and less text before a float page is created.
+\renewcommand{\topfraction}{0.92}
+\renewcommand{\bottomfraction}{0.85}
+\renewcommand{\textfraction}{0.06}
+\renewcommand{\floatpagefraction}{0.80}
+\setcounter{topnumber}{3}
+\setcounter{bottomnumber}{2}
+\setcounter{totalnumber}{4}
+
+\title{BDG: Batch-Dispersion Guidance for\\Property-Band Generation with Continuous Flow Matching}
+
+\author{
+  Bobo Li,$^{1}$ Henry Huang,$^{1}$ Idea Idehpour,$^{1}$ Haimo Fang$^{1}$\\
+  \\
+  $^{1}$Department of Computer and Information Science, University of Pennsylvania
+}
+
+\begin{document}
+
+\input{body}
+
+\bibliographystyle{ieeetr}
+\bibliography{citation,refs_extra}
+
+\appendix
+\section{Appendix}
+
+\subsection{Dataset and Preprocessing Details}
+QM9 is the DeepChem packaging, pinned by SHA-256 on the archive, both source files
+and the built tensor. We keep the 3{,}054 uncharacterized molecules that EDM and
+its successors drop, a disclosed deviation. Splits come from one seeded permutation
+with $n_{\mathrm{test}}=13{,}083$ and $n_{\mathrm{val}}=17{,}748$, the remainder
+split in half. Normalisation constants from \texttt{train\_a}: $\mu$
+$2.70376\pm1.53941$\,D, $\alpha$ $75.21779\pm8.20041$\,Bohr$^3$, gap
+$0.25126\pm0.04746$\,Ha. The size histograms of the two training halves have total
+variation $0.0064$ with mean atom counts $18.003$ and $17.985$, which makes them
+interchangeable as atom-count sources. Equivariance is verified numerically: 12 of
+12 checks pass to $\sim10^{-17}$ for rotation, translation, permutation and padding,
+on both the scalar and velocity heads. Modality 2 uses all 6{,}126 Kenyon-cell
+sequences with no train/validation split, because the evaluator is an exact count
+and no leakage is possible.
+
+\subsection{Training and Sampling Details}
+Guide and evaluator are E(3)-invariant networks of width 128 and 4 layers,
+429{,}825 parameters, trained 120 epochs with Adam at $3\times10^{-4}$, cosine
+decay, batch 128, MSE on $z$-scored targets, selected on best validation MAE.
+Measured validation MAE on 17{,}748 molecules: $f_A$ $0.0897$\,D, $0.2447$,
+$0.00390$\,Ha; $f_B$ $0.0840$, $0.2407$, $0.00380$. Both are less accurate than
+published predictors because they are undertrained relative to them, and since
+$\delta$ scales with the evaluator's MAE our bands are correspondingly wider, which
+is a disclosed conservatism. The sampler sweep at fixed checkpoint gives atom
+stability $0.9334$, $0.9388$, $0.9399$, $0.9394$ at NFE 100, 250, 500 and 1000, so
+quality saturates by 500 steps. Table~\ref{tab:a-train} gives every trained
+component and Table~\ref{tab:a-sampler} every sampler setting per arm.
+
+\begin{table}[h]
+\centering\small
+\caption{The three trained networks. Only the generator is large. Both predictors
+are frozen at sampling time and neither is updated by guidance. Values are read
+from the checkpoints' own recorded arguments.}
+\label{tab:a-train}
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{llll}
+\toprule
+Setting & Generator $v_\theta$ & Guide $f_A$ & Evaluator $f_B$ \\
+\midrule
+Role                  & samples             & steers              & scores \\
+Used at sampling time & yes, $1$ fwd/step   & yes, $1$ fwd $+$ $1$ bwd/guided step & no \\
+Architecture          & E(3)-equivariant EGNN & E(3)-invariant EGNN & E(3)-invariant EGNN \\
+Width $\times$ depth  & $256\times8$        & $128\times4$        & $128\times4$ \\
+Parameters            & $3.75$\,M           & $429{,}825$         & $429{,}825$ \\
+Training split        & \texttt{train\_a} ($51{,}527$) & \texttt{train\_a} ($51{,}527$) & \texttt{train\_b} ($51{,}527$) \\
+Objective             & linear-interpolant FM & MSE on $z$-scored $y$ & MSE on $z$-scored $y$ \\
+Optimiser             & Adam                & Adam                & Adam \\
+Learning rate         & $2\times10^{-4}$, cosine to $5\%$ & $3\times10^{-4}$, cosine & $3\times10^{-4}$, cosine \\
+Epochs / batch        & $1500$ / $256$      & $120$ / $128$       & $120$ / $128$ \\
+EMA decay             & $0.9999$            & none                & none \\
+Selection             & final EMA weights   & best validation MAE & best validation MAE \\
+Seed                  & $20260918$          & \pend               & \pend \\
+Wall-clock            & $11.4$\,h ($303$k steps) & \pend          & \pend \\
+Checkpoint md5        & \texttt{a190ac83\ldots} & \pend           & \pend \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[h]
+\centering\small
+\caption{Sampler settings per arm. Every arm shares one frozen generator, one
+frozen guide, one 100-step Euler grid and one trust region, so arms differ only in
+the guidance rule and its constants. A dash marks a constant the arm does not have.
+\pend{} marks a setting the v3 run fixes.}
+\label{tab:a-sampler}
+\setlength{\tabcolsep}{5pt}
+\begin{tabular}{lrrrrrrr}
+\toprule
+Arm & $w$ & $\eta$ & $\tau_{\mathrm{mult}}$ & $t_{\min}$ & Batch $B$ & Seeds & $n$ per cell \\
+\midrule
+unguided                 & $-$    & $-$ & $-$     & $-$   & $256$ & $1$   & $256$ \\
+plug-in                  & $1$    & $-$ & $-$     & $0.5$ & $256$ & $1$   & $256$ \\
+plug-in, strength sweep  & $4$    & $-$ & $-$     & $0.5$ & $256$ & $1$   & $256$ \\
+BDG, $\eta{=}0$ gate     & $1$    & $0$ & $1.0$   & $0.5$ & $256$ & $1$   & $256$ \\
+BDG, setpoint ladder     & $1$    & $4$ & $0.5$--$1.5$ & $0.5$ & $256$ & $1$ & $256$ \\
+BDG, one-sided gate      & $1$    & $4$ & $1.5$   & $0.5$ & $256$ & $1$   & $256$ \\
+BDG, high strength       & $32$   & $4$ & $0.5$   & $0.5$ & $256$ & $1$   & $256$ \\
+\midrule
+v3 main run, all arms    & \pend  & \pend & \pend & $0.5$ & \pend & $3$   & $5{,}000$ \\
+Modality 2, all arms     & \pend  & \pend & \pend & \pend & \pend & \pend & \pend \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Hardware and wall-clock for the sampling arms are recorded per cell in the run
+manifests and are summarised in Table~\ref{tab:a-provenance}.
+
+\subsection{Additional Ablations}
+Table~\ref{tab:a-ladder} is the full five-rung setpoint ladder behind the three
+rungs quoted in the main text, on all three properties, with the controller's own
+run-mean diagnostics beside the sample statistics. It is the measurement that the
+monotonicity claim rests on. Table~\ref{tab:a-grid} reserves the v3 extension of
+the same sweep.
+
+\begin{table}[h]
+\centering\scriptsize
+\caption{The complete setpoint ladder at $\eta{=}4$, $w{=}1$, q50 target, one seed,
+$n{=}256$ per cell. Spread is $\mathrm{sd}(f_A)$ over the batch divided by the
+unguided arm's. $\Vb/\tau^2$ and $\weff$ are run means over guided steps. The two
+gate rows are exact: $\eta{=}0$ is bit-identical to the plug-in arm on all three
+properties, and the one-sided variant at an expanding setpoint holds
+$\weff{=}{+}1.000$. \textbf{Resolution:} at $n{=}256$ the standard error on \ib{} is
+about $0.019$ near $p{=}0.1$, so \ib{} differences below roughly two points are not
+resolvable here, and the BDG rows' error is understated because the batch is
+coupled through $\Fbar$ and $\Vb$. The ordering of the spread column, not the size
+of any single \ib{} difference, is what this table establishes.}
+\label{tab:a-ladder}
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{llrrrrrr}
+\toprule
+Property & Arm & $\tau_{\mathrm{mult}}$ & Spread\,/\,ung. & $\Vb/\tau^2$ & $\weff$ & \ib$\uparrow$ & Mol.\ stab.$\uparrow$ \\
+\midrule
+$\mu$ & unguided     & $-$    & $1.000$ & $-$      & $-$      & $0.0898$ & $0.4336$ \\
+$\mu$ & plug-in      & $-$    & $0.714$ & $-$      & $+1.000$ & $0.1094$ & $0.3633$ \\
+$\mu$ & BDG          & $0.50$ & $0.670$ & $1.2731$ & $+2.093$ & $0.1406$ & $0.3359$ \\
+$\mu$ & BDG          & $0.75$ & $0.813$ & $0.9351$ & $+0.741$ & $0.0820$ & $0.4102$ \\
+$\mu$ & BDG          & $1.00$ & $0.900$ & $0.7578$ & $+0.031$ & $0.0820$ & $0.4258$ \\
+$\mu$ & BDG          & $1.25$ & $0.982$ & $0.6746$ & $-0.302$ & $0.0742$ & $0.4219$ \\
+$\mu$ & BDG          & $1.50$ & $1.093$ & $0.6459$ & $-0.416$ & $0.0703$ & $0.4141$ \\
+\midrule
+$\alpha$ & unguided  & $-$    & $1.000$ & $-$      & $-$      & $0.0508$ & $0.4336$ \\
+$\alpha$ & plug-in   & $-$    & $0.849$ & $-$      & $+1.000$ & $0.0547$ & $0.3711$ \\
+$\alpha$ & BDG       & $0.50$ & $0.674$ & $1.5365$ & $+3.146$ & $0.0742$ & $0.3711$ \\
+$\alpha$ & BDG       & $0.75$ & $0.844$ & $1.0761$ & $+1.305$ & $0.0547$ & $0.3633$ \\
+$\alpha$ & BDG       & $1.00$ & $1.014$ & $0.8777$ & $+0.511$ & $0.0625$ & $0.3711$ \\
+$\alpha$ & BDG       & $1.25$ & $1.099$ & $0.7190$ & $-0.124$ & $0.0547$ & $0.3672$ \\
+$\alpha$ & BDG       & $1.50$ & $1.187$ & $0.6166$ & $-0.533$ & $0.0430$ & $0.3945$ \\
+\midrule
+gap & unguided       & $-$    & $1.000$ & $-$      & $-$      & $0.1211$ & $0.4336$ \\
+gap & plug-in        & $-$    & $0.871$ & $-$      & $+1.000$ & $0.1562$ & $0.3359$ \\
+gap & BDG            & $0.50$ & $0.742$ & $1.3621$ & $+2.448$ & $0.1406$ & $0.3086$ \\
+gap & BDG            & $0.75$ & $0.893$ & $1.0024$ & $+1.009$ & $0.1055$ & $0.3672$ \\
+gap & BDG            & $1.00$ & $0.968$ & $0.7781$ & $+0.113$ & $0.0977$ & $0.3906$ \\
+gap & BDG            & $1.25$ & $1.052$ & $0.6376$ & $-0.450$ & $0.1016$ & $0.3594$ \\
+gap & BDG            & $1.50$ & $1.073$ & $0.5401$ & $-0.840$ & $0.0938$ & $0.3203$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Two facts in this table are worth separating. The spread column is monotone in
+$\tau_{\mathrm{mult}}$ on all three properties, which is the control result. The
+\ib{} column is not ordered and its best cell is the contraction rung, which also
+carries the lowest molecule stability on $\mu$ and gap, which is the fidelity cost.
+Neither the mean $\Vb/\tau^2$ nor $\weff$ settles at the equilibrium value
+$\tau^2(1-1/\eta)$ within the 50 guided steps, so these are transient, not
+converged, operating points.
+
+\begin{table}[h]
+\centering\scriptsize
+\caption{Reserved: the v3 extension of the ablation, three seeds and two backends
+at $n{=}5{,}000$. Every cell reports \ib{} with its seed standard deviation and
+molecule stability. Row and column structure, the grid and the ordering are final;
+only the values are pending. This grid exists to separate the two confounds the
+one-seed table above cannot: whether monotonicity survives seed noise, and whether
+the gain $\eta$ and the nominal strength $w$ act independently.}
+\label{tab:a-grid}
+\setlength{\tabcolsep}{5pt}
+\begin{tabular}{lrrrrr}
+\toprule
+& \multicolumn{5}{c}{$\tau_{\mathrm{mult}}$} \\
+\cmidrule(l){2-6}
+$\eta$ (at $w{=}1$) & $0.50$ & $0.75$ & $1.00$ & $1.25$ & $1.50$ \\
+\midrule
+$0$ & \pend & \pend & \pend & \pend & \pend \\
+$1$ & \pend & \pend & \pend & \pend & \pend \\
+$2$ & \pend & \pend & \pend & \pend & \pend \\
+$4$ & \pend & \pend & \pend & \pend & \pend \\
+$8$ & \pend & \pend & \pend & \pend & \pend \\
+\midrule
+$\eta$ (at $w{=}4$) & $0.50$ & $0.75$ & $1.00$ & $1.25$ & $1.50$ \\
+\midrule
+$0$ & \pend & \pend & \pend & \pend & \pend \\
+$1$ & \pend & \pend & \pend & \pend & \pend \\
+$2$ & \pend & \pend & \pend & \pend & \pend \\
+$4$ & \pend & \pend & \pend & \pend & \pend \\
+$8$ & \pend & \pend & \pend & \pend & \pend \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\linewidth]{figs/mechanism.pdf}
+\caption{The controller, from the measurements in Table~\ref{tab:a-ladder}. Left:
+the rule. The deviation gain is servoed while the centring gain is held at $w$, so
+the step is the plug-in field at a rescaled weight aiming at a shifted target.
+Middle: the setpoint ladder. Requested spread against achieved spread on all three
+properties, monotone on all of them, with the unit line marking the unguided
+spread. Right: the signed effective gain $\weff$ along the ladder. It crosses zero,
+which is what makes the control two-sided: the same rule contracts and expands
+depending on the sign of the dispersion error.}
+\label{fig:mechanism}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\phfig{150pt}{per-seed ladder with error bars}{Requested against achieved spread,
+three properties $\times$ three seeds at $n{=}5{,}000$, with per-seed markers and a
+band of $\pm1$ seed standard deviation, drawn on the same axes as the middle panel
+of Figure~\ref{fig:mechanism}. Produced by \texttt{paper/figs/make\_mechanism.py}
+once \texttt{results/v3/} lands. This panel is what turns the one-seed ordering
+above into a claim about monotonicity under seed noise; if the bands overlap across
+rungs, the ordering claim weakens to a trend and the text will say so.}
+\caption{Reserved: monotonicity under seed noise.}
+\label{fig:a-seedladder}
+\end{figure}
+
+\subsection{Baseline Fidelity and Modality 2 Disclosures}
+\textbf{Modality 1 naming.} Our plug-in arm is a DPS-style Gaussian-energy field,
+where the original DPS differentiates the residual $L_2$ norm. Our TMPD arm
+replaces the constant denominator by $s^2+g^\top\Sigma g$, which is the published
+method's scalar affine-property limit, included as a related-work comparison rather
+than a faithful nonlinear port. TFG runs at its published QM9 hyperparameters
+through our deterministic ODE sampler where the original used a stochastic DDIM
+update, and our unscaled one-hot features move roughly 16 times less relative to
+coordinates than the released checkpoint's, so its numbers here must never be read
+against its published table.
+
+\textbf{Modality 2 deviations.} The standard enhancer protocol is class-conditional
+generation at 500 base pairs on 81-class or 47-class datasets of roughly 90{,}000
+sequences, scored by Fr\'echet biological distance over 10{,}000 samples per model.
+We use GC-band coverage instead of class-conditional distance, 6{,}126 sequences
+instead of 83{,}968, and 200 base pairs in the shipped cells. Three further facts
+bear on the comparison. Gumbel-Softmax flow matching does not run the enhancer
+benchmark at all, reporting promoter, protein and peptide tasks, so only two of the
+three closest named methods apply here. Fisher Flow disputes the standard evaluator,
+reporting that the cell-type classifiers behind it score 11.5\% and 11.2\% test
+accuracy. MOG-DFM's own guided demonstration runs at length 100 while reporting base
+distances at 500, so short-length guided evaluation is precedented. At 200 base
+pairs the reference classifier global-average-pools and returns meaningless numbers
+rather than failing loudly, which is a further reason we do not quote it.
+
+\textbf{Per-seed values.} Table~\ref{tab:a-seeds} reserves the per-seed breakdown
+behind every aggregate in the main text. Three seeds is the minimum at which a
+standard deviation means anything, and with $n{=}5{,}000$ per cell the standard
+error on \ib{} near $p{=}0.1$ is about $0.004$, roughly five times finer than the
+one-seed ablation above. Seed-to-seed spread is reported for every arm, including
+the arms whose aggregates we do not claim a difference for, so that a reader can
+check whether a difference we do claim exceeds it.
+
+\begin{table}[h]
+\centering\scriptsize
+\caption{Reserved: per-seed \ib{} and molecule stability for every arm in
+Tables~2 to 4 of the main text, $n{=}5{,}000$ per cell, q50 target. Rows, columns
+and the seeds are final; only the values are pending. The last column is the
+quantity every main-text comparison must clear.}
+\label{tab:a-seeds}
+\setlength{\tabcolsep}{5pt}
+\begin{tabular}{llrrrrr}
+\toprule
+Arm & Property & Seed 1 & Seed 2 & Seed 3 & Mean & Seed sd \\
+\midrule
+unguided            & $\mu$ / $\alpha$ / gap & \pend & \pend & \pend & \pend & \pend \\
+plug-in             & $\mu$ / $\alpha$ / gap & \pend & \pend & \pend & \pend & \pend \\
+TMPD-inspired       & $\mu$ / $\alpha$ / gap & \pend & \pend & \pend & \pend & \pend \\
+LGD-MC              & $\mu$ / $\alpha$ / gap & \pend & \pend & \pend & \pend & \pend \\
+TFG                 & $\mu$ / $\alpha$ / gap & \pend & \pend & \pend & \pend & \pend \\
+D-Flow              & $\mu$ / $\alpha$ / gap & \pend & \pend & \pend & \pend & \pend \\
+\textbf{BDG (ours)} & $\mu$ / $\alpha$ / gap & \pend & \pend & \pend & \pend & \pend \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Additional Samples and Failure Cases}
+Figures~\ref{fig:a-samples} and~\ref{fig:a-failures} are the qualitative
+counterpart to Table~\ref{tab:a-ladder}. Their purpose is adversarial: the contraction
+rung is the cell with the best \ib{} and the worst molecule stability, so it is the
+cell whose samples most need to be shown rather than summarised.
+
+\begin{figure}[h]
+\centering
+\phfig{175pt}{molecule grid across the setpoint ladder}{A $5\times8$ grid of decoded
+molecules, one row per ladder rung $\tau_{\mathrm{mult}}\in\{0.5,0.75,1.0,1.25,1.5\}$
+at $\eta{=}4$, $w{=}1$, on $\mu$, drawn from a fixed seed so rows are paired sample
+for sample. Each molecule is annotated with its $f_B$ property value, whether it
+falls in the band, and whether it passes the EDM stability check. Unstable
+molecules are kept in the grid and marked, not filtered out.}
+\caption{Reserved: samples along the setpoint ladder.}
+\label{fig:a-samples}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\phfig{130pt}{failure cases at the contraction rung}{The eight lowest-stability
+molecules from the $\tau_{\mathrm{mult}}{=}0.5$ cell beside their paired unguided
+samples from the same seed and noise draw, with the per-atom valency violations
+marked. Below them, eight generated DNA sequences at the matching contraction rung
+with their GC content and the band edges. This panel exists to show what the
+fidelity cost in Table~\ref{tab:a-ladder} actually looks like.}
+\caption{Reserved: what the contraction rung breaks.}
+\label{fig:a-failures}
+\end{figure}
+
+\subsection{Algorithms}
+\begin{algorithm}[H]
+\caption{One guided sampling step with Batch-Dispersion Guidance. Nothing is trained
+at sampling time; the generator $v_\theta$ and guide $f_A$ are frozen.
+Modality-specific inputs are the endpoint map and the property $f_A$.}
+\label{alg:bdg}
+\begin{algorithmic}[1]
+\Require batch $x_t\in\mathbb{R}^{B\times d}$, time $t$, strength $w$, gain $\eta$,
+  setpoint $\tau$, scale $s$, step $h$
+\State $v_i \gets v_\theta(x_t^{(i)},t)$ \Comment{one generator pass, shared with the unguided sampler}
+\If{$t < t_{\min}$} \Return $x_t + h\,v$ \Comment{guidance window}
+\EndIf
+\State $m_i \gets x_t^{(i)} + (1-t)\,v_i$ \Comment{endpoint estimate}
+\State $F_i \gets f_A(m_i)$; \quad $g_i \gets \nabla_m f_A(m_i)$ \Comment{one guide forward, one backward}
+\State $\Fbar \gets \tfrac{1}{B}\sum_i F_i$; \quad
+       $\Vb \gets \tfrac{1}{B-1}\sum_i (F_i-\Fbar)^2$ \Comment{the batch is the estimator}
+\State $e \gets (\Vb-\tau^2)/\tau^2$; \quad \textbf{if} one-sided \textbf{then} $e \gets \max(e,0)$
+\State $\mathrm{num}_i \gets (y-F_i) - \eta\,e\,(F_i-\Fbar)$
+       \Comment{$=(y-\Fbar)-\weff(F_i-\Fbar)$, $\weff=1+\eta e$}
+\State $G_i \gets (\mathrm{num}_i/s^2)\,J_i^{\!\top} g_i$ \Comment{one vector-Jacobian product}
+\State $G_i \gets w\tfrac{1-t}{t}G_i$; \quad
+       $G_i \gets G_i\cdot\min(1,\|v_i\|/\|G_i\|)$ \Comment{trust region, shared by all arms}
+\State \Return $x_t + h\,(v + G)$
+\end{algorithmic}
+\end{algorithm}
+If $B<2$ the unbiased variance is undefined, and the implementation sets
+$\Vb:=\tau^2$ so that $e=0$ and the step degrades to the plug-in rule rather than
+emitting a non-finite value.
+
+\subsection{Implementation and Reproducibility Details}
+Every number in this paper is produced by one script reading one recorded
+artefact, listed in Table~\ref{tab:a-provenance}. The innovation itself is the
+\texttt{mode == "bdg"} branch of \texttt{proj1/src/guidance.py}, gated by 25 checks
+in \texttt{proj1/tests/test\_bdg.py}, which include the two exactness properties
+asserted in Table~\ref{tab:a-ladder}.
+
+\begin{table}[h]
+\centering\scriptsize
+\caption{Provenance. Each row names the object in the paper, the script that emits
+it and the recorded artefact that script reads. \pend{} marks an artefact the v3
+run has not written. Nothing in the paper is assembled by hand.}
+\label{tab:a-provenance}
+\setlength{\tabcolsep}{5pt}
+\begin{tabular}{lll}
+\toprule
+Object & Produced by & Reads \\
+\midrule
+Table~1, base models      & \texttt{scripts/benchmark\_base.py}   & \texttt{weights/fm\_ema.pt}, \texttt{results/bench/} \\
+Table~2, guidance arms    & \texttt{scripts/onegen\_full\_metrics.py} & \texttt{results/bdg\_local/} \\
+Table~3, BDG ablation     & \texttt{scripts/bdg\_full\_metrics.py} & \texttt{results/bdg\_port/cells/} \\
+Table~4, recent methods   & \texttt{scripts/transfer\_sweep.py}   & \texttt{results/v3/} \pend \\
+Table~5, Modality 2       & \texttt{m2/m2\_sweep.py}              & \texttt{results/m2/} \pend \\
+Table~\ref{tab:a-ladder}  & \texttt{scripts/bdg\_table.py}        & \texttt{results/bdg\_port/table.txt} \\
+Table~\ref{tab:a-grid}    & \texttt{scripts/bdg\_table.py}        & \texttt{results/v3/} \pend \\
+Figure~1, overview        & \texttt{paper/figs/overview.tex}      & nothing; it is a diagram \\
+Figure~\ref{fig:mechanism} & \texttt{paper/figs/make\_mechanism.py} & \texttt{results/bdg\_port/table.txt} \\
+Figures~\ref{fig:a-seedladder}--\ref{fig:a-failures} & \texttt{paper/figs/make\_mechanism.py} & \texttt{results/v3/} \pend \\
+\midrule
+The innovation            & \texttt{proj1/src/guidance.py}, \texttt{mode == "bdg"} & $-$ \\
+Its gates                 & \texttt{proj1/tests/test\_bdg.py} (25 checks) & $-$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Versions and identifiers.} The generator checkpoint is pinned by md5
+\texttt{a190ac83\ldots} and QM9 by SHA-256 on both the source archive and the built
+tensor. Software versions, the remaining checkpoint hashes and the per-cell run
+manifests are \pend{} until the v3 environment is frozen; they are recorded by the
+same scripts that emit the tables above, so they land with the numbers rather than
+being transcribed after the fact.
+
+\end{document}
