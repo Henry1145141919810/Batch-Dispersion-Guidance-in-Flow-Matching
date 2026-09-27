@@ -127,12 +127,17 @@ def main():
                     "w, is setting the strength here (protocol 1.2b)" % (100 * cf))
 
     # ---------------------------------------------- within (prop, w, seed)
+    # Grouped by WINDOW as well as strength. The ablation deliberately carries a
+    # t_min=0 diagnostic rung beside the t_min=0.5 arms, so a group keyed only
+    # on (prop, w, seed) mixes the two windows: it then compared bdg(eta=0) at
+    # t>=0.5 against plug at t>=0 and reported the eta=0 control as FAILED with
+    # max|d| = 0.24, when the two cells were never meant to be comparable.
     grp = collections.defaultdict(dict)
     for r in rows:
         a_ = r["arm"] if r["arm"] != "bdg" else "bdg_" + str(r.get("variant"))
-        grp[(r["prop"], r["w"], r["seed"])][a_] = r
+        grp[(r["prop"], r["w"], r.get("t_min_guide", 0.0), r["seed"])][a_] = r
     for k, arms in sorted(grp.items(), key=str):
-        tag = "%s/w%g/s%s" % k
+        tag = "%s/w%g/t%g/s%s" % k
         for f in ("delta", "y", "s", "t_min_guide", "n", "batch", "steps"):
             CHECKS += 1
             vals = {r.get(f) for r in arms.values()}
