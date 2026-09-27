@@ -55,7 +55,14 @@ import simplex_fm as S
 
 # ------------------------------------------------------------ metrics
 def kmer_freq(x, k=3):
-    tok = x.argmax(-1)
+    # ON CPU, ALWAYS. The histogram is a [4**k] scatter_add over a [B, L-k+1]
+    # index: tiny, and it has to live on ONE device. Building `cnt` on CPU while
+    # `x` was on CUDA raised "Expected all tensors to be on the same device" and
+    # failed every guided cell of the first GPU run -- invisible until then
+    # because the whole M2 stack had been exercised on CPU while the GPUs were
+    # busy with Modality 1. The reference k-mer table is built from CPU data, so
+    # returning CPU here also keeps the two comparable in js().
+    tok = x.argmax(-1).detach().cpu()
     B, L = tok.shape
     pw = torch.tensor([4 ** i for i in range(k)])
     idx = sum(tok[:, i:L - k + 1 + i] * pw[i] for i in range(k))

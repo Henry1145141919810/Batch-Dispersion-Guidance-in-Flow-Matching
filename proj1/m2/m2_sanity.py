@@ -73,8 +73,14 @@ def main():
         except Exception as exc:                          # noqa: BLE001
             fail(os.path.basename(p), "unreadable: %s" % exc)
     if not rows:
-        print("no cells under %s" % pat)
-        return 0
+        # An empty tree is a FAILURE, not a pass. A gate that returns success on
+        # nothing is exactly the "complete but meaningless" outcome this file
+        # exists to catch: the first GPU run of M2 produced 0 of 21 cells and
+        # this check waved it through, so the pipeline built an empty table and
+        # moved on to the next stage.
+        print("FAIL  no cells under %s -- the stage produced nothing" % pat)
+        print("\nPROBLEMS: 1 fail, 0 warn, 0 checks")
+        return 1
 
     for r in rows:
         c = name(r)
