@@ -347,10 +347,10 @@ together.}
 \toprule
 Method & Status & \ib$\uparrow$ & Mol.\ stab.$\uparrow$ & Diversity$\uparrow$ & Gen.\ passes & Guide passes \\
 \midrule
-DPS-style plug-in \citep{chung2023dps}  & reproduced & \pend & \pend & \pend & $10{,}000$ & $4{,}000$ \\
-TMPD-inspired \citep{boys2024tmpd}      & reproduced & \pend & \pend & \pend & $10{,}000$ & $4{,}000$ \\
-LGD-MC \citep{song2023lgd}              & reproduced & \pend & \pend & \pend & $12{,}000$ & $20{,}000$ \\
-TFG \citep{ye2024tfg}                   & reproduced & \pend & \pend & \pend & $8{,}000$  & $20{,}000$ \\
+DPS-style plug-in \citep{chung2023dps}  & ported     & \pend & \pend & \pend & $10{,}000$ & $4{,}000$ \\
+TMPD-inspired \citep{boys2024tmpd}      & ported     & \pend & \pend & \pend & $10{,}000$ & $4{,}000$ \\
+LGD-MC \citep{song2023lgd}              & ported     & \pend & \pend & \pend & $12{,}000$ & $20{,}000$ \\
+TFG \citep{ye2024tfg}                   & ported     & \pend & \pend & \pend & $8{,}000$  & $20{,}000$ \\
 \midrule
 Flow matching, unguided                 & internal   & \pend & \pend & \pend & $10{,}000$ & $0$ \\
 \textbf{BDG (ours)}                     & ours       & \pend & \pend & \pend & $10{,}000$ & $4{,}000$ \\
@@ -409,7 +409,8 @@ Figure~\ref{fig:a-failures} shows what contraction breaks.
 \section{Discussion}
 
 Guidance worked at a measured chemistry cost, and the ablations support one mechanism
-claim beside one null on coverage. Both transferred to the simplex.
+claim, that the dispersion term produces the spread ladder, beside one null on
+coverage. Both transferred to the simplex.
 
 Equation~\eqref{eq:reduction} accounts for the null. BDG reaches nothing outside the
 plug-in field's two-parameter family, and we swept one of those parameters. The one
