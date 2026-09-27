@@ -76,6 +76,14 @@ def main():
     ap.add_argument("--batch", type=int, default=500)
     ap.add_argument("--steps", type=int, default=400)      # NFE; protocol 2.2
     ap.add_argument("--w", type=float, default=None)
+    ap.add_argument("--seeds", default="",
+                    help="comma list; default all of %s. Splitting the sweep by "
+                         "seed is how it fans across GPUs -- cells are "
+                         "independent and each is skipped if it already exists, "
+                         "so two workers on disjoint seeds never collide."
+                         % (SEEDS,))
+    ap.add_argument("--props", default="",
+                    help="comma list; default %s" % (PROPS,))
     ap.add_argument("--device", default="auto")
     ap.add_argument("--dry", action="store_true")
     ap.add_argument("--python", default=sys.executable)
@@ -96,6 +104,20 @@ def main():
             "equal." % (a.batch, a.n))
 
     plan = list(cells(a.stage, a.w))
+    if a.seeds:
+        keep = {int(s) for s in a.seeds.split(",") if s.strip()}
+        unknown = keep - set(SEEDS)
+        if unknown:
+            raise SystemExit("--seeds %s is not in the protocol's %s"
+                             % (sorted(unknown), SEEDS))
+        plan = [c for c in plan if c["seed"] in keep]
+    if a.props:
+        keep = {p.strip() for p in a.props.split(",") if p.strip()}
+        unknown = keep - set(PROPS)
+        if unknown:
+            raise SystemExit("--props %s is not in the protocol's %s"
+                             % (sorted(unknown), PROPS))
+        plan = [c for c in plan if c["prop"] in keep]
     print("%d cells -> %s/%s/n%d   (n=%d, batch=%d, NFE=%d, w=%g)"
           % (len(plan), a.out_dir, a.stage, a.n, a.n, a.batch, a.steps, a.w))
     if a.dry:

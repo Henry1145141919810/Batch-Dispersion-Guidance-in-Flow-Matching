@@ -56,61 +56,89 @@ is *simpler* than M1.
 | `gc` | GC content of the decoded sequence | **exactly affine** (Hessian identically zero) | 0.0552 |
 | `cpg` | CpG dinucleotide density | **quadratic** | 0.01475 |
 
-The contrast is the experiment, not a redundancy. M1 cannot run it: all three
-of its properties are learned networks with unknown curvature, so when two arms
-differ there, no one can say whether a curvature term did anything real. Here
-the affine case is a **known-answer control**. Report both; do not drop `gc`
-for being degenerate — being degenerate is its job.
+**Order of work: `gc` first, `cpg` as replication if time allows** (owner's
+decision, 26 Sep). A third property is possible later and is not planned here.
 
-> **Which arms the contrast actually separates, measured 26 Sep — not all of
-> them.** `lgd_mc` and `tfg_mc` evaluate f at Monte-Carlo draws around the
-> endpoint estimate, so they see the curvature and the contrast is live for
-> them. **`tmpd` as implemented does not** — see §1.2. The protocol states this
-> rather than assuming the contrast covers every arm, because the write-up
-> would otherwise claim a curvature result that the code cannot produce.
+> **The curvature justification these two properties used to carry is
+> withdrawn.** Both this document's first draft and `m2_sweep.py`'s comments
+> said the pair "isolates when a Tweedie second-moment correction can matter".
+> **No arm in either modality computes such a correction.** The arms that would
+> differ — `smg_mean`, `smg2` — are not in v3's arm set
+> (`unguided,plug,tmpd,lgd_mc,tfg,bdg×2`) and M2's `guidance_field` has no
+> Hessian term at all. The contrast as stated had nothing to test.
+>
+> **What `cpg` actually buys is replication**: a second property with a
+> different functional form, so that a result is not a quirk of GC in
+> particular. That is a real reason and it is the one to write up. It is also
+> why `cpg` is deferred rather than dropped — replication is worth having, but
+> it is not worth having before the primary property is measured at all.
 
-### 1.2 A defect in `tmpd`, found while writing this protocol — **reported, not fixed**
+M1 cannot run a known-curvature property at all: all three of its properties
+are learned networks. That remains a genuine asymmetry in M2's favour — it is
+just not one the current arm set exploits.
 
-`tmpd`'s denominator is `s² + v_f` where `plug`'s is `s²`. On an affine
-property the Tweedie second-moment *correction term* vanishes, so the two
-fields are **parallel and differ only by that scalar**. Measured on the frozen
-base, 16 sequences, `gc`:
+### 1.2 `tmpd` was a duplicate of `plug`, and the clip still makes it one
 
-| t | cos(tmpd, plug) | \|tmpd\|/\|plug\| | s²/(s²+v_f) | v_f/s² |
-|---|---|---|---|---|
-| 0.0 | 1.0000000000 | 0.50638324 | 0.50638327 | 0.975 |
-| 0.1 | 1.0000001192 | 0.67047340 | 0.67047342 | 0.492 |
-| 0.3 | 1.0000001192 | 0.93439883 | 0.93439892 | 0.070 |
-| 0.5 | 1.0000000000 | 0.99997473 | 0.99997464 | 0.000 |
+Three measurements, 26 Sep, in the order they were found. The first two are
+fixed in code; **the third is not fixable by a code change and constrains how
+`tmpd` may be reported.**
 
-Exactly parallel, and the ratio matches the prediction to 7 decimal places. So
-far so good — that is the affine case behaving as it should.
+**(a) `v_f` was batch-constant, so TMPD had no per-sample weighting.** TMPD's
+defining feature is that each sample's step is divided by *that sample's*
+uncertainty `s² + v_f_i`. `m2_sweep.py` read `v_f` from `vf_table.json` as one
+scalar broadcast over the batch (`torch.full_like`), on **both** properties, so
+every sample got the identical factor. Measured spread of `s²/(s²+v_f_i)`
+across a batch of 64: **~1e-6 (float noise) at every t, on `gc` and `cpg`
+alike**. `tmpd` was DPS with a global step-size schedule. A second bug fed it:
+`_const_grad` returned a gradient for `gc` and **zeros** for `cpg`, so `gAg`
+was identically 0 there — though it was moot, since the table value overrode it
+anyway.
 
-**But `cpg` gives cos = 1.0000000000 too, and it must not.** The cause is at
-`m2_sweep.py:188-197`: `v_f` is read from `vf_table.json` as a **single scalar
-per t**, identical for every sample in the batch, on both properties.
-`_const_grad` returns a gradient only for `gc`; for `cpg` it returns **zeros**,
-so `gAg` is exactly 0 and the general path the comment promises is never taken.
+**Fixed**: the per-sample gradient at `m` now comes from autograd and
+`v_f_i = k_t · gAg_i`, with `k_t` calibrated so the batch **mean** of `v_f`
+still equals the measured table value. The table keeps setting the scale; the
+spread is restored. Verified: mean matches the table exactly at every t, and
+the per-sample spread goes from ~1e-6 to **0.33 (`gc`) and 0.44 (`cpg`)** at
+t = 0.1. Modality 1 already did this correctly with a JVP
+(`guidance.py:1689-1691`), so this makes the two modalities run the same
+method — which the transfer claim requires.
 
-Two consequences, both of which must reach the write-up:
+**(b) The clip erases what the fix restored.** TMPD modulates per-sample
+*magnitude*. The clip caps per-sample magnitude at `clip × |v|`. They act on
+the same axis, and the clip wins: any clipped sample gets rescaled to exactly
+`clip × |v|`, identical for `plug` and `tmpd`. Measured at t = 0.1, `gc`,
+64 samples:
 
-1. **`tmpd` on `cpg` is `plug` rescaled by a per-t constant**, not TMPD. For a
-   quadratic f the uncertainty denominator should vary *per sample*, because
-   the gradient varies per sample; here it cannot. **The affine/quadratic
-   contrast therefore cannot test `tmpd`**, which was one of the two reasons
-   `cpg` is in the protocol.
-2. **`tmpd_k_eff` is a garbage diagnostic on `cpg`**: it is computed as
-   `v_f.mean() / max(gAg.mean(), 1e-30)` and so records **5.4 × 10²⁵**. It must
-   not be read as a measured quantity, and `m2_table.py` suppresses it for
-   `cpg` rather than printing it.
+| w | fraction of samples clipped | relative \|tmpd − plug\| after the clip |
+|---|---|---|
+| 1 | 94 % | 0.0073 |
+| 4 | 97 % | 0.0005 |
+| 16 | 97 % | 0.0021 |
+| 64 | 97 % | 0.0081 |
 
-This is left for Henry to decide — fixing it is a change to the method, not a
-mechanical prerequisite, and the two sessions must stay in agreement about what
-was run. The run proceeds with `tmpd` as it is, and every `tmpd` row on `cpg`
-is labelled **"denominator only"** in the table so no reader mistakes it for
-TMPD.
+So **under `clip = 1.0` and `t_min = 0`, `tmpd` is indistinguishable from
+`plug` at every strength in the grid**, whatever `v_f` does.
 
----
+**(c) The cause is the window, not the clip — and M1 proves it.** The
+score-to-velocity factor is `(1-t)/max(t, 1e-6)`, which diverges as t → 0 and
+is capped only at 1e6. Guiding from t = 0 therefore requests enormous
+corrections at small t, and the clip truncates essentially all of them.
+Modality 1 guides from t ≥ 0.5, where the factor is ~1 — and in M1's own
+finished v3 cells **under 0.2 % of sample-steps clip** (64–406 of 200,000 on
+our base), with `plug` and `tmpd` differing by 0.001–0.021 in-band and carrying
+visibly different clip counts (406 vs 19). TMPD is a live baseline in M1 and a
+dead one in M2, and the window is the whole difference.
+
+**Consequence for §2.1.** The window is no longer a one-sided argument. Guiding
+late steers after the sequence has committed; guiding from 0 runs at the clip
+ceiling, where `w` barely matters and every magnitude-only method collapses
+onto `plug`. `measure_window.py` therefore sweeps `t_min ∈ {0, 0.05, 0.1, 0.2,
+0.3, 0.5}` and records **gap closure and clip saturation together**. The window
+is chosen from that table, not from either argument alone.
+
+**Consequence for the write-up.** If the chosen window still clips heavily,
+`tmpd` must be reported as *clip-limited*, not as "a baseline that performed
+like DPS". Those are different claims and only the first is true.
 
 ## 2. The four departures from v3, each with its reason
 

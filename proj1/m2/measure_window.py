@@ -64,12 +64,18 @@ def main():
     ap.add_argument("--steps", type=int, default=400)
     ap.add_argument("--w", type=float, default=16.0)
     ap.add_argument("--arm", default="plug")
+    ap.add_argument("--t-mins", default="0,0.05,0.1,0.2,0.3,0.5",
+                    help="the window sweep. v3 uses 0.5; M2 proposed 0, which "
+                         "saturates the clip -- the point is to find a window "
+                         "that steers before the sequence commits WITHOUT "
+                         "running at the clip ceiling.")
     ap.add_argument("--seeds", default="20260921,20260922,20260923")
     ap.add_argument("--device", default="auto")
     ap.add_argument("--json-out", default="results/m2_window.json")
     ap.add_argument("--md-out", default="docs/results/M2_WINDOW.md")
     a = ap.parse_args()
     seeds = [int(s) for s in a.seeds.split(",")]
+    a.t_mins = [float(x) for x in a.t_mins.split(",")]
     dev = ("cuda" if torch.cuda.is_available() else "cpu") \
         if a.device == "auto" else a.device
 
@@ -97,22 +103,33 @@ def main():
             print("      t=%.2f  sd=%.5f" % (t, sp[round(t, 4)]))
         print("      final (decoded) sd=%.5f   corpus sd=%.5f" % (sp["final"], s))
 
-        print("[%s] B. gap closure at t_min in {0, 0.5}, arm=%s w=%g"
+        # B sweeps the window rather than testing two endpoints, because the
+        # window has a SECOND effect the repo never measured: the score-to-
+        # velocity factor is (1-t)/max(t,1e-6), so guiding at small t asks for
+        # enormous corrections that the clip then truncates. A clipped step
+        # carries no magnitude information, so every arm that differs from plug
+        # only in magnitude -- tmpd is exactly that -- becomes plug. Modality 1
+        # never sees this because it guides from t >= 0.5, where the factor is
+        # ~1 and under 0.2% of its sample-steps clip.
+        print("[%s] B. window sweep, arm=%s w=%g -- gap closure AND clip saturation"
               % (prop, a.arm, a.w))
         res["closure"][prop] = {"s": s, "y": y, "delta": delta}
-        base = None
-        for t_min in (0.0, 0.5):
-            means, ibs = [], []
+        for t_min in a.t_mins:
+            means, ibs, clips = [], [], []
             for sd_ in seeds:
                 r, _ = M.run_cell(net, ck, a.arm, "-", a.w, y, s, None, 0.0,
                                   False, a.n, a.steps, t_min, 1.0, sd_, delta,
                                   real_kmer, prop=prop, dev=dev, batch=a.batch)
                 means.append(r["gc_mean"]); ibs.append(r["in_band_fraction"])
+                guided = max(1, int(round(a.steps * (1.0 - t_min)))) * a.n
+                clips.append(r["clipped_sample_steps"] / guided)
             res["closure"][prop]["t%g" % t_min] = {
                 "prop_mean": sum(means) / len(means),
-                "in_band": sum(ibs) / len(ibs)}
-            print("      t_min=%.1f  mean=%.5f  in_band=%.4f"
-                  % (t_min, sum(means) / len(means), sum(ibs) / len(ibs)))
+                "in_band": sum(ibs) / len(ibs),
+                "clipped_frac": sum(clips) / len(clips)}
+            print("      t_min=%-4g mean=%.5f  in_band=%.4f  clipped=%.1f%% of "
+                  "guided steps" % (t_min, sum(means) / len(means),
+                                    sum(ibs) / len(ibs), 100 * sum(clips) / len(clips)))
         # unguided reference, so "closure" has a start point
         means = []
         for sd_ in seeds:
@@ -122,11 +139,11 @@ def main():
             means.append(r["gc_mean"])
         u = sum(means) / len(means)
         res["closure"][prop]["unguided_mean"] = u
-        for t_min in (0.0, 0.5):
+        for t_min in a.t_mins:
             gm = res["closure"][prop]["t%g" % t_min]["prop_mean"]
             frac = (gm - u) / (y - u) if abs(y - u) > 1e-12 else float("nan")
             res["closure"][prop]["t%g" % t_min]["gap_closed"] = frac
-            print("      t_min=%.1f  closes %.1f%% of the gap (unguided %.5f -> "
+            print("      t_min=%-4g closes %.1f%% of the gap (unguided %.5f -> "
                   "target %.5f)" % (t_min, 100 * frac, u, y))
 
     os.makedirs(os.path.dirname(a.json_out) or ".", exist_ok=True)
@@ -147,14 +164,14 @@ def main():
                 fh.write("| final (decoded) | %.5f |\n\n"
                          % res["spread"][prop]["final"])
                 c = res["closure"][prop]
-                fh.write("### B. gap closure\n\nunguided mean %.5f, target %.5f"
-                         "\n\n| t_min | mean | in_band | gap closed |\n"
-                         "|---|---|---|---|\n" % (c["unguided_mean"], c["y"]))
-                for t_min in (0.0, 0.5):
+                fh.write("### B. window sweep\n\nunguided mean %.5f, target %.5f"
+                         "\n\n| t_min | mean | in_band | gap closed | clipped |\n"
+                         "|---|---|---|---|---|\n" % (c["unguided_mean"], c["y"]))
+                for t_min in a.t_mins:
                     d = c["t%g" % t_min]
-                    fh.write("| %.1f | %.5f | %.4f | %.1f%% |\n"
+                    fh.write("| %g | %.5f | %.4f | %.1f%% | %.1f%% |\n"
                              % (t_min, d["prop_mean"], d["in_band"],
-                                100 * d["gap_closed"]))
+                                100 * d["gap_closed"], 100 * d["clipped_frac"]))
                 fh.write("\n")
         print("wrote %s and %s" % (a.json_out, a.md_out))
     return 0

@@ -63,6 +63,14 @@ def arm_key(r):
     return r["arm"] if r["arm"] != "bdg" else "bdg_" + r["variant"]
 
 
+def clipped_frac(r):
+    """Clipped sample-steps as a fraction of the GUIDED ones. Guidance runs only
+    for t >= t_min, so dividing by n*steps would understate it at a late window
+    and make two windows incomparable."""
+    guided = max(1, int(round(r["steps"] * (1.0 - r.get("t_min_guide", 0.0)))))
+    return r["clipped_sample_steps"] / float(guided * r["n"])
+
+
 def mean_se(xs):
     """Mean and the SEED-TO-SEED standard error -- not the within-cell one, so
     it captures seed variance rather than assuming samples are the only noise."""
@@ -102,7 +110,7 @@ def table(rows, w, prop):
     print("\n=== %s   w=%s   (%d arms, %d seeds each)"
           % (prop, w, len(groups), len(next(iter(groups.values())))))
     print("%-16s %-17s %-9s %-9s %-8s %-8s %s"
-          % ("arm", "in_band", "gc_sd", "bias/d", "kmerJS", "conf", "clip"))
+          % ("arm", "in_band", "gc_sd", "bias/d", "kmerJS", "conf", "clipped"))
     best_any, best_clean = None, None
     for k in sorted(groups):
         rs = groups[k]
@@ -111,12 +119,16 @@ def table(rows, w, prop):
         bd = mean_se([r["bias_delta"] for r in rs])[0]
         kj = mean_se([r["kmer_js"] for r in rs])[0]
         cf = mean_se([r["decode_conf"] for r in rs])[0]
-        cl = mean_se([float(r["clipped_sample_steps"]) for r in rs])[0]
-        # "denominator only": tmpd on a quadratic property is plug rescaled by a
-        # batch-constant v_f, not TMPD. Protocol section 1.2.
-        tag = " [den only]" if k[0] == "tmpd" and prop == "cpg" else ""
-        print("%-16s %.4f +/- %.4f  %.5f   %+8.3f  %.5f  %.3f  %6.0f%s"
-              % (k[0], ib, se, sd, bd, kj, cf, cl, tag))
+        # Clip saturation as a FRACTION of the guided sample-steps, which is what
+        # makes it comparable across arms and windows. Protocol section 1.2:
+        # tmpd modulates per-sample magnitude and the clip caps per-sample
+        # magnitude, so a heavily clipped tmpd row is plug by construction and
+        # must be reported as clip-limited rather than as a baseline that
+        # happened to match DPS.
+        cl = mean_se([clipped_frac(r) for r in rs])[0]
+        tag = " [clip-limited]" if cl > 0.5 else ""
+        print("%-16s %.4f +/- %.4f  %.5f   %+8.3f  %.5f  %.3f  %5.1f%%%s"
+              % (k[0], ib, se, sd, bd, kj, cf, 100 * cl, tag))
         if best_any is None or ib > best_any[1]:
             best_any = (k[0], ib, kj)
         if ung_js is not None and kj <= ung_js and (

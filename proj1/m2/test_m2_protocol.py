@@ -208,8 +208,16 @@ gate("table_computes_no_verdict",
 if os.path.exists(PROTOCOL):
     _p = open(PROTOCOL).read()
     gate("protocol_records_the_tmpd_defect",
-         "denominator only" in _p and "_const_grad" in _p,
-         "section 1.2 -- tmpd on cpg is plug rescaled, reported not fixed")
+         "_const_grad" in _p and "batch-constant" in _p,
+         "section 1.2(a) -- v_f was batch-constant, so tmpd had no per-sample "
+         "weighting; fixed")
+    gate("protocol_records_the_clip_erasure",
+         "clip-limited" in _p and "clip wins" in _p,
+         "section 1.2(b,c) -- the clip caps the same axis tmpd modulates")
+    gate("protocol_ties_the_window_to_the_clip",
+         "clip saturation" in _p,
+         "section 2.1 -- the window is chosen on gap closure AND clip "
+         "saturation, not either alone")
     gate("protocol_states_delta_is_a_choice",
          "CHOICE" in _p and "not commensurable" in _p,
          "M2 in_band may never be pooled with M1's")

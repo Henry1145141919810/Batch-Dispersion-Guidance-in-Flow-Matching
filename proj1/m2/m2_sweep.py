@@ -186,11 +186,30 @@ def guidance_field(net, x_t, t, y, s, mode, eta=0.0, tau=None, onesided=False,
         # (see calib_k.py). We therefore read v_f from a table MEASURED on the
         # held-out split, which for affine f is exactly E[(f(x1) - f(m))^2].
         A = torch.autograd.grad(fval.sum(), xt, retain_graph=True)[0]
-        gv = _const_grad(prop, xt.shape[-2], xt.device, xt.dtype)
-        gAg = (gv.unsqueeze(0) * A).sum(dim=(1, 2))
+        # PER-SAMPLE gradient at m, taken from autograd rather than a hardcoded
+        # constant. TMPD's defining feature is that each sample's step is
+        # weighted by THAT SAMPLE's uncertainty, so v_f must vary across the
+        # batch; Sigma varies per sample even when g does not.
+        #
+        # Two bugs are fixed here, and both made tmpd a duplicate of plug:
+        #   * _const_grad returned a gradient only for gc and ZEROS for cpg, so
+        #     gAg was identically 0 on the quadratic property.
+        #   * v_f was then read straight from the table as ONE SCALAR broadcast
+        #     over the batch (torch.full_like), which discarded gAg entirely and
+        #     made the denominator batch-uniform on BOTH properties. Measured
+        #     before this fix: the per-sample factor s^2/(s^2+v_f) had spread
+        #     ~1e-6 (float noise) at every t on gc and cpg alike, i.e. tmpd was
+        #     DPS with a global step-size schedule.
+        # Modality 1 does this correctly with a JVP (guidance.py:1689-1691), so
+        # this makes the two modalities run the same method -- which the
+        # transfer claim requires.
+        gm = torch.autograd.grad(fval.sum(), m, retain_graph=True)[0]
+        gAg = (gm * A).sum(dim=(1, 2))
         if VF_TABLE is not None:
-            v_f = torch.full_like(fval, _vf_at(prop, float(t)))
-            k_t = float(v_f.mean()) / max(float(gAg.mean()), 1e-30)
+            # The measured table still sets the SCALE: k_t calibrates the batch
+            # mean of v_f to it. The per-sample spread comes from gAg.
+            k_t = _vf_at(prop, float(t)) / max(float(gAg.mean()), 1e-30)
+            v_f = k_t * gAg
         else:                                    # fall back to M1's constant
             k_t = (1.0 - float(t)) ** 2 / max(float(t), 1e-6)
             v_f = k_t * gAg
