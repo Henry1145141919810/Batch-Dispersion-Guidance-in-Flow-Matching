@@ -25,7 +25,8 @@ import glob
 import json
 import os
 
-PINNED = {"batch": 500, "steps": 400, "target_name": "q50", "clip": 1.0,
+# v3's numbers, because M2 runs v3's protocol exactly (protocol section 2).
+PINNED = {"batch": 500, "steps": 100, "target_name": "q50", "clip": 1.0,
           "delta_ratio": 0.16}
 # Corpus scales the checkpoint and the protocol both record.
 S_BY_PROP = {"gc": 0.05521, "cpg": 0.01475}

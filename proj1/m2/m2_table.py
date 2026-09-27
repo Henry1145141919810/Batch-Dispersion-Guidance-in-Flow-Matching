@@ -101,10 +101,14 @@ def table(rows, w, prop):
     for r in rows:
         if r["arm"] != "unguided" and w is not None and r["w"] != w:
             continue
-        groups.setdefault((arm_key(r), r["w"]), []).append(r)
+        # unguided is w-INDEPENDENT by definition -- no guidance field is applied
+        # at all -- so its cells are keyed at w=None and collapse into one group.
+        # Keying them by their nominal w printed the same reference row once per
+        # strength that had been run, which reads as two different baselines.
+        key = (arm_key(r), None if r["arm"] == "unguided" else r["w"])
+        groups.setdefault(key, []).append(r)
 
-    ung = groups.get(("unguided", w)) or next(
-        (v for k, v in groups.items() if k[0] == "unguided"), None)
+    ung = groups.get(("unguided", None))
     ung_js = mean_se([r["kmer_js"] for r in ung])[0] if ung else None
 
     print("\n=== %s   w=%s   (%d arms, %d seeds each)"
@@ -129,6 +133,10 @@ def table(rows, w, prop):
         tag = " [clip-limited]" if cl > 0.5 else ""
         print("%-16s %.4f +/- %.4f  %.5f   %+8.3f  %.5f  %.3f  %5.1f%%%s"
               % (k[0], ib, se, sd, bd, kj, cf, 100 * cl, tag))
+        # unguided is the REFERENCE, not a candidate: "the best arm is no
+        # guidance" is not a statement about a guidance method.
+        if k[0] == "unguided":
+            continue
         if best_any is None or ib > best_any[1]:
             best_any = (k[0], ib, kj)
         if ung_js is not None and kj <= ung_js and (
