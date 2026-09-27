@@ -262,9 +262,25 @@ def check(cells, problems, stage="v3", backend=None):
     if len(vals) > 1:
         problems.append("cells used different generators: %s" % sorted(map(str, vals)))
     for p in PROPS:
-        ds = {round(float(r["delta"]), 12) for r in rows if r["prop"] == p}
-        if len(ds) > 1:
-            problems.append("%s: cells scored at different deltas %s" % (p, sorted(ds)))
+        ds = [float(r["delta"]) for r in rows if r["prop"] == p]
+        if ds:
+            lo, hi = min(ds), max(ds)
+            # Compared on a RELATIVE tolerance, not exactly. delta is 2 x f_B's
+            # MAE over 3000 calibration molecules, computed on the GPU, and that
+            # reduction is not bit-reproducible between tasks: equifm's deltas
+            # agree to 8 significant figures (0.156753797 vs 0.156753824, a
+            # relative spread of 1.7e-7) and an exact test could therefore NEVER
+            # pass for it, which silently blocked its table while fm's -- whose
+            # calibration happened to land bit-identical -- built fine.
+            #
+            # 1e-6 keeps the check meaningful: what it exists to catch is cells
+            # scored by DIFFERENT PAIRS, and ours vs TFG differ by 12 % on mu,
+            # 207 % on alpha and 100 % on gap. A relative spread below 1e-6 is
+            # orders of magnitude under anything the table reports -- in_band
+            # itself is quantised at 1/n = 5e-4.
+            if hi - lo > 1e-6 * max(abs(hi), 1e-30):
+                problems.append("%s: cells scored at different deltas %s"
+                                % (p, sorted({round(d, 12) for d in ds})))
     for (p, a), rs in cells.items():
         for r in rs:
             if abs(float(r["w"]) - 1.0) > 1e-12:
