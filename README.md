@@ -114,6 +114,83 @@ one compared against `≤ 0`, which a zero gradient satisfies, and one
 short-circuited on an empty comparison set. Both now assert their fixture is
 actually exercising them.
 
+## The paper and the slides
+
+```
+paper/main.tex        the manuscript; body.tex holds the main text, so the
+                      5-page limit can be measured independently of the appendix
+paper/body.tex        abstract, sections 1-5, the five result tables
+paper/refs_extra.bib  references beyond the course-supplied citation.bib
+paper/figs/           overview.tex (Figure 1) and make_mechanism.py (Figure 2)
+slides/defense.tex    the 29-slide defense deck, labelled 1a-3e
+slides/README_SLIDES.md  speaker split, timing, and what must not be said
+```
+
+Build both, from the repository root:
+
+```bash
+cd paper/figs && pdflatex overview.tex && cd ../..    # Figure 1
+./.venv/Scripts/python.exe paper/figs/make_mechanism.py   # Figure 2
+
+cd paper  && pdflatex main && bibtex main && pdflatex main && pdflatex main
+          && ../.venv/Scripts/python.exe tools/pagecheck.py   # enforces 5 pages
+cd ../slides && pdflatex defense && pdflatex defense
+```
+
+`paper/tools/pagecheck.py` reports the main-text page count against the 5-page
+limit and counts the unresolved `\TODO` markers; `paper/tools/prosecount.py`
+reports the prose budget per section. `paper/tools/check.py` is the one to run
+before sharing a build: it verifies the rubric's structural elements, that every
+table and figure is referenced from the text, that the q50-only scope holds, and
+that no phrase our own adversarial review refuted has crept back in. All three are
+advisory and produce no result.
+
+The main text sits at **exactly 5.00 pages with no slack**, so adding a sentence
+needs a sentence cut to pay for it. Page count is quantized by float placement, so
+small trims often move nothing; see `paper/versions/CHANGELOG.md`.
+
+Pending numbers are marked three ways, all rendered red while `\DRAFTtrue` is set
+in `paper/main.tex`: `\pend` is one missing value in a table cell, `\phfig` is a
+figure reserved at its final height, and `\TODO` is an inline note. Setting
+`\DRAFTfalse` hides all three for a clean build.
+
+### Which script produced which table or figure
+
+| Paper item | Produced by | Reads |
+|---|---|---|
+| Table 1, base models (§4.2) | `proj1/scripts/benchmark_base.py` | `weights/fm_ema.pt`, `results/bench/rescored/*.json` |
+| Table 2, guidance (§4.3) | `proj1/scripts/onegen_full_metrics.py` | `results/bdg_local/*.json` |
+| Table 3, BDG ablations (§4.4) | `proj1/scripts/bdg_full_metrics.py` | `results/bdg_port/cells/*.json` |
+| Table 4, recent methods (§4.5) | `proj1/scripts/transfer_sweep.py` → `v3_table.py` | `results/v3/` (pending) |
+| Table 5, Modality 2 (§4.6) | `proj1/m2/m2_sweep.py` → `make_vf_table.py` | `results/m2/` (pending) |
+| Figure 1, overview (§3.7) | `paper/figs/overview.tex` | nothing; it is a diagram |
+| Table 8, the full ladder (App. A.3) | `proj1/scripts/bdg_table.py` | `results/bdg_port/table.txt` |
+| Figure 2, the controller (App. A.3) | `paper/figs/make_mechanism.py` | `results/bdg_port/table.txt` |
+| The innovation itself | `proj1/src/guidance.py`, the `mode == "bdg"` block | — |
+| Its gates | `proj1/tests/test_bdg.py` (25 checks) | — |
+
+Appendix Table 11 carries this same map inside the paper, so a reader never has to
+leave it to find what produced a number.
+
+The v3 headline and ablation stages are pre-registered in
+[docs/protocol/FULL_RUN_V3_PROTOCOL.md](docs/protocol/FULL_RUN_V3_PROTOCOL.md)
+and [docs/protocol/ABLATION_V3_PROTOCOL.md](docs/protocol/ABLATION_V3_PROTOCOL.md).
+Every `\TODO` in the paper and the slides points at a cell from those two.
+
+### External code we adapted, and what is not ours
+
+| What | Where it came from | What we did |
+|---|---|---|
+| TFG model definitions, `EDMsecond` checkpoint | TFG release, vendored under `audit/fa_fb_search/TFG/` | loaded by `proj1/src/external/tfg_assets.py`; not modified |
+| EDM noise schedule (`polynomial_2`, clipping) | EDM reference implementation | ported verbatim in `proj1/src/external/edm_schedule.py`, gated to 1e-5 |
+| EDM stability and validity conventions, bond tables | EDM `bond_analyze.py` | reimplemented and verified entry-for-entry, 0 mismatches |
+| OC-Flow reference | vendored under `audit/fa_fb_search/OC-Flow/` | reference only |
+| Enhancer sequence data | MOG-DFM dataset release | Kenyon-cell half only; see `docs/methods/BDG_HANDOFF.md` §11 |
+
+Provenance, commits and licences: [audit/fa_fb_search/PROVENANCE.md](audit/fa_fb_search/PROVENANCE.md).
+None of that code or those weights are ours, and the paper labels every borrowed
+row as borrowed.
+
 ## Status in one line
 
 The base generator is trained and benchmarked; nine guidance arms are measured
