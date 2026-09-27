@@ -350,6 +350,44 @@ is M1's `in_band_fraction_dec`), `decode_conf`, `kmer_js`, `diversity`,
 `clipped_sample_steps`, the `cost` dict, and per-arm `diag`. BDG cells also
 record the controller state: `e`, `V_b/τ²`, `w_eff`.
 
+### 3.0 Three of the four baselines are one baseline here — **measured, 27 Sep**
+
+In v3's window, `plug`, `tmpd` and `lgd_mc` return **the same numbers** on M2:
+max\|d\| ≤ 4.2e-6 across in-band, GC mean, GC sd and k-mer JS, over all three
+seeds and both strengths. This is not an implementation fault and not a tuning
+artefact. It follows from the **measured** `v_f(t)` table
+(`proj1/m2/vf_table.json`, held-out split):
+
+| t | v_f (gc) | v_f / s² |
+|---|---|---|
+| 0.0 | 2.971e-03 | 0.97 |
+| 0.3 | 2.140e-04 | 0.070 |
+| **0.5** | **7.729e-08** | **2.5e-05** |
+| 0.9 | 9.697e-09 | 3.2e-06 |
+
+`v_f` falls by a factor of 38,000 across the window. So for t ≥ 0.5:
+
+- **TMPD** divides by `s² + v_f`, and `v_f/s²` is 2.5e-05 → it divides by `s²`
+  → it **is** DPS.
+- **LGD** draws around the endpoint at scale `r² = v_f/|g|²` → the draws
+  collapse to a point → it **is** DPS.
+- **BDG** does not read `v_f` at all; its feedback term is a batch variance
+  against a setpoint, so it keeps working.
+
+**What the write-up must say.** M2 benchmarks against four published methods
+(DPS, TMPD, LGD, TFG's MC ingredient) and **three of them coincide on this
+modality for a measurable reason**. Reporting them as three agreeing baselines
+would claim independent confirmation that does not exist. The correct statement
+is that on the DNA simplex the endpoint-uncertainty signal these methods rely on
+has effectively vanished by the time v3's window opens, so they reduce to their
+common ancestor.
+
+**This is also a genuine transfer finding**, not merely a caveat: it says
+*which* family of guidance methods survives the change of modality and why.
+The `t_min = 0` ablation rung is where they separate again (`v_f/s²` is 0.97
+at t = 0) — at the cost of the clip saturation of §1.2(b). Both halves of that
+trade-off are in this project's own cells.
+
 ### 3.1 No fidelity floor — the same decision v3 made, and the same consequence
 
 v3 removed v2's chemistry gate: nothing is disqualified, fidelity is

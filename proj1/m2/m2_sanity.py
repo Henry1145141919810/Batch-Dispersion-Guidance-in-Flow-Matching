@@ -146,6 +146,24 @@ def main():
             if d != 0.0:
                 fail(tag, "CONTROL FAILED: bdg(eta=0) != plug, max|d| = %.3e. "
                           "Every BDG number is void until this holds." % d)
+        # Two arms that are numerically the same arm. On M2 this is EXPECTED for
+        # tmpd and lgd_mc in v3's late window -- v_f collapses from 2.97e-3 at
+        # t=0 to 7.7e-8 at t=0.5, so TMPD's denominator s^2+v_f tends to s^2 and
+        # LGD's draw scale v_f/|g|^2 tends to 0, and both degenerate to DPS. It
+        # is a measured property of the flow, not a defect, but it MUST be
+        # surfaced: three published baselines reporting one number is a fact the
+        # write-up has to state, not something a reader should discover.
+        names = sorted(n for n in arms if n != "unguided")
+        for i, x in enumerate(names):
+            for y in names[i + 1:]:
+                CHECKS += 1
+                dd = max(abs(arms[x][m] - arms[y][m])
+                         for m in ("in_band_fraction", "gc_mean", "gc_sd",
+                                   "kmer_js"))
+                if dd < 1e-5:
+                    warn(tag, "arms %r and %r are the same numbers (max|d| "
+                              "%.1e): they are not two independent baselines here"
+                         % (x, y, dd))
         ung = arms.get("unguided")
         for nm, r in sorted(arms.items()):
             if nm == "unguided" or ung is None:
