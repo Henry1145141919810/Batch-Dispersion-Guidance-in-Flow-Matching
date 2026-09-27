@@ -19,18 +19,27 @@ Two-sided on purpose: e < 0 flips the sign and WIDENS. The one-sided ablation
 clamps e at min=0, which is the restriction the btvg arm carries in Modality 1.
 eta = 0 must reproduce plug bit-identically.
 
-SPECS MIRRORED FROM MODALITY 1: n=512, batch=512 (ONE batch -- for BDG the batch
-IS the estimator), 100 Euler steps, t_min_guide=0.5, clip=1.0 relative to the
-velocity norm, w=1.0 for the ladder, eta in {1,4}, tau_mult in {0.5,1.0,1.5},
-seeds 20260921 / 20260922. s = the data's GC sd, playing the role f_A.y_std plays
-in Modality 1, so tau_mult reads as "fraction of the natural spread".
+SPECS MIRRORED FROM MODALITY 1, as pre-registered in
+docs/protocol/MODALITY2_V3_PROTOCOL.md: n=2000 in batches of 500 (for BDG the
+BATCH is the estimator, so 500 is chosen to match M1's controller sample size,
+not this card's memory), 400 Euler steps, clip=1.0 relative to the velocity
+norm, eta in {0,1,2,4,8}, tau_mult in {0.5,0.75,1,1.5}, seeds 20260921/22/23.
+s = the data's property sd, playing the role f_A.y_std plays in Modality 1, so
+tau_mult reads as "fraction of the natural spread".
 
-THE FIDELITY FLOOR. Modality 1 gates on FR3a = 0.9 x unguided mol_stability.
-Every argmax decode here is a syntactically valid sequence, so validity is
-trivially 1 and useless as a floor. The analogue that carries the same meaning --
-"guidance must not destroy the thing we are generating" -- is k-mer fidelity:
-a cell passes if its 3-mer JS divergence to real enhancers is no worse than
-1/0.9 times the unguided cell's. Decode confidence is reported beside it.
+TWO DEPARTURES FROM M1, both argued in the protocol: the guidance window is
+t >= 0 (section 2.1 -- the sequence commits early, so t >= 0.5 steers after the
+property is decided) and NFE is 400 (section 2.2 -- soft and hard disagree 5.5%
+at NFE 100 and 2.6% at 400, and BDG servos the soft one while the table scores
+the hard one).
+
+NO FIDELITY FLOOR. Modality 1's v3 removed v2's chemistry gate: nothing is
+disqualified and fidelity is REPORTED. M2 follows it, so k-mer JS, decode
+confidence and diversity are recorded beside every in_band figure and never
+thresholded. An earlier docstring here described a 3-mer JS floor at 1/0.9 x
+the unguided cell's; it was never implemented, and it is not implemented now,
+because a floor here while M1 has none would make the two tables mean different
+things. Protocol section 3.1.
 
 Run: python proj1/m2/m2_sweep.py --arm bdg --variant e4t1.5 --seed 20260921
 """
@@ -76,6 +85,9 @@ def diversity(x, n=256):
 # ----------------------------------------------------------- guidance
 # v_f(t) measured on the held-out split by make_vf_table.py. See the tmpd block
 # for why this replaces Tweedie's k = (1-t)^2/t on the simplex.
+DEFAULT_CKPT = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                            "blade_bundle", "fm_m2_dfb500.pt")
+
 _VF_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "vf_table.json")
 try:
     with open(_VF_PATH) as _fh:
@@ -267,8 +279,15 @@ def _step(x, v, dt):
 
 def run_cell(net, ck, arm, variant, w, y, s, tau, eta, onesided,
              n, steps, t_min, clip, seed, delta, real_kmer,
-             n_mc=8, sigma_mc=0.35, prop="gc", dev="cpu"):
+             n_mc=8, sigma_mc=0.35, prop="gc", dev="cpu", batch=None):
     L = ck["crop"]
+    batch = n if not batch else batch
+    if n % batch:
+        raise SystemExit(
+            "batch %d does not divide n %d. BDG's controller IS the batch: a "
+            "remainder batch is a second, smaller controller whose variance "
+            "estimate is far noisier, and it would be pooled into this cell's "
+            "diagnostics as though it were an equal." % (batch, n))
     g = torch.Generator().manual_seed(seed)
     # Dirichlet(1,...,1) is uniform on the simplex, and if E_i ~ Exp(1) i.i.d.
     # then E / sum(E) ~ Dirichlet(1). We draw it that way because
@@ -279,38 +298,55 @@ def run_cell(net, ck, arm, variant, w, y, s, tau, eta, onesided,
     # Drawn on CPU with the seeded generator, then moved: a cell is then
     # bit-reproducible whether it runs on cpu or cuda, which matters because the
     # sweep runs off-cluster on a GPU while the checks were done here.
+    # THE FULL n IS DRAWN ONCE, THEN SPLIT. For BDG the batch is the estimator --
+    # V_b is the variance over whatever tensor the sampler is handed -- so a cell
+    # of n in batches of `batch` runs n/batch INDEPENDENT controllers, each
+    # estimating V_b from `batch` samples, exactly as Modality 1 does. Drawing the
+    # noise for all n up front and slicing it means `batch` changes the CONTROLLER
+    # and nothing else: every arm still starts from bit-identical noise at a given
+    # seed whatever the batch is, so arms stay paired. (Modality 1's batch does
+    # perturb its noise, which is why its cell name records the batch; ours
+    # records it too, because it changes the estimator.)
     _e = torch.empty(n, L, 4).exponential_(generator=g)
-    x = (_e / _e.sum(-1, keepdim=True)).to(dev)
+    x0_all = (_e / _e.sum(-1, keepdim=True)).to(dev)
     dt = 1.0 / steps
     cost = {"gen_fwd": 0, "gen_vjp": 0, "guide_fwd": 0, "guide_bwd": 0}
     clipped, dlog = 0, {}
+    outs = []
 
-    for i in range(steps):
-        t = i * dt
-        with torch.no_grad():
-            v = net(x, torch.full((n,), t, device=dev))
-        cost["gen_fwd"] += 1
-        if arm != "unguided" and t >= t_min:
-            G, d = guidance_field(net, x, t, y, s, arm, eta, tau, onesided,
-                                  n_mc=n_mc, sigma_mc=sigma_mc, gen=g,
-                                  cost=cost, prop=prop)
-            cost["gen_fwd"] += 1; cost["gen_vjp"] += 1
-            cost["guide_fwd"] += 1; cost["guide_bwd"] += 1
-            # score -> velocity, exactly Modality 1's convention
-            fac = (1.0 - t) / max(t, 1e-6)
-            corr = w * fac * G
-            vn = v.reshape(n, -1).norm(dim=1)
-            cn = corr.reshape(n, -1).norm(dim=1)
-            over = cn > clip * vn
-            clipped += int(over.sum())
-            sc = torch.where(over, clip * vn / cn.clamp(min=1e-12),
-                             torch.ones_like(cn))
-            v = v + corr * sc.view(-1, 1, 1)
-            for k, val in d.items():
-                dlog[k] = dlog.get(k, 0.0) + val
-            dlog["_n"] = dlog.get("_n", 0) + 1
-        x = _step(x, v, dt)
+    for b0 in range(0, n, batch):
+        x = x0_all[b0:b0 + batch]
+        b = x.shape[0]
+        for i in range(steps):
+            t = i * dt
+            with torch.no_grad():
+                v = net(x, torch.full((b,), t, device=dev))
+            cost["gen_fwd"] += 1
+            if arm != "unguided" and t >= t_min:
+                G, d = guidance_field(net, x, t, y, s, arm, eta, tau, onesided,
+                                      n_mc=n_mc, sigma_mc=sigma_mc, gen=g,
+                                      cost=cost, prop=prop)
+                cost["gen_fwd"] += 1; cost["gen_vjp"] += 1
+                cost["guide_fwd"] += 1; cost["guide_bwd"] += 1
+                # score -> velocity, exactly Modality 1's convention
+                fac = (1.0 - t) / max(t, 1e-6)
+                corr = w * fac * G
+                vn = v.reshape(b, -1).norm(dim=1)
+                cn = corr.reshape(b, -1).norm(dim=1)
+                over = cn > clip * vn
+                clipped += int(over.sum())
+                sc = torch.where(over, clip * vn / cn.clamp(min=1e-12),
+                                 torch.ones_like(cn))
+                v = v + corr * sc.view(-1, 1, 1)
+                for k, val in d.items():
+                    dlog[k] = dlog.get(k, 0.0) + val
+                dlog["_n"] = dlog.get("_n", 0) + 1
+            x = _step(x, v, dt)
+        outs.append(x)
 
+    x = torch.cat(outs) if len(outs) > 1 else outs[0]
+    # The controller diagnostics are the MEAN OVER CONTROLLERS AND STEPS, so they
+    # get less noisy as n grows while each controller stays equally good.
     nstep = max(dlog.pop("_n", 1), 1)
     diag = {k: v / nstep for k, v in dlog.items()}
     gc = S.PROPS[prop][1](x)
@@ -319,7 +355,8 @@ def run_cell(net, ck, arm, variant, w, y, s, tau, eta, onesided,
     return {
         "arm": arm, "prop": prop, "variant": variant, "w": w, "y": y, "s": s,
         "tau": tau, "eta": eta, "onesided": onesided,
-        "n": n, "steps": steps, "t_min_guide": t_min, "clip": clip,
+        "n": n, "batch": batch, "n_controllers": n // batch,
+        "steps": steps, "t_min_guide": t_min, "clip": clip,
         "seed": seed, "delta": delta,
         "n_mc": n_mc, "sigma_mc": sigma_mc,
         "gc_mean": float(gc.mean()), "gc_sd": float(gc.std()),
@@ -333,7 +370,12 @@ def run_cell(net, ck, arm, variant, w, y, s, tau, eta, onesided,
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--ckpt", default="proj1/m2/ckpt/fm_m2.pt")
+    # The 500 bp DeepFlyBrain base. This used to default to a 200 bp checkpoint
+    # while run_sweep.py defaulted to the 500 bp one, and the corpus and the
+    # k-mer reference are chosen by branching on the checkpoint's `crop` -- so a
+    # bare m2_sweep.py call loaded the wrong model AND scored it against the
+    # wrong reference distribution, silently.
+    ap.add_argument("--ckpt", default=DEFAULT_CKPT)
     ap.add_argument("--prop", default="gc", choices=["gc", "cpg"])
     # gc  is AFFINE (Hessian identically zero), so the Tweedie second-moment
     #     corrections vanish and smg_mean==plug, smg2==smg exactly.
@@ -350,7 +392,7 @@ def main():
     ap.add_argument("--variant", default="-")        # e<eta>t<mult>[o] for bdg
     ap.add_argument("--w", type=float, default=1.0)
     ap.add_argument("--target", default="q50", choices=["q50", "q90"])
-    ap.add_argument("--n", type=int, default=1024)
+    ap.add_argument("--n", type=int, default=2000)
     # in_band is a PROPORTION, so its se is sqrt(p(1-p)/n): 0.042 at n=128,
     # 0.021 at n=512, 0.015 at n=1024. Arms separate by ~0.03 in in_band, which
     # n=512 CANNOT resolve (needs n>=2022 for a single cell). We use n=1024 x 3
@@ -360,6 +402,14 @@ def main():
     # NFE study -- gc_soft (what BDG controls) and gc_hard (what we score)
     # differ by 6% at NFE 100 and 3% at 400, so setpoints land off intent
     # at the old default of 100.
+    ap.add_argument("--batch", type=int, default=500)
+    # THE BATCH IS BDG'S ESTIMATOR, not a speed knob: V_b is the variance over
+    # whatever tensor the sampler is handed, so batch = the controller's sample
+    # size. 500 matches Modality 1's, so that a BDG row means the same thing in
+    # both modalities; it is NOT derived from this card's memory (the net is
+    # 1.02M params and one batch of 2000 would fit). n must be divisible by it.
+    ap.add_argument("--stage", default="m2",
+                    help="m2 (headline) or m2abl; selects the results subtree")
     ap.add_argument("--n-mc", type=int, default=8)
     ap.add_argument("--sigma-mc", type=float, default=0.35)
     # 0.02 made tfg_mc a NULL ARM: it induces nu = sigma^2|g|^2 = 0.0005 s^2, so
@@ -410,7 +460,12 @@ def main():
     # the metric is quantisation-limited: at delta/sigma = 0.16, gc spans 8.8
     # values but cpg spans only 2.4. Modality 1's own delta/sigma likewise varies
     # by property (0.059 / 0.109 / 0.160), so a fixed ratio was never the rule.
-    quantum = 1.0 / (ck["crop"] - 1)
+    # PER-PROPERTY quantum. gc_hard averages over L positions, cpg_hard over the
+    # L-1 adjacent pairs, so their lattices differ. This read 1/(crop-1) for both,
+    # which is 0.2% wrong for gc -- it changes no conclusion, but the band is the
+    # one number here that is a choice rather than a measurement (protocol 2.3),
+    # so it is computed exactly rather than approximately.
+    quantum = 1.0 / (ck["crop"] if a.prop == "gc" else ck["crop"] - 1)
     delta = max(a.delta_ratio * s, 4.4 * quantum)
     y = float(gc_real.median()) if a.target == "q50" else float(
         gc_real.quantile(0.90))
@@ -425,10 +480,19 @@ def main():
         eta, onesided = float(m.group(1)), bool(m.group(3))
         tau = float(m.group(2)) * s
 
-    name = "%s__%s__%s__w%g__%s__s%d.json" % (
-        a.prop, a.arm, a.target, a.w, a.variant, a.seed)
-    os.makedirs(a.out_dir, exist_ok=True)
-    path = os.path.join(a.out_dir, name)
+    # THE CONFIGURATION IS IN THE NAME. Resume is skip-if-exists, so without this
+    # an --n 128 smoke cell and an --n 2000 real cell had IDENTICAL filenames and
+    # the smoke cell was silently kept -- precisely the failure Modality 1's
+    # config_tag exists to prevent. Anything that changes what the number MEANS
+    # belongs here: n, NFE, the guidance window, the controller size, the band.
+    cfg = "n%d_nfe%d_win%g_b%d_dr%g" % (a.n, a.steps, a.t_min, a.batch,
+                                        a.delta_ratio)
+    name = "%s__%s__%s__w%g__%s__%s__s%d.json" % (
+        a.prop, a.arm, a.target, a.w, a.variant, cfg, a.seed)
+    # Stage subtree, mirroring v3's results/v3/<backend>/<stage>/n<N>/seed<S>/.
+    out_dir = os.path.join(a.out_dir, a.stage, "n%d" % a.n, "seed%d" % a.seed)
+    os.makedirs(out_dir, exist_ok=True)
+    path = os.path.join(out_dir, name)
     if os.path.exists(path):
         print("done already:", name); return 0
 
@@ -437,8 +501,13 @@ def main():
     t0 = time.time()
     r, x = run_cell(net, ck, a.arm, a.variant, a.w, y, s, tau, eta, onesided,
                     a.n, a.steps, a.t_min, a.clip, a.seed, delta, real_kmer,
-                    n_mc=a.n_mc, sigma_mc=a.sigma_mc, prop=a.prop, dev=dev)
+                    n_mc=a.n_mc, sigma_mc=a.sigma_mc, prop=a.prop, dev=dev,
+                    batch=a.batch)
     r["target_name"] = a.target
+    r["stage"] = a.stage
+    r["delta_ratio"] = a.delta_ratio
+    r["quantum"] = quantum
+    r["ckpt"] = os.path.basename(a.ckpt)
     r["minutes"] = (time.time() - t0) / 60
     json.dump(r, open(path, "w"), indent=1)
     torch.save({"prop": S.PROPS[a.prop][1](x),
