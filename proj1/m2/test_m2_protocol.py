@@ -60,6 +60,13 @@ gate("batch_must_divide_n",
                  "does not divide"),
      "n=10 batch=4 is refused")
 
+def _argparse_default(mod_src, flag):
+    m = re.search(r'add_argument\("%s"[^)]*?default=([^,)\s]+)' % re.escape(flag),
+                  mod_src, re.S)
+    return m.group(1) if m else None
+
+
+_drv_src = open(os.path.join(HERE, "run_sweep.py")).read()
 def _run_driver(argv):
     """Actually invoke run_sweep.main() with a patched argv."""
     old = sys.argv
@@ -78,33 +85,27 @@ gate("driver_refuses_indivisible_batch",
                  "does not divide"),
      "run_sweep --n 2000 --batch 3 exits, message names the estimator")
 
-gate("driver_refuses_missing_w",
-     expect_exit(lambda: _run_driver(["--stage", "m2", "--dry"]),
-                 "no default headline strength"),
-     "run_sweep with no --w exits and points at measure_strength.py")
+# M2 follows M1's v3 protocol EXACTLY wherever the modality allows it, so the
+# headline strength, window and NFE are M1's numbers, not separately chosen ones.
+gate("headline_strength_is_m1s",
+     _argparse_default(_drv_src, "--w") == "1.0",
+     "w = 1 for every arm, as in v3")
 
 
-def _argparse_default(mod_src, flag):
-    m = re.search(r'add_argument\("%s"[^)]*?default=([^,)\s]+)' % re.escape(flag),
-                  mod_src, re.S)
-    return m.group(1) if m else None
-
-
-_drv_src = open(os.path.join(HERE, "run_sweep.py")).read()
 gate("batch_default_is_500_in_both_entry_points",
      _argparse_default(_src, "--batch") == "500"
      and _argparse_default(_drv_src, "--batch") == "500",
      "m2_sweep=%s run_sweep=%s -- matches M1's controller sample size"
      % (_argparse_default(_src, "--batch"), _argparse_default(_drv_src, "--batch")))
 
-gate("nfe_default_is_400_in_both_entry_points",
-     _argparse_default(_src, "--steps") == "400"
-     and _argparse_default(_drv_src, "--steps") == "400",
-     "protocol 2.2: soft/hard gap is 5.5%% at NFE 100, 2.6%% at 400")
+gate("nfe_matches_m1_in_both_entry_points",
+     _argparse_default(_src, "--steps") == "100"
+     and _argparse_default(_drv_src, "--steps") == "100",
+     "NFE 100, as in v3; the soft/hard gap at 100 is REPORTED as a limitation")
 
-gate("window_default_is_zero",
-     _argparse_default(_src, "--t-min") == "0.0",
-     "protocol 2.1: t>=0.5 steers after the sequence has committed")
+gate("window_matches_m1",
+     _argparse_default(_src, "--t-min") == "0.5" and R.M1_WINDOW == 0.5,
+     "t >= 0.5, as in v3 -- which also keeps the clip off its ceiling (1.2b)")
 
 # ------------------------------------------------------- the cell name tag
 # Resume is skip-if-exists, so anything that changes what the number MEANS must
@@ -171,13 +172,15 @@ gate("three_seeds", len(R.SEEDS) == 3, str(R.SEEDS))
 gate("both_properties", sorted(R.PROPS) == ["cpg", "gc"], str(R.PROPS))
 
 # The strength is MEASURED, not copied from M1. The driver must refuse without it.
-gate("driver_refuses_without_w",
-     "--w is not set" in open(os.path.join(HERE, "run_sweep.py")).read(),
-     "headline strength is fixed by measure_strength.py, not defaulted")
+gate("no_separately_chosen_strength",
+     "--w is not set" not in _drv_src,
+     "w is M1's 1.0, not an M2-specific number chosen from a sweep")
 
 # ------------------------------------------------------------ the window rung
-gate("ablation_carries_window_rung", R.WINDOW_RUNG == 0.5,
-     "t_min=0.5 rung, so v3's window is a measured row not a citation")
+gate("ablation_carries_early_window_rung",
+     R.WINDOW_RUNG == 0.0 and R.WINDOW_RUNG != R.M1_WINDOW,
+     "a t_min=0 rung beside M1's 0.5, so the write-up can say what the early "
+     "window would have done instead of citing a comment")
 
 # ------------------------------------------------------------- no floor
 # Protocol 3.1: v3 removed v2's chemistry gate, so M2 must not add one back.
@@ -215,17 +218,24 @@ if os.path.exists(PROTOCOL):
          "clip-limited" in _p and "clip wins" in _p,
          "section 1.2(b,c) -- the clip caps the same axis tmpd modulates")
     gate("protocol_ties_the_window_to_the_clip",
-         "clip saturation" in _p,
-         "section 2.1 -- the window is chosen on gap closure AND clip "
-         "saturation, not either alone")
+         "clip" in _p and "saturat" in _p,
+         "section 1.2 -- why M1's window also keeps the clip off its ceiling")
     gate("protocol_states_delta_is_a_choice",
          "CHOICE" in _p and "not commensurable" in _p,
          "M2 in_band may never be pooled with M1's")
-    gate("protocol_pins_nfe_400", "NFE is 400" in _p or "NFE | 100" in _p,
-         "section 2.2")
+    gate("protocol_pins_m1_settings",
+         "follows M1" in _p or "exactly" in _p, "section 2")
     gate("protocol_marks_every_parameter",
-         all(k in _p for k in ["[RECORDED]", "[TO MEASURE]", "[CHOICE]"]),
-         "every parameter is sourced")
+         all(k in _p for k in ["[RECORDED]", "[FROM v3]", "[CHOICE]",
+                               "[DIAGNOSTIC]"]),
+         "every parameter is FROM v3, RECORDED or a CHOICE; measurements that "
+         "set nothing are marked DIAGNOSTIC")
+    gate("protocol_has_one_deviation_only",
+         "only unavoidable deviation" in _p,
+         "delta is the single thing M2 cannot take from v3")
+    gate("protocol_lists_two_limitations",
+         "Two limitations" in _p,
+         "assignment 4.7 asks for at least two")
 else:
     gate("protocol_present", False, PROTOCOL)
 

@@ -14,8 +14,8 @@ for each of the four departures.
 
 > **Status of the numbers below.** Every parameter is marked
 > **[RECORDED]** (a measurement exists in a file in this repository, cited),
-> **[TO MEASURE]** (§7 names the command that will record it, and the run does
-> not start until it has), or **[CHOICE]** (a free parameter, argued but not
+> **[DIAGNOSTIC]** (measured and reported, but it does not set a parameter —
+> every parameter comes from v3), or **[CHOICE]** (a free parameter, argued but not
 > measurable — there is exactly one, and §2.3 is about it).
 > An earlier audit of this stack found that most M2 settings existed only in
 > code comments and commit messages: the scripts that produced them print to
@@ -35,12 +35,12 @@ for each of the four departures.
 | properties | mu, alpha, gap (3 learned pairs) | **gc, cpg** (2 analytic pairs) |
 | f_A (guided) | a trained network | `gc_soft` / `cpg_soft`, differentiable, **exact** |
 | f_B (scored) | a *different* trained network | `gc_hard` / `cpg_hard`, argmax-decoded, **exact** |
-| δ | 2 × f_B's calibration MAE | **a choice** (§2.3) — f_B has no error to read |
-| target | q50 | q50 |
+| δ | 2 × f_B's calibration MAE | **a choice** (§2.2) — f_B has no error to read |
+| target | q50 | q50 — same |
 | seeds | 20261001/2/3 | 20260921/22/23 |
-| n, batch | 2000, 500 | 2000, 500 |
-| NFE | 100 | **400** (§2.2) |
-| window | t ≥ 0.5 | **t ≥ 0** (§2.1) |
+| n, batch | 2000, 500 | 2000, 500 — same |
+| NFE | 100 | 100 — same |
+| window | t ≥ 0.5 | t ≥ 0.5 — same |
 | floor | none; fidelity reported | none; fidelity reported |
 
 **One generator means M2 has no cross-backend trap.** The whole of v3 §1.2 and
@@ -129,72 +129,59 @@ our base), with `plug` and `tmpd` differing by 0.001–0.021 in-band and carryin
 visibly different clip counts (406 vs 19). TMPD is a live baseline in M1 and a
 dead one in M2, and the window is the whole difference.
 
-**Consequence for §2.1.** The window is no longer a one-sided argument. Guiding
+**Consequence for the window (§2).** The window is no longer a one-sided
+argument, and this is why M2 ends up on v3's t ≥ 0.5 rather than its own. Guiding
 late steers after the sequence has committed; guiding from 0 runs at the clip
 ceiling, where `w` barely matters and every magnitude-only method collapses
-onto `plug`. `measure_window.py` therefore sweeps `t_min ∈ {0, 0.05, 0.1, 0.2,
-0.3, 0.5}` and records **gap closure and clip saturation together**. The window
-is chosen from that table, not from either argument alone.
+onto `plug`. `measure_window.py` sweeps `t_min ∈ {0, 0.05, 0.1, 0.2, 0.3, 0.5}`
+and records **gap closure and clip saturation together**, so the choice of v3's
+window is supported by this project's own measurement rather than asserted.
 
 **Consequence for the write-up.** If the chosen window still clips heavily,
 `tmpd` must be reported as *clip-limited*, not as "a baseline that performed
 like DPS". Those are different claims and only the first is true.
 
-## 2. The four departures from v3, each with its reason
+## 2. M2 runs v3's protocol exactly, and the one thing it cannot
 
-### 2.1 The guidance window is t ≥ 0, not t ≥ 0.5 **[TO MEASURE]**
+The transfer question the project asks is whether **the same innovation, under
+the same protocol, still helps on a different modality**. Every setting M2
+changes is a confound in that comparison, so M2 changes nothing it does not
+have to. Wherever v3 fixes a number, M2 uses v3's number:
 
-v3 fixes `t_min = 0.5` for every arm. **M2 must not inherit it silently**, and
-this is the departure with the largest effect on the result.
+| | v3 (M1) | M2 | why |
+|---|---|---|---|
+| target | q50 | q50 | identical |
+| strength | w = 1, every arm | w = 1, every arm | identical |
+| window | t ≥ 0.5 | t ≥ 0.5 | identical |
+| NFE | 100 | 100 | identical |
+| n / batch | 2000 / 500 | 2000 / 500 | identical (§2.4) |
+| seeds | 3 | 3 | identical count |
+| arms (headline) | 7 | 7 | mapped one-for-one (§3) |
+| ablation | 17 arms × w ∈ {1, 4} | 17 arms × w ∈ {1, 4} | identical grid |
+| fidelity floor | none; reported | none; reported | identical (§3.1) |
+| **δ** | 2 × f_B's calibration MAE | **a chosen band** | **§2.2 — impossible here** |
 
-The reason is structural: in M1 a molecule's property commits late, so steering
-after t = 0.5 still steers. On the simplex the sequence commits *early* — each
-position's argmax is effectively decided once one coordinate dominates, and
-after that the velocity field is refining a decision already made. Guidance
-applied only after t = 0.5 therefore arrives after the property is settled.
+**Two earlier M2 departures are withdrawn**, both of which this document
+previously argued for at length:
 
-The repo asserts this ("the batch sd of `gc_soft(m)` rises 0.00125 → 0.0517
-over t ∈ [0, 0.49] and is flat after"; "t_min = 0.5 closes ≤ 17 % of the gap
-where t_min = 0 closes ~75 %") at `m2_sweep.py:369-374` and
-`blade_bundle/CLAUDE.md:36`. **Both are comments. No script in this repository
-computes that curve, and the two files disagree with each other** — 8.7 % in
-one, 17 % in the other, for the same stated condition.
+- **The window is v3's t ≥ 0.5, not t ≥ 0.** The case for t ≥ 0 rested on
+  comments that no script produced and that contradicted each other (8.7 % vs
+  17 % for the same condition, §2.1). Measuring it revealed the opposite
+  problem: guiding from 0 saturates the clip on 94–97 % of sample-steps, so the
+  clip rather than `w` sets the strength and every magnitude-only arm collapses
+  onto `plug` (§1.2b). v3's window avoids that by construction — the
+  score-to-velocity factor `(1-t)/t` is ~1 there, which is why **under 0.2 % of
+  M1's own sample-steps clip**. Following M1 exactly is both the more faithful
+  choice and the one that keeps the arms distinguishable.
+- **NFE is v3's 100, not 400.** The case for 400 was real but is a *reporting*
+  matter, not a protocol one: see §2.3.
 
-So it is re-measured and recorded before the run (§7, step 1), by a script that
-writes a file. The pre-registration is: **`t_min = 0` for every arm**, and the
-recorded curve is what justifies it. If the measurement contradicts the claim,
-the protocol changes before the run, not after.
+The early window is not discarded, it is **demoted to a diagnostic**. The
+ablation carries a `t_min = 0` rung on `plug` and the two headline BDG arms, so
+the write-up can state what guiding from 0 would have done, from this project's
+own cells, rather than from a comment.
 
-**Both windows are reported.** The ablation carries a `t_min = 0.5` rung on the
-headline BDG arms, so the window's effect is a measured row in this project's
-own table rather than a citation to a comment. It is the only way a reader can
-see that M2's departure from v3 was necessary.
-
-### 2.2 NFE is 400, not 100 **[RECORDED]**
-
-The two properties disagree on generated sequences even though they agree
-exactly on real ones, and the disagreement is a **sampler discretisation
-artefact that shrinks with NFE**:
-
-| NFE | `gc_hard` sd | `gc_soft` sd | gap | source |
-|---|---|---|---|---|
-| 100 | 0.0511 | 0.0483 | 5.5 % | `blade_bundle/nfe_sweep.log:3` |
-| 200 | 0.0525 | 0.0505 | 3.8 % | `nfe_sweep.log:4` |
-| **400** | **0.0531** | **0.0517** | **2.6 %** | `nfe_sweep.log:5` |
-| 1000 | 0.0534 | 0.0526 | 1.5 % | `nfe_sweep.log:6` |
-
-BDG servos `gc_soft`'s batch variance; the table scores `gc_hard`. A 5.5 % gap
-at NFE 100 means a setpoint τ lands 5.5 % wide of where it was aimed —
-systematically, in the same direction, for every BDG arm. At 400 it is 2.6 %.
-Composition converges the same way (G is over-produced 0.240 vs 0.227 at NFE
-100, 0.2287 at NFE 1000), so this is Euler error, not a learned bias.
-
-400 is the chosen operating point: the gap is half of NFE 100's, and the cost
-is linear in NFE. **This is the one place M2 spends more than M1 per cell, and
-it is spent to make the guided quantity and the scored quantity the same
-quantity.**
-
-### 2.3 δ is a **choice**, and M2 in-band is not commensurable with M1 in-band **[CHOICE]**
+### 2.2 δ is a **choice**, and it is the only unavoidable deviation **[CHOICE]**
 
 This is the departure that constrains how every M2 number may be written up.
 
@@ -233,6 +220,38 @@ one column.** The comparison that *is* valid across the two modalities is the
 **within-modality arm ranking**: does the same guidance method win on DNA as on
 molecules? That needs no shared band, which is exactly why it is the question
 to ask.
+
+### 2.3 Two limitations that follow from matching v3 — **reported, not engineered away** **[RECORDED]**
+
+The assignment's §4.7 asks for at least two meaningful limitations. These are
+M2's, and both are consequences of running v3's protocol rather than a tuned
+variant of it. Engineering either away would cost the exact comparability the
+transfer claim depends on, so both are measured and reported instead.
+
+**(a) At NFE 100 the guided quantity and the scored quantity differ by 5.5 %.**
+BDG servos `gc_soft`; the table scores `gc_hard`. On real sequences the two
+agree exactly; on generated ones they diverge until the sampler converges
+(`blade_bundle/nfe_sweep.log`):
+
+| NFE | `gc_hard` sd | `gc_soft` sd | gap |
+|---|---|---|---|
+| **100 (v3's, and ours)** | **0.0511** | **0.0483** | **5.5 %** |
+| 200 | 0.0525 | 0.0505 | 3.8 % |
+| 400 | 0.0531 | 0.0517 | 2.6 % |
+| 1000 | 0.0534 | 0.0526 | 1.5 % |
+
+So a setpoint τ lands ~5.5 % wide of where it was aimed — systematically, in
+the same direction, for every BDG arm. NFE 400 would halve it, and an earlier
+draft of this protocol chose 400 for that reason. **It is not worth a protocol
+departure**: the bias is common to every arm at a given NFE, so it cancels in
+the arm-against-arm comparison this study is about, and it costs 4× the
+compute. The same table is the evidence for the limitation and for why the
+limitation is tolerable. Composition converges the same way (G over-produced
+0.240 vs 0.227 at NFE 100, 0.2287 at NFE 1000), so this is Euler
+discretisation, not a learned bias.
+
+**(b) M2's in-band is not commensurable with M1's** (§2.2). Different kinds of
+rule set the two bands. They may be reported side by side and never pooled.
 
 ### 2.4 The batch is BDG's estimator here too **[RECORDED]**
 
@@ -277,20 +296,19 @@ One target (q50), one strength, seven arms, two properties, three seeds.
 
 **Cells:** 7 arms × 2 properties × 3 seeds = **42 headline cells.**
 
-**Headline strength w [TO MEASURE].** v3's headline is w = 1 for every arm, and
-v3 §2.2 is careful that this is equal *nominal* strength, not equal force. M2
-**cannot simply copy the number**: the property scales, the state space and the
-clip are all different, and the only claim on record — that guidance lifts
-in-band 0.062 → 0.430 at w = 16 — exists **solely in commit `01a9d17`'s
-message**, from a script (`gate_arms.py`) that prints and writes nothing, at
-N = 128 and NFE = 100, neither of which is this protocol.
+**Headline strength w = 1 [FROM v3].** v3's headline is w = 1 for every arm,
+and v3 §2.2 is careful that this is equal *nominal* strength, not equal force —
+the applied-correction share spans 5.8× across the arms it covers. M2 inherits
+both the number and the caveat, so every M2 sentence carries "at w = 1" exactly
+as every M1 sentence does.
 
-So the headline strength is fixed by a recorded measurement before the run
-(§7, step 2), by the pre-registered rule: **the smallest w in {1, 4, 16, 64}
-at which `plug` separates from `unguided` by more than the seed-to-seed
-standard error.** Choosing the *smallest* such w, rather than the best-looking
-one, is what keeps this from being a tuned number — it is the analogue of v3
-answering "what does each method do at one shared dial setting".
+An earlier draft fixed M2's strength by its own measurement (the smallest w
+separating `plug` from `unguided`). **That is withdrawn**: a separately chosen
+strength would mean the two modalities were not run under the same protocol,
+which is the one thing the transfer claim cannot afford.
+`measure_strength.py` is kept and its sweep over w ∈ {1, 4, 16, 64} is
+**reported as a diagnostic**, because whether w = 1 is a strong or a weak
+setting on DNA is itself part of "what had to be adapted for the new modality".
 
 **Pairing.** Every arm sees the same seed, the same batch, the same initial
 noise, the same target and the same δ, so arms are paired and a paired test is
@@ -423,35 +441,33 @@ the error v3's own budget section had to withdraw.
 
 ## 7. Running it
 
-**The first three steps are measurements that set this protocol's own
-parameters. The run does not start until each has written its file.**
+Every parameter comes from v3, so there is nothing to measure first. The two
+diagnostic measurements can run before, after or alongside the sweep; they
+inform the write-up, not the settings.
 
 ```bash
-# 1. the window (§2.1): batch sd of the guided property vs t, and gap closure
-#    at t_min ∈ {0, 0.5}. Writes docs/results/M2_WINDOW.md + results/m2_window.json
-python proj1/m2/measure_window.py --ckpt proj1/m2/blade_bundle/fm_m2_dfb500.pt
+# the sweep. gc first; cpg is replication and runs only if time allows (§1.1)
+python proj1/m2/run_sweep.py --stage m2    --props gc --n 2000 --device cuda
+python proj1/m2/run_sweep.py --stage m2abl --props gc --n 2000 --device cuda
 
-# 2. the headline strength (§3): plug vs unguided at w ∈ {1,4,16,64}, 3 seeds.
-#    Writes docs/results/M2_STRENGTH.md + results/m2_strength.json
-python proj1/m2/measure_strength.py --ckpt proj1/m2/blade_bundle/fm_m2_dfb500.pt
+# split across GPUs by seed -- cells are independent and skipped if present
+python proj1/m2/run_sweep.py --stage m2 --props gc --seeds 20260921 --device cuda
 
-# 3. the plan, and the per-cell cost (§5), so the budget is measured
-python proj1/m2/run_sweep.py --stage m2 --w <W> --n 2000 --batch 500 --dry
-```
+# check cells as they land; exits 1 on any failure
+python proj1/m2/m2_sanity.py --stage m2 --n 2000
 
-Then, headline first. `--w` has **no default**: the driver refuses without it
-and points back at step 2, so the run cannot start on an unmeasured strength.
+# the tables
+python proj1/m2/m2_table.py --stage m2    --n 2000
+python proj1/m2/m2_table.py --stage m2abl --n 2000 --w 1
+python proj1/m2/m2_table.py --stage m2abl --n 2000 --w 4
 
-```bash
-python proj1/m2/run_sweep.py --stage m2    --w <W> --n 2000 --batch 500 --device cuda
-python proj1/m2/run_sweep.py --stage m2abl --w <W> --n 2000 --batch 500 --device cuda
-python proj1/m2/m2_table.py  --stage m2    --n 2000
-python proj1/m2/m2_table.py  --stage m2abl --n 2000 --w <W>
-python proj1/m2/m2_table.py  --stage m2abl --n 2000 --w <4W>
+# diagnostics for the write-up (§2.1 window, §3 strength) -- not parameters
+python proj1/m2/measure_window.py --props gc --device cuda
+python proj1/m2/measure_strength.py --props gc --device cuda
 ```
 
 Cells land in `results/m2/<stage>/n<N>/seed<S>/`, named
-`<prop>__<arm>__q50__w<w>__<variant>__n2000_nfe400_win0_b500_dr0.16__s<seed>.json`.
+`<prop>__<arm>__q50__w<w>__<variant>__n2000_nfe100_win0.5_b500_dr0.16__s<seed>.json`.
 
 ### 7.1 Code prerequisites — **all six done, 26 Sep**, listed with what each prevents
 

@@ -417,7 +417,7 @@ def main():
     # n=512 CANNOT resolve (needs n>=2022 for a single cell). We use n=1024 x 3
     # seeds and report the mean with a seed-to-seed se, which also captures seed
     # variance rather than assuming samples within a cell are the only noise.
-    ap.add_argument("--steps", type=int, default=400)   # NFE; see the
+    ap.add_argument("--steps", type=int, default=100)   # NFE; M1 v3 uses
     # NFE study -- gc_soft (what BDG controls) and gc_hard (what we score)
     # differ by 6% at NFE 100 and 3% at 400, so setpoints land off intent
     # at the old default of 100.
@@ -434,7 +434,7 @@ def main():
     # 0.02 made tfg_mc a NULL ARM: it induces nu = sigma^2|g|^2 = 0.0005 s^2, so
     # the softmax weights are uniform and the field collapses onto plug (measured
     # difference exactly 0.000000). 0.35 anchors it on the observable's own scale.
-    ap.add_argument("--t-min", type=float, default=0.0)
+    ap.add_argument("--t-min", type=float, default=0.5)
     # GUIDE FROM THE START. t_min=0.5 was inherited from Modality 1, where the
     # molecule commits late. Here the property is settled by t~0.5: the batch sd
     # of gc_soft(m) rises 0.00125 -> 0.0517 over t in [0, 0.49] and is flat after

@@ -38,28 +38,30 @@ ABL_WS = (1, 4)                  # multipliers on the headline strength
 PROPS = ["gc", "cpg"]            # affine and quadratic; the contrast is the point
 TARGET = "q50"                   # v3 is a q50 run
 SEEDS = [20260921, 20260922, 20260923]
-WINDOW_RUNG = 0.5                # the t_min the ablation measures against t_min=0
+M1_WINDOW = 0.5      # M1 v3 guides for t >= 0.5; M2 follows it exactly
+WINDOW_RUNG = 0.0                # the early-window rung, reported as a diagnostic
 
 
 def cells(stage, w):
     if stage == "m2":
         for prop, seed in itertools.product(PROPS, SEEDS):
             yield dict(prop=prop, arm="unguided", variant="-", w=w, seed=seed,
-                       t_min=0.0)
+                       t_min=M1_WINDOW)
             for arm in ARMS_EXT:
                 yield dict(prop=prop, arm=arm, variant="-", w=w, seed=seed,
-                           t_min=0.0)
+                           t_min=M1_WINDOW)
             for v in HEADLINE_BDG:
                 yield dict(prop=prop, arm="bdg", variant=v, w=w, seed=seed,
-                           t_min=0.0)
+                           t_min=M1_WINDOW)
     elif stage == "m2abl":
         for prop, seed in itertools.product(PROPS, SEEDS):
             for v, mult in itertools.product(ABL_BDG, ABL_WS):
                 yield dict(prop=prop, arm="bdg", variant=v, w=w * mult,
-                           seed=seed, t_min=0.0)
-            # The window rung. Protocol section 2.1 departs from v3's t >= 0.5;
-            # this is what lets a reader see the departure was necessary instead
-            # of taking a comment's word for it.
+                           seed=seed, t_min=M1_WINDOW)
+            # The early-window rung, carried as a DIAGNOSTIC, not as a protocol
+            # departure: it is what lets the write-up say what guiding from t=0
+            # would have done, and it is where the clip saturation of protocol
+            # 1.2(b) becomes visible in this project's own table.
             for arm, v in (("plug", "-"), ("bdg", "e4t0.5"), ("bdg", "e4t1")):
                 yield dict(prop=prop, arm=arm, variant=v, w=w, seed=seed,
                            t_min=WINDOW_RUNG)
@@ -74,8 +76,8 @@ def main():
     ap.add_argument("--stage", default="m2", choices=["m2", "m2abl"])
     ap.add_argument("--n", type=int, default=2000)
     ap.add_argument("--batch", type=int, default=500)
-    ap.add_argument("--steps", type=int, default=400)      # NFE; protocol 2.2
-    ap.add_argument("--w", type=float, default=None)
+    ap.add_argument("--steps", type=int, default=100)      # NFE; M1 v3's
+    ap.add_argument("--w", type=float, default=1.0)
     ap.add_argument("--seeds", default="",
                     help="comma list; default all of %s. Splitting the sweep by "
                          "seed is how it fans across GPUs -- cells are "
@@ -89,14 +91,6 @@ def main():
     ap.add_argument("--python", default=sys.executable)
     a = ap.parse_args()
 
-    if a.w is None:
-        raise SystemExit(
-            "--w is not set, and this protocol has no default headline "
-            "strength.\nIt is fixed by a recorded measurement, not copied from "
-            "Modality 1: the\nsmallest w in {1,4,16,64} at which plug separates "
-            "from unguided by more\nthan the seed-to-seed se. Run\n"
-            "  python proj1/m2/measure_strength.py\n"
-            "and pass the w it records (docs/results/M2_STRENGTH.md).")
     if a.n % a.batch:
         raise SystemExit(
             "batch %d does not divide n %d. BDG's controller IS the batch; a "

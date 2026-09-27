@@ -1,0 +1,19 @@
+# M1 ablation: 17 bdg arms x w in {1,4}, planned by transfer_sweep for stage v3abl
+v3abl fm mu 20261001 bdg_e0t1,bdg_e1t0.5,bdg_e1t0.75,bdg_e1t1,bdg_e1t1.5,bdg_e2t0.5,bdg_e2t0.75,bdg_e2t1,bdg_e2t1.5,bdg_e4t0.5,bdg_e4t0.75,bdg_e4t1,bdg_e4t1.5,bdg_e8t0.5,bdg_e8t0.75,bdg_e8t1,bdg_e8t1.5
+v3abl equifm mu 20261001 bdg_e0t1,bdg_e1t0.5,bdg_e1t0.75,bdg_e1t1,bdg_e1t1.5,bdg_e2t0.5,bdg_e2t0.75,bdg_e2t1,bdg_e2t1.5,bdg_e4t0.5,bdg_e4t0.75,bdg_e4t1,bdg_e4t1.5,bdg_e8t0.5,bdg_e8t0.75,bdg_e8t1,bdg_e8t1.5
+v3abl fm alpha 20261001 bdg_e0t1,bdg_e1t0.5,bdg_e1t0.75,bdg_e1t1,bdg_e1t1.5,bdg_e2t0.5,bdg_e2t0.75,bdg_e2t1,bdg_e2t1.5,bdg_e4t0.5,bdg_e4t0.75,bdg_e4t1,bdg_e4t1.5,bdg_e8t0.5,bdg_e8t0.75,bdg_e8t1,bdg_e8t1.5
+v3abl equifm alpha 20261001 bdg_e0t1,bdg_e1t0.5,bdg_e1t0.75,bdg_e1t1,bdg_e1t1.5,bdg_e2t0.5,bdg_e2t0.75,bdg_e2t1,bdg_e2t1.5,bdg_e4t0.5,bdg_e4t0.75,bdg_e4t1,bdg_e4t1.5,bdg_e8t0.5,bdg_e8t0.75,bdg_e8t1,bdg_e8t1.5
+v3abl fm gap 20261001 bdg_e0t1,bdg_e1t0.5,bdg_e1t0.75,bdg_e1t1,bdg_e1t1.5,bdg_e2t0.5,bdg_e2t0.75,bdg_e2t1,bdg_e2t1.5,bdg_e4t0.5,bdg_e4t0.75,bdg_e4t1,bdg_e4t1.5,bdg_e8t0.5,bdg_e8t0.75,bdg_e8t1,bdg_e8t1.5
+v3abl equifm gap 20261001 bdg_e0t1,bdg_e1t0.5,bdg_e1t0.75,bdg_e1t1,bdg_e1t1.5,bdg_e2t0.5,bdg_e2t0.75,bdg_e2t1,bdg_e2t1.5,bdg_e4t0.5,bdg_e4t0.75,bdg_e4t1,bdg_e4t1.5,bdg_e8t0.5,bdg_e8t0.75,bdg_e8t1,bdg_e8t1.5
+v3abl fm mu 20261002 bdg_e0t1,bdg_e1t0.5,bdg_e1t0.75,bdg_e1t1,bdg_e1t1.5,bdg_e2t0.5,bdg_e2t0.75,bdg_e2t1,bdg_e2t1.5,bdg_e4t0.5,bdg_e4t0.75,bdg_e4t1,bdg_e4t1.5,bdg_e8t0.5,bdg_e8t0.75,bdg_e8t1,bdg_e8t1.5
+v3abl equifm mu 20261002 bdg_e0t1,bdg_e1t0.5,bdg_e1t0.75,bdg_e1t1,bdg_e1t1.5,bdg_e2t0.5,bdg_e2t0.75,bdg_e2t1,bdg_e2t1.5,bdg_e4t0.5,bdg_e4t0.75,bdg_e4t1,bdg_e4t1.5,bdg_e8t0.5,bdg_e8t0.75,bdg_e8t1,bdg_e8t1.5
+v3abl fm alpha 20261002 bdg_e0t1,bdg_e1t0.5,bdg_e1t0.75,bdg_e1t1,bdg_e1t1.5,bdg_e2t0.5,bdg_e2t0.75,bdg_e2t1,bdg_e2t1.5,bdg_e4t0.5,bdg_e4t0.75,bdg_e4t1,bdg_e4t1.5,bdg_e8t0.5,bdg_e8t0.75,bdg_e8t1,bdg_e8t1.5
+v3abl equifm alpha 20261002 bdg_e0t1,bdg_e1t0.5,bdg_e1t0.75,bdg_e1t1,bdg_e1t1.5,bdg_e2t0.5,bdg_e2t0.75,bdg_e2t1,bdg_e2t1.5,bdg_e4t0.5,bdg_e4t0.75,bdg_e4t1,bdg_e4t1.5,bdg_e8t0.5,bdg_e8t0.75,bdg_e8t1,bdg_e8t1.5
+v3abl fm gap 20261002 bdg_e0t1,bdg_e1t0.5,bdg_e1t0.75,bdg_e1t1,bdg_e1t1.5,bdg_e2t0.5,bdg_e2t0.75,bdg_e2t1,bdg_e2t1.5,bdg_e4t0.5,bdg_e4t0.75,bdg_e4t1,bdg_e4t1.5,bdg_e8t0.5,bdg_e8t0.75,bdg_e8t1,bdg_e8t1.5
+v3abl equifm gap 20261002 bdg_e0t1,bdg_e1t0.5,bdg_e1t0.75,bdg_e1t1,bdg_e1t1.5,bdg_e2t0.5,bdg_e2t0.75,bdg_e2t1,bdg_e2t1.5,bdg_e4t0.5,bdg_e4t0.75,bdg_e4t1,bdg_e4t1.5,bdg_e8t0.5,bdg_e8t0.75,bdg_e8t1,bdg_e8t1.5
+v3abl fm mu 20261003 bdg_e0t1,bdg_e1t0.5,bdg_e1t0.75,bdg_e1t1,bdg_e1t1.5,bdg_e2t0.5,bdg_e2t0.75,bdg_e2t1,bdg_e2t1.5,bdg_e4t0.5,bdg_e4t0.75,bdg_e4t1,bdg_e4t1.5,bdg_e8t0.5,bdg_e8t0.75,bdg_e8t1,bdg_e8t1.5
+v3abl equifm mu 20261003 bdg_e0t1,bdg_e1t0.5,bdg_e1t0.75,bdg_e1t1,bdg_e1t1.5,bdg_e2t0.5,bdg_e2t0.75,bdg_e2t1,bdg_e2t1.5,bdg_e4t0.5,bdg_e4t0.75,bdg_e4t1,bdg_e4t1.5,bdg_e8t0.5,bdg_e8t0.75,bdg_e8t1,bdg_e8t1.5
+v3abl fm alpha 20261003 bdg_e0t1,bdg_e1t0.5,bdg_e1t0.75,bdg_e1t1,bdg_e1t1.5,bdg_e2t0.5,bdg_e2t0.75,bdg_e2t1,bdg_e2t1.5,bdg_e4t0.5,bdg_e4t0.75,bdg_e4t1,bdg_e4t1.5,bdg_e8t0.5,bdg_e8t0.75,bdg_e8t1,bdg_e8t1.5
+v3abl equifm alpha 20261003 bdg_e0t1,bdg_e1t0.5,bdg_e1t0.75,bdg_e1t1,bdg_e1t1.5,bdg_e2t0.5,bdg_e2t0.75,bdg_e2t1,bdg_e2t1.5,bdg_e4t0.5,bdg_e4t0.75,bdg_e4t1,bdg_e4t1.5,bdg_e8t0.5,bdg_e8t0.75,bdg_e8t1,bdg_e8t1.5
+v3abl fm gap 20261003 bdg_e0t1,bdg_e1t0.5,bdg_e1t0.75,bdg_e1t1,bdg_e1t1.5,bdg_e2t0.5,bdg_e2t0.75,bdg_e2t1,bdg_e2t1.5,bdg_e4t0.5,bdg_e4t0.75,bdg_e4t1,bdg_e4t1.5,bdg_e8t0.5,bdg_e8t0.75,bdg_e8t1,bdg_e8t1.5
+v3abl equifm gap 20261003 bdg_e0t1,bdg_e1t0.5,bdg_e1t0.75,bdg_e1t1,bdg_e1t1.5,bdg_e2t0.5,bdg_e2t0.75,bdg_e2t1,bdg_e2t1.5,bdg_e4t0.5,bdg_e4t0.75,bdg_e4t1,bdg_e4t1.5,bdg_e8t0.5,bdg_e8t0.75,bdg_e8t1,bdg_e8t1.5
