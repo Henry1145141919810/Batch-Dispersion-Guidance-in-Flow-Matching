@@ -89,13 +89,51 @@ could be bought with strength. Two gates now close that:
 | **our base (unguided)** | **0.190** | **0.030** |
 | strongest guided rung (w = 64) | 0.189 | 0.029 |
 
-**Two things follow.** Guidance costs essentially nothing functionally — at
-most −0.003 across every arm and strength, so the "in-band is gameable" worry
-is answered with evidence. But **our samples are ~4.5× less likely to be
-predicted accessible than real enhancers**, which no distributional metric
-showed. That is a real limitation of the frozen base and belongs in §4.7.
+**Two things follow, and the second reframes the first.** Guidance costs
+essentially nothing functionally — at most −0.003 across every arm and
+strength. But **our samples are ~4.5× less likely to be predicted accessible
+than real enhancers** (0.030 vs 0.13–0.14 frac active), which no distributional
+metric showed. That is a limitation of the frozen base and belongs in §4.7.
 Caveat: DeepFlyBrain is a predictor with its own error, not an assay, and our
 corpus is its training data.
+
+### Why nothing degrades on M2 — and why that is a limitation, not a win
+
+"Guidance at maximum strength damaged nothing" does not survive contact with
+the sequences. **It is true, it is not a bug, and it says something weaker than
+it sounds.** Checked three ways:
+
+- **The stored samples are the guided ones.** Every cell's stored sequences
+  reproduce its own recorded `gc_mean` exactly.
+- **Guidance barely moves the sequences.** At w = 64 it changes **0.63–0.80 %
+  of positions — 3 to 4 bases in 500.** The output is 99.2 % identical to
+  unguided, so a motif-level predictor correctly sees almost nothing.
+- **The predictor is not blind, it is correctly insensitive.** Randomising the
+  same fraction gives the same non-effect, and it responds properly to real
+  damage:
+
+  | bases randomised | Δ dfb_max_topic |
+  |---|---|
+  | 0.8 % (what guidance changes) | −0.0003 |
+  | 5 % | −0.0080 |
+  | 20 % | −0.0311 |
+
+  Guidance at w = 64 lands at −0.003, exactly where a perturbation of its size
+  belongs.
+
+**The arithmetic behind it.** GC is a mean over 500 bases, so one flip moves it
+by 1/500 = 0.002, and the band is δ = 0.00883 — **±4.4 bases**. Hitting the
+target is therefore a few-substitution edit. It also explains the modest gain:
+14.6 % of sequences are already inside, 27.4 % are within 4 flips, but the
+median sequence outside needs **14.6 flips**. Guidance moves the borderline
+ones in and leaves the rest — the +4 pp we measure.
+
+**So the correct claim is NOT "BDG preserves quality on DNA where competitors
+do not."** It is: *the DNA task, with a ±4.4-base band on a 500-base sequence,
+is not one where any method must trade quality for accuracy.* No fidelity
+trade-off exists to win. That is structurally unlike M1, where moving a
+molecular property means changing the molecule and chemistry pays for it
+(TFG: −19.7 pp stability). **The M1 comparison is the load-bearing one.**
 
 ### Bugs fixed in shared code
 
