@@ -281,11 +281,23 @@ def check(cells, problems, stage="v3", backend=None):
             if hi - lo > 1e-6 * max(abs(hi), 1e-30):
                 problems.append("%s: cells scored at different deltas %s"
                                 % (p, sorted({round(d, 12) for d in ds})))
-    for (p, a), rs in cells.items():
-        for r in rs:
-            if abs(float(r["w"]) - 1.0) > 1e-12:
-                problems.append("%s/%s seed %s ran at w=%g; v3 fixes w = 1"
-                                % (p, a, r["_seed"], float(r["w"])))
+    # The HEADLINE fixes w = 1 for every arm. The ABLATION deliberately sweeps
+    # w in {1, 4} -- that is the axis it exists to measure -- so asserting w = 1
+    # there refused every --stage v3abl --w 4 table, which is half the ablation.
+    # For the ablation the requirement is that one table holds ONE strength,
+    # which load() already enforces by filtering on --w; re-check it here so a
+    # mixed tree still cannot be pooled.
+    ws = {round(float(r["w"]), 9) for rs in cells.values() for r in rs}
+    if stage == "v3abl":
+        if len(ws) > 1:
+            problems.append("cells at more than one strength in one table: %s; "
+                            "pass --w to pick a rung" % sorted(ws))
+    else:
+        for (p, a), rs in cells.items():
+            for r in rs:
+                if abs(float(r["w"]) - 1.0) > 1e-12:
+                    problems.append("%s/%s seed %s ran at w=%g; the v3 headline "
+                                    "fixes w = 1" % (p, a, r["_seed"], float(r["w"])))
     return problems
 
 
@@ -644,6 +656,11 @@ def main():
                  "cross-backend difference is tested.")
         L.append("")
     for be in backends:
+        # A backend that plans no arms for this stage was skipped above and has
+        # no entry in `loaded`; emitting it raised KeyError: 'edm' and took the
+        # whole --both ablation page down with it.
+        if be not in loaded:
+            continue
         emit(L, be, loaded[be], args.n, seeds)
     out = NL.join(L) + NL
     print(out)
