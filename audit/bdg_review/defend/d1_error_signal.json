@@ -1,0 +1,107 @@
+{
+ "mu_q90_unguided": {
+  "tau_mult 0.5 (TIGHTEN request)": {
+   "VF_frac_widen": 0.44,
+   "VF_last_flip": 0.7799999713897705,
+   "VF_e_end": -0.9965039122573058,
+   "Vb_frac_widen": 0.0,
+   "Vb_last_flip": null,
+   "Vb_e_end": 3.1938083518652673
+  },
+  "tau_mult 1.0": {
+   "VF_frac_widen": 0.56,
+   "VF_last_flip": 0.7200000286102295,
+   "VF_e_end": -0.9991259780643265,
+   "Vb_frac_widen": 0.48,
+   "Vb_last_flip": 0.7599999904632568,
+   "Vb_e_end": 0.04845208796631684
+  },
+  "tau_mult 1.5 (WIDEN request)": {
+   "VF_frac_widen": 0.64,
+   "VF_last_flip": 0.6800000071525574,
+   "VF_e_end": -0.9996115458063674,
+   "Vb_frac_widen": 1.0,
+   "Vb_last_flip": null,
+   "Vb_e_end": -0.5340212942371926
+  },
+  "btvg default tau=delta/1.96": {
+   "VF_frac_widen": 0.04,
+   "VF_last_flip": 0.9800000190734863,
+   "VF_e_end": -0.7208589985896644,
+   "Vb_frac_widen": 0.0,
+   "Vb_last_flip": null,
+   "Vb_e_end": 333.849680334559
+  },
+  "VF_widen_for_tau_mult_above": 0.029563861988473914
+ },
+ "mu_q90_btvg": {
+  "tau_mult 0.5 (TIGHTEN request)": {
+   "VF_frac_widen": 0.42,
+   "VF_last_flip": 0.7900000214576721,
+   "VF_e_end": -0.9920199521404492,
+   "Vb_frac_widen": 0.0,
+   "Vb_last_flip": null,
+   "Vb_e_end": 3.004861818831272
+  },
+  "tau_mult 1.0": {
+   "VF_frac_widen": 0.56,
+   "VF_last_flip": 0.7200000286102295,
+   "VF_e_end": -0.9980049880351123,
+   "Vb_frac_widen": 0.84,
+   "Vb_last_flip": 0.9700000286102295,
+   "Vb_e_end": 0.0012154547078180311
+  },
+  "tau_mult 1.5 (WIDEN request)": {
+   "VF_frac_widen": 0.68,
+   "VF_last_flip": 0.6599999666213989,
+   "VF_e_end": -0.9991133280156055,
+   "Vb_frac_widen": 1.0,
+   "Vb_last_flip": null,
+   "Vb_e_end": -0.5550153534631921
+  },
+  "btvg default tau=delta/1.96": {
+   "VF_frac_widen": 0.04,
+   "VF_last_flip": 0.9800000190734863,
+   "VF_e_end": -0.6314126057175004,
+   "Vb_frac_widen": 0.0,
+   "Vb_last_flip": null,
+   "Vb_e_end": 183.97903875323388
+  },
+  "VF_widen_for_tau_mult_above": 0.04466555680709327
+ },
+ "alpha_q90_unguided": {
+  "tau_mult 0.5 (TIGHTEN request)": {
+   "VF_frac_widen": 0.66,
+   "VF_last_flip": 0.6700000166893005,
+   "VF_e_end": -0.9996582622776709,
+   "Vb_frac_widen": 0.0,
+   "Vb_last_flip": null,
+   "Vb_e_end": 3.010620032849774
+  },
+  "tau_mult 1.0": {
+   "VF_frac_widen": 0.88,
+   "VF_last_flip": 0.5600000023841858,
+   "VF_e_end": -0.9999145655694177,
+   "Vb_frac_widen": 0.36,
+   "Vb_last_flip": 0.8500000238418579,
+   "Vb_e_end": 0.002655008212443466
+  },
+  "tau_mult 1.5 (WIDEN request)": {
+   "VF_frac_widen": 0.96,
+   "VF_last_flip": 0.5199999809265137,
+   "VF_e_end": -0.9999620291419634,
+   "Vb_frac_widen": 1.0,
+   "Vb_last_flip": null,
+   "Vb_e_end": -0.5543755519055806
+  },
+  "btvg default tau=delta/1.96": {
+   "VF_frac_widen": 0.16,
+   "VF_last_flip": 0.9200000166893005,
+   "VF_e_end": -0.9083788728389018,
+   "Vb_frac_widen": 0.0,
+   "Vb_last_flip": null,
+   "Vb_e_end": 1074.2618280478155
+  },
+  "VF_widen_for_tau_mult_above": 0.009243074736379468
+ }
+}

@@ -1,0 +1,235 @@
+{
+ "rule": "v2 (FULL_RUN_V2_PROTOCOL.md V2): best in_band among strengths with mol_stability >= 0.9 x unguided; ties to the smaller w",
+ "frozen_w": {
+  "unguided": {
+   "mu": 1.0,
+   "alpha": 1.0,
+   "gap": 1.0
+  },
+  "plug": {
+   "mu": 0.05,
+   "alpha": 0.5,
+   "gap": 0.25
+  },
+  "tmpd": {
+   "mu": 0.25,
+   "alpha": 1.0,
+   "gap": 1.0
+  },
+  "lgd_mc": {
+   "mu": 4.0,
+   "alpha": 2.0,
+   "gap": 4.0
+  },
+  "tfg": {
+   "mu": 0.05,
+   "alpha": 0.05,
+   "gap": 0.01
+  }
+ },
+ "status": {
+  "unguided": {
+   "mu": "ok",
+   "alpha": "ok",
+   "gap": "ok"
+  },
+  "plug": {
+   "mu": "ok",
+   "alpha": "ok",
+   "gap": "ok"
+  },
+  "tmpd": {
+   "mu": "ok",
+   "alpha": "ok",
+   "gap": "ok"
+  },
+  "lgd_mc": {
+   "mu": "ok",
+   "alpha": "ok",
+   "gap": "ok"
+  },
+  "tfg": {
+   "mu": "ok",
+   "alpha": "ok",
+   "gap": "ok"
+  }
+ },
+ "mol_stability": {
+  "unguided": {
+   "mu": 0.40234375,
+   "alpha": 0.40234375,
+   "gap": 0.40234375
+  },
+  "plug": {
+   "mu": 0.4140625,
+   "alpha": 0.369140625,
+   "gap": 0.427734375
+  },
+  "tmpd": {
+   "mu": 0.39453125,
+   "alpha": 0.37109375,
+   "gap": 0.416015625
+  },
+  "lgd_mc": {
+   "mu": 0.375,
+   "alpha": 0.392578125,
+   "gap": 0.375
+  },
+  "tfg": {
+   "mu": 0.408203125,
+   "alpha": 0.400390625,
+   "gap": 0.416015625
+  }
+ },
+ "floor": {
+  "mu": 0.362109375,
+  "alpha": 0.362109375,
+  "gap": 0.362109375
+ },
+ "grid": {
+  "unguided": {
+   "mu": [
+    1.0
+   ],
+   "alpha": [
+    1.0
+   ],
+   "gap": [
+    1.0
+   ]
+  },
+  "plug": {
+   "mu": [
+    0.01,
+    0.05,
+    0.25,
+    0.5,
+    1.0,
+    2.0,
+    4.0
+   ],
+   "alpha": [
+    0.01,
+    0.05,
+    0.25,
+    0.5,
+    1.0,
+    2.0,
+    4.0
+   ],
+   "gap": [
+    0.01,
+    0.05,
+    0.25,
+    0.5,
+    1.0,
+    2.0,
+    4.0
+   ]
+  },
+  "tmpd": {
+   "mu": [
+    0.01,
+    0.05,
+    0.25,
+    0.5,
+    1.0,
+    2.0,
+    4.0
+   ],
+   "alpha": [
+    0.01,
+    0.05,
+    0.25,
+    0.5,
+    1.0,
+    2.0,
+    4.0
+   ],
+   "gap": [
+    0.01,
+    0.05,
+    0.25,
+    0.5,
+    1.0,
+    2.0,
+    4.0
+   ]
+  },
+  "lgd_mc": {
+   "mu": [
+    0.01,
+    0.05,
+    0.25,
+    0.5,
+    1.0,
+    2.0,
+    4.0,
+    8.0,
+    16.0,
+    32.0
+   ],
+   "alpha": [
+    0.01,
+    0.05,
+    0.25,
+    0.5,
+    1.0,
+    2.0,
+    4.0,
+    8.0,
+    16.0,
+    32.0
+   ],
+   "gap": [
+    0.01,
+    0.05,
+    0.25,
+    0.5,
+    1.0,
+    2.0,
+    4.0,
+    8.0,
+    16.0,
+    32.0
+   ]
+  },
+  "tfg": {
+   "mu": [
+    0.01,
+    0.05,
+    0.25,
+    0.5,
+    1.0,
+    2.0,
+    4.0
+   ],
+   "alpha": [
+    0.01,
+    0.05,
+    0.25,
+    0.5,
+    1.0,
+    2.0,
+    4.0
+   ],
+   "gap": [
+    0.01,
+    0.05,
+    0.25,
+    0.5,
+    1.0,
+    2.0,
+    4.0
+   ]
+  }
+ },
+ "source_stage": "compare",
+ "target": "q90",
+ "t_min_guide": 0.5,
+ "source_seed": 20260921,
+ "source_n": 512,
+ "grid_limited": [],
+ "floor_limited": [],
+ "note": "cells read from every stage that wrote a q90 cell at this n and seed, so the __cmp screen and the __tgt grid extension form one grid"
+}

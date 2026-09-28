@@ -1,0 +1,6 @@
+mu    q50 btvg_var: d(sd)= 1.32 d(bias)= 2.14 ratio= 0.62
+alpha q50 btvg_var: d(sd)= 0.49 d(bias)= 4.85 ratio= 0.10
+gap   q50 btvg_var: d(sd)= 0.74 d(bias)= 1.08 ratio= 0.69
+mu    q90 btvg_var: d(sd)= 1.32 d(bias)= 2.14 ratio= 0.62
+alpha q90 btvg_var: d(sd)= 0.49 d(bias)= 4.85 ratio= 0.10
+gap   q90 btvg_var: d(sd)= 0.74 d(bias)= 1.08 ratio= 0.69

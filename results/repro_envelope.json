@@ -1,0 +1,273 @@
+{
+  "against": "bdg_e0t1",
+  "arm": "plug",
+  "backend": "fm",
+  "n": 64,
+  "n_fields": 43,
+  "n_moving": 16,
+  "n_outside": 3,
+  "prop": "mu",
+  "repeats": 3,
+  "rows": [
+    {
+      "delta": 0.0,
+      "envelope": 0.005309734513274322,
+      "field": "atom_stability",
+      "outside": false
+    },
+    {
+      "delta": 0,
+      "envelope": 0,
+      "field": "batch",
+      "outside": false
+    },
+    {
+      "delta": 0.0,
+      "envelope": 0.0,
+      "field": "clip",
+      "outside": false
+    },
+    {
+      "delta": 0,
+      "envelope": 0,
+      "field": "clipped_sample_steps",
+      "outside": false
+    },
+    {
+      "delta": 2.8079729180729984e-08,
+      "envelope": 2.0991314964025065e-08,
+      "field": "delta",
+      "outside": true
+    },
+    {
+      "delta": 0.0053768157958984375,
+      "envelope": 0.04857444763183594,
+      "field": "diversity_logdet",
+      "outside": false
+    },
+    {
+      "delta": 0.001962423324584961,
+      "envelope": 0.013446450233459473,
+      "field": "diversity_mean_pairwise",
+      "outside": false
+    },
+    {
+      "delta": 0.004554271697998047,
+      "envelope": 0.01525735855102539,
+      "field": "f_A_mean",
+      "outside": false
+    },
+    {
+      "delta": 0.017444372177124023,
+      "envelope": 0.019136428833007812,
+      "field": "f_B_dec_mean",
+      "outside": false
+    },
+    {
+      "delta": 0.0027027130126953125,
+      "envelope": 0.009910106658935547,
+      "field": "f_B_mean",
+      "outside": false
+    },
+    {
+      "delta": 0,
+      "envelope": 0,
+      "field": "field_evals",
+      "outside": false
+    },
+    {
+      "delta": 0.03318864107131958,
+      "envelope": 0.03610038757324219,
+      "field": "guide_eval_gap_dec_mean",
+      "outside": false
+    },
+    {
+      "delta": 0.0031251907348632812,
+      "envelope": 0.0017299652099609375,
+      "field": "guide_eval_gap_max",
+      "outside": true
+    },
+    {
+      "delta": 0.0051441192626953125,
+      "envelope": 0.05411362648010254,
+      "field": "guide_eval_gap_mean",
+      "outside": false
+    },
+    {
+      "delta": 0,
+      "envelope": 0,
+      "field": "guided_steps",
+      "outside": false
+    },
+    {
+      "delta": 0.0,
+      "envelope": 0.0,
+      "field": "in_band_fraction",
+      "outside": false
+    },
+    {
+      "delta": 0.0,
+      "envelope": 0.0,
+      "field": "in_band_fraction_dec",
+      "outside": false
+    },
+    {
+      "delta": 0.0,
+      "envelope": 0.0,
+      "field": "k_delta",
+      "outside": false
+    },
+    {
+      "delta": 1.4039864590364992e-08,
+      "envelope": 1.0495657482012533e-08,
+      "field": "mae_B",
+      "outside": true
+    },
+    {
+      "delta": 0.015625,
+      "envelope": 0.015625,
+      "field": "mol_stability",
+      "outside": false
+    },
+    {
+      "delta": 0,
+      "envelope": 0,
+      "field": "n",
+      "outside": false
+    },
+    {
+      "delta": 0,
+      "envelope": 0,
+      "field": "n_mc",
+      "outside": false
+    },
+    {
+      "delta": 0,
+      "envelope": 0,
+      "field": "n_nonfinite",
+      "outside": false
+    },
+    {
+      "delta": 0,
+      "envelope": 0,
+      "field": "n_probe",
+      "outside": false
+    },
+    {
+      "delta": 0.004107356071472168,
+      "envelope": 0.04750478267669678,
+      "field": "prop_mae_eval",
+      "outside": false
+    },
+    {
+      "delta": 0.018002629280090332,
+      "envelope": 0.044484615325927734,
+      "field": "prop_mae_eval_dec",
+      "outside": false
+    },
+    {
+      "delta": 0.0028793811798095703,
+      "envelope": 0.03185439109802246,
+      "field": "prop_rmse_eval",
+      "outside": false
+    },
+    {
+      "delta": 0.0075910091400146484,
+      "envelope": 0.02317357063293457,
+      "field": "prop_rmse_eval_dec",
+      "outside": false
+    },
+    {
+      "delta": 0,
+      "envelope": 0,
+      "field": "seed",
+      "outside": false
+    },
+    {
+      "delta": 0.0,
+      "envelope": 0.0,
+      "field": "sigma_mc",
+      "outside": false
+    },
+    {
+      "delta": 0,
+      "envelope": 0,
+      "field": "steps",
+      "outside": false
+    },
+    {
+      "delta": 0.0,
+      "envelope": 0.0,
+      "field": "t_min_guide",
+      "outside": false
+    },
+    {
+      "delta": 0.0,
+      "envelope": 0.0,
+      "field": "t_start",
+      "outside": false
+    },
+    {
+      "delta": 0.0,
+      "envelope": 0.0,
+      "field": "target",
+      "outside": false
+    },
+    {
+      "delta": 0.0,
+      "envelope": 0.0,
+      "field": "target_mean",
+      "outside": false
+    },
+    {
+      "delta": 0.0,
+      "envelope": 0.0,
+      "field": "tau_max_guide",
+      "outside": false
+    },
+    {
+      "delta": 0.0,
+      "envelope": 0.0,
+      "field": "tau_min",
+      "outside": false
+    },
+    {
+      "delta": 0.0,
+      "envelope": 0.0,
+      "field": "unique_valid_per_sample",
+      "outside": false
+    },
+    {
+      "delta": 0.0,
+      "envelope": 0.0,
+      "field": "uniqueness_of_valid",
+      "outside": false
+    },
+    {
+      "delta": 0.0,
+      "envelope": 0.0,
+      "field": "validity",
+      "outside": false
+    },
+    {
+      "delta": 0.0,
+      "envelope": 0.0,
+      "field": "w",
+      "outside": false
+    },
+    {
+      "delta": 0.0,
+      "envelope": 0.0,
+      "field": "w_applied",
+      "outside": false
+    },
+    {
+      "delta": 0.0,
+      "envelope": 0.0,
+      "field": "w_scale",
+      "outside": false
+    }
+  ],
+  "seed": 20261001,
+  "steps": 10
+}

@@ -1,0 +1,4 @@
+REFUSING to build one table from cells whose configuration disagrees.
+Each of these changes what the number means, so averaging them is not
+a summary, it is a different quantity:
+  t_min_guide: ['0.0', '0.5']

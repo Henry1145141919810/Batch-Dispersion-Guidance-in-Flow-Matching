@@ -6,7 +6,48 @@ restricted to **Modality 1 (QM9) with the flow-matching generator**. The
 diffusion generator and Modality 2 (DNA simplex) are explicitly out of scope of
 this document and are listed as not-started in §10.
 
-Status as of **2026-09-23**. Submission **29 Sep 08:30**, defence **30 Sep**.
+Status as of **2026-09-24**, except for the v3 block immediately below.
+Submission **29 Sep 08:30**, defence **30 Sep**.
+
+> ## The live plan is protocol v3 (26 Sep) — read this before anything dated 24 Sep
+>
+> [FULL_RUN_V3_PROTOCOL.md](../protocol/FULL_RUN_V3_PROTOCOL.md) is the headline
+> run; the runbook section that drives it is
+> [BETTY_RUNBOOK.md](../protocol/BETTY_RUNBOOK.md) → "Protocol v3". Everything
+> below this box that describes a *plan* is superseded; everything that describes a
+> *measurement* still stands.
+>
+> | | |
+> |---|---|
+> | target | **q50** for every property (v2 used q90) |
+> | strength | **w = 1 for every arm** |
+> | chemistry floor | **removed** — nothing is excluded; chemistry is reported |
+> | arms | unguided, plug, tmpd, lgd_mc, tfg + **BDG** (the innovation target). `btvg`/`btvg_var` **dropped** |
+> | base models | **three**, each with its OWN property pair (26 Sep): `fm` (ours) + **our** f_A/f_B · `equifm` + **TFG's** f_A/f_B · `edm` = QM9 diffusion (TFG's EDMsecond) + **our** f_A/f_B, **unguided+plug only** |
+> | ⚠️ pair consequence | δ = k × MAE(f_B), so **the pair sets the band width**, and the two oracles differ. **Measured, held out** ([V3_PAIR_DELTA.md](../results/V3_PAIR_DELTA.md)): ours/TFG = **1.12× mu, 3.07× alpha, 2.00× gap** — ours is **wider on all three**. (Each of our nets is scored on the calibration half it did not train on; scoring on the whole pool flatters them ~19 % and briefly made mu look narrower.) **in_band is NOT comparable across backends with different pairs**, in either direction. Within a backend all arms share one δ, so the arm ranking — the actual question — is untouched |
+> | seeds | **three, for BOTH stages** (the ablation ran one seed until 26 Sep) |
+> | n | **not pre-registered** — the operator picks it. Batch stays **500** whatever n is, so a cell runs n ÷ 500 BDG controllers, each estimating V_b from 500 samples (6.3 % se, independent of n). n must divide by 500 |
+> | BDG τ_mult | headline **{0.5, 1.0}** (0.75 dropped 26 Sep; it runs in the ablation). This is the SETPOINT knob, not the t ≥ 0.5 window |
+> | size | **144** headline cells + **612** ablation = 756. The ablation is ~3× the headline's cost. Cost depends on n: see [V3_POWER.md](../results/V3_POWER.md) |
+> | strength | headline **w = 1, fixed** for every arm; normalising the strengths instead was considered and **declined** 26 Sep, so §2.2's "equal w is not equal force" caveat stands. The ABLATION sweeps **w ∈ {1, 4}** — `w` scales the mean and deviation terms together while `w_eff = 1 + ηe` reweights the deviation term alone, so this is the control that separates "pushed harder" from "controlled spread". Watch `clipped_sample_steps`: the clip is applied after `w`, so a w = 4 row can be clip-limited |
+> | how to choose n | **by power, not by budget.** `proj1/scripts/v3_power.py` prints the minimum detectable in-band difference against n. A BDG-vs-plug effect is expected at ~1 pp, which needs n in the **low thousands**; below ~1000 nothing under ~2 pp is resolvable and a null says little. Pre-registered in FULL_RUN_V3_PROTOCOL.md §6.1 |
+> | trees | `results/v3/<backend>/<stage>/n<N>/seed<S>/` — the **stage** directory separates the headline from the ablation, since n and the seeds no longer do |
+> | Modality 2 | **not a v3 backend.** Separate stack; see [MODALITY2_V3_PLAN.md](../protocol/MODALITY2_V3_PLAN.md) |
+>
+> **Cancelled 26 Sep:** the `basecmp` (base-model-comparison) chain queued 25 Sep.
+> Its target, strength rule and arm set differ from v3, so its cells could not be
+> pooled with v3's.
+>
+> **Three things established on 26 Sep that constrain how BDG may be written up:**
+>
+> 1. `w_eff`, BDG's weight on the deviation term, run-means at **111–1019** on real
+>    trajectories, not the 13.00/4.11/1.00/−1.22 a closed form predicted — that form
+>    is **withdrawn** ([BDG_LADDER_MEASURED.md](../results/BDG_LADDER_MEASURED.md)).
+> 2. The BDG arms are **clip-saturated** (2516 clipped steps against plug's 884), so
+>    a BDG null is at least as likely to be the clip as the controller.
+> 3. The controller's sign flips — at τ_mult 1.5, **62 %** of guided steps push the
+>    wrong way — so cells now record `bdg_w_eff_sq` and `bdg_w_eff_neg` as well as
+>    the signed mean, which alone was unfalsifiable.
 
 **Latest BTVG decision (23 Sep, after both chemistry guards):** the registered
 full run is negative against LGD-MC; BTVG2 has no demonstrated incremental
@@ -229,6 +270,31 @@ n = 512 samples.
 | `f_B_mean` | mean predicted property | with the target gives the **bias** |
 | `guide_eval_gap_mean/max` | `|f_A(x) − f_B(x)|` | **reward-hacking detector.** If guidance exploits `f_A`, this grows with strength. Measured flat ⇒ no hacking |
 
+### How δ is set (the in-band half-width)
+
+A molecule is in band when |f_B(x) − y*| ≤ δ, so the band is 2δ wide. Every
+cell records `delta`, `mae_B` and `k_delta`.
+
+| δ | definition | values (mu D / alpha Bohr³ / gap Ha) | used for |
+|---|---|---|---|
+| **pre-registered** | k × f_B's MAE over **all** 17,748 `val` molecules, k = 2 (`evaluation.choose_delta`; v2 protocol §2) | 0.16799 / 0.48135 / 0.00760 | **every reported result** |
+| local (post-hoc, v2 only) | 2 × f_B's MAE over `val` molecules whose **true** property lies in [Q(0.85), Q(0.95)] of train_a, i.e. near the q90 target ([local_fb_mae.py](../../proj1/scripts/local_fb_mae.py) → `results/local_fb_mae.json`) | 0.16992 / 0.46754 / 0.00739 | the sensitivity analysis only: [FULL_RUN_V2_RESULTS_LOCAL_DELTA.md](../results/FULL_RUN_V2_RESULTS_LOCAL_DELTA.md), §10d |
+
+- **Why k = 2.** Among `val` molecules truly near the target, 88–90 % have f_B
+  within 2 × MAE of their true value — the in-band rate a perfect generator
+  would score — against 62–68 % within 1 × MAE (measured at the local window).
+  One MAE would miss a third of genuine hits.
+- **Why true-property selection for the local δ.** δ must let a molecule that
+  genuinely hits the target be counted, which is f_B's error given the true
+  value. Selecting by f_B's own prediction answers a different question (how
+  far a predicted hit truly is) and is reported only as a check.
+- **Limits.** Both δ are f_B's error on *real* molecules; in-band scores
+  *generated* ones, where f_B's error is unmeasured. `val` is also the set f_B's
+  checkpoint was selected on, so both are slightly optimistic.
+- **δ also enters guidance** for the BTVG family and SHG schedules
+  (τ = δ/1.96, `guidance_sweep.arm_kwargs`). None of the five v2 arms uses it,
+  which is why v2 can be rescored at another δ without re-sampling.
+
 ### Chemistry metrics
 
 | metric | definition |
@@ -400,8 +466,8 @@ se — or it collapses chemistry everywhere *and wins nothing*. Divergent cells
 ### Out of scope here, but on the critical path
 | item | status |
 |---|---|
-| **Modality 2 — DNA on the simplex** | ❌ **zero lines of code.** Timetable says 23–24 Sep |
-| VP-diffusion arm of M1 (trained, never swept) | ❌ |
+| **Modality 2 — DNA on the simplex** | ⚠️ **base model trained and validated, sweep built, NOT RUN.** This row said "zero lines of code" until 26 Sep, which was already false: `proj1/m2/` holds a 1500-epoch flow-matching model on the DeepFlyBrain 500 bp corpus, with its checkpoint and data **tracked in the repo**, two properties (`gc`, `cpg`), an in-band metric and a 300-cell sweep plan. What is outstanding is the RUN, plus four defects listed in [MODALITY2_V3_PLAN.md](../protocol/MODALITY2_V3_PLAN.md) §2.2 |
+| VP-diffusion arm of M1 (trained, never swept) | ❌ — and its checkpoint is **not** in the repo. The v3 QM9-diffusion backend is TFG's released EDMsecond (`--backend edm`), not ours |
 | paper + slides | ❌ |
 
 **The simplex transfer is the largest open risk.** [PLAN_AND_TIMETABLE.md](PLAN_AND_TIMETABLE.md)
@@ -1555,6 +1621,439 @@ pass, and the 2 that clear the floor do so only under the one-seed floor.
 
 ---
 
+## 10d. Full run v2 (24 Sep) — the fixed-target headline
+
+The pre-registered fixed-target run ([protocol](../protocol/FULL_RUN_V2_PROTOCOL.md),
+rules V1–V8) came back complete: **45 cells = 3 properties × 5 arms × 3 seeds
+at n = 5,000**, one generator, one sampler configuration, every cell at the
+strength `frozen_v2.json` picked, the three seeds verified distinct by `f_B`
+hash. Full tables:
+[FULL_RUN_V2_RESULTS.md](../results/FULL_RUN_V2_RESULTS.md), regenerate with
+
+```
+python proj1/scripts/full_run_v2_table.py --md-out docs/results/FULL_RUN_V2_RESULTS.md
+```
+
+**`btvg` and `btvg_var` are not in this run.** The protocol queues them as a
+later pass (§4), so nothing here is a verdict on our own method.
+
+> **Everything below holds at a chemistry budget of 0.9× unguided stability.**
+> §6 measured on the screen that the ranking changes at 0.7× and 0.5×; only
+> one budget was run. That table is reproduced in the results doc and must
+> travel with any sentence quoted from here.
+
+### The one claim this run supports without qualification
+
+**Guidance beats no guidance, and `tmpd` on alpha is the cleanest instance:**
+in_band 0.0315 vs unguided 0.0241, z = +3.90 continuous and **+3.57 decoded**,
++3.46 against `lgd_mc` head-to-head, clearing the chemistry floor, surviving
+Holm at the registered family size and the cluster-robust se. It is the only
+arm–property pair in the run that clears z ≥ 3 on *both* metrics.
+
+### Three retreats from the first reading of this run
+
+The first pass of this analysis reported "the winner flips to `tfg` on mu and
+`plug` on gap because `lgd_mc` fails the chemistry floor". An adversarial
+re-check forced three corrections, all from the run's own numbers.
+
+**1. `lgd_mc` is floor-limited, not measurably below the floor.** Re-measuring
+the floor at full scale is what V7 licenses — under a selection-only reading
+the clause is vacuous, since V2 guarantees every frozen strength cleared the
+screen — and the project applied the same rule at full scale against the same
+arm in [FR3A_VS_FR3_COMPARISON.md](../results/FR3A_VS_FR3_COMPARISON.md). But
+`mol_stability` is a proportion with its own error, and so is the unguided
+reference the floor is 0.9× of:
+
+| property | `lgd_mc` mol_stab | floor | margin | sigma | per-seed |
+|---|---|---|---|---|---|
+| mu | 0.3514 | 0.3571 | −0.0057 | **−1.08** | 0/3 pass |
+| gap | 0.3487 | 0.3571 | −0.0085 | **−1.60** | **1/3 pass** |
+
+This project decides everything else at 3 sigma. The disqualification is made
+at 1.1 and 1.6 sigma, and on gap one seed of three passes. It is a **rule**
+applied correctly, not a measured finding that the arm is worse. "Cannot hold
+the verdict whatever its in_band" was unsupportable and is gone. The floor
+cuts both ways: `tmpd` clears it on gap by only +1.49 sigma.
+
+Note also what moved. The run's floor is *lower* than the screen's (0.3571 vs
+0.3621) — re-measurement did not raise the bar. `lgd_mc`'s own estimate moved,
+0.3750 → 0.3487/0.3514. At n = 512 its "clears by +0.013" was +0.44 sigma.
+Screen and run agree that **`lgd_mc` at w = 4 sits on the chemistry floor**,
+which is what §3 of the protocol already said.
+
+**2. No arm is separated from any other.** V7 requires ties be reported as
+ties, and the winner-vs-runner-up comparison — which the first pass never
+showed — is where they are:
+
+| property | top floor-clearing arm | vs runner-up | z |
+|---|---|---|---|
+| mu | `tfg` 0.0427 | `tmpd` 0.0385 | +1.84 **tie** |
+| alpha | `tmpd` 0.0315 | `plug` 0.0289 | +1.32 **tie** |
+| gap | `plug` 0.0687 | `tmpd` 0.0673 | +0.50 **tie** |
+
+On gap the top three are within 0.0021 of each other. These are the highest
+point estimates, not winners.
+
+**3. On the decoded metric V4 requires, two of the three do not clear z ≥ 3.**
+V4 mandates every property metric in decoded (argmax one-hot) form "because
+arms that push the continuous type features are otherwise flattered". The
+first pass omitted it entirely — the one V-rule that was wholly unexecuted.
+
+| comparison | z continuous | z **decoded** | z decoded, cluster-robust |
+|---|---|---|---|
+| mu `tfg` vs unguided | +3.56 | **+2.67** | +2.65 |
+| gap `plug` vs unguided | +3.30 | **+2.94** | +2.75 |
+| alpha `tmpd` vs unguided | +3.90 | **+3.57** | +3.37 |
+
+(Cluster-robust: the three seeds reuse the same 5,000 molecules, so rows are
+clustered by molecule; the correction lowers each z by up to 0.2.)
+
+Only alpha/`tmpd` survives. The headline therefore rested on the metric V4
+pre-registered as the flattering one.
+
+### What the run says, stated at the strength the data supports
+
+*At a chemistry budget of 0.9× unguided stability: `lgd_mc` at its frozen
+strength sits on the chemistry floor on mu and gap (−1.1 and −1.6 sigma,
+unresolved) and is floor-limited under V7. With it set aside, the remaining
+arms are mutually tied on in-band; the highest point estimates are `tfg` on
+mu, `tmpd` on alpha, `plug` on gap, and of these only `tmpd` on alpha clears
+z ≥ 3 against unguided on both the continuous and the decoded metric. What a
+floor-limited arm would deliver at a floor-clearing strength is unmeasured —
+no such full-scale cell exists.*
+
+*Sensitivity to δ (next subsection, post-hoc): alpha `tmpd` holds at every δ
+tried, including with the cluster-robust se; gap `plug` is borderline on the
+decoded metric.*
+
+### Sensitivity to δ: f_B's error near q90 (post-hoc, 24 Sep)
+
+Henry's question: δ = 2 × f_B's MAE over *all* val molecules, but the run is
+scored at q90, so should the MAE come from molecules near q90? The factor 2 is
+kept. [local_fb_mae.py](../../proj1/scripts/local_fb_mae.py) measures f_B's
+MAE on val molecules whose **true** property lies near q90 (train_a rank
+window [Q(0.90 − h), Q(0.90 + h)]); the v2 tables are rescored at δ = 2 × that
+MAE in [FULL_RUN_V2_RESULTS_LOCAL_DELTA.md](../results/FULL_RUN_V2_RESULTS_LOCAL_DELTA.md)
+(`full_run_v2_table.py --delta-json results/local_fb_mae.json`, which checks
+the file against the run's own mae_B and k_delta). **This is a post-hoc
+sensitivity analysis; the pre-registered δ and its tables stand.**
+
+- **f_B is about as accurate near q90 as overall — on real molecules.** Local
+  MAE at h = 5 (q85–q95, ~1,780 molecules): 1.01× global (mu), 0.97× (alpha),
+  0.97× (gap), so δ moves +1.2 %, −2.9 %, −2.8 %. Across h = 2.5–7.5 the ratio
+  stays within 0.95–1.07×. **h = 10 is not a ±10-point window:** its upper
+  edge is Q(1.00), the train_a maximum, for all three properties, so it runs
+  one-sided from q80 to the max (mu's 1.19× there comes from the extreme tail).
+- **The bigger calibration question is untouched.** Both δ are f_B's error on
+  *real* QM9 molecules; in-band scores *generated* ones, only ~35–40 % of which
+  are molecule-stable. f_B's error on that population is unmeasured and may be
+  larger. Moving δ by 1–3 % does not settle whether δ is sized right for
+  generated molecules. (Val is also the set f_B's checkpoint was selected on,
+  so both MAEs are slightly optimistic.)
+- **The factor 2 does what it is meant to.** At h = 5, 88.2–90.2 % of
+  molecules truly near the target have f_B within 2 × local MAE of their true
+  value — the in-band rate a perfect generator would score. Within 1 × MAE it
+  is only 61.6–67.9 %, so a one-MAE band would miss about a third of genuine
+  hits.
+- **The top arm and the ties do not move.** The top floor-clearing arm is the
+  same at every δ tried (`tfg` mu, `tmpd` alpha, `plug` gap), and each is still
+  tied with its runner-up. Against unguided, decoded z, iid and
+  **cluster-robust** (molecules are reused across seeds, design effect 1.0–1.2):
+
+  | | pre-registered | h = 2.5 | h = 5 | h = 7.5 | h = 10 (one-sided) |
+  |---|---|---|---|---|---|
+  | mu `tfg`, iid / clustered | 2.67 / 2.65 | 2.70 / 2.68 | 2.72 / 2.69 | 2.44 / 2.42 | 2.74 / 2.71 |
+  | alpha `tmpd`, iid / clustered | 3.57 / 3.37 | 3.59 / 3.39 | 3.54 / 3.35 | 3.53 / 3.34 | 3.57 / 3.38 |
+  | gap `plug`, iid / clustered | 2.94 / **2.75** | 3.39 / **3.17** | 3.25 / **3.04** | 3.22 / **3.01** | 3.00 / **2.81** |
+
+  **alpha `tmpd`** clears 3σ on the decoded metric at every δ, even
+  cluster-robust. **mu `tfg`** fails at every δ. **gap `plug` is borderline:**
+  on the cluster-robust se it clears at 3 of 5 δ, by 0.04σ at h = 5 and 0.01σ
+  at h = 7.5, and fails at the pre-registered δ and at h = 10.
+- **How small the gap `plug` crossing is.** Decoded, plug's surplus over
+  unguided goes from 123 to 134 in-band molecules out of 15,000 when δ narrows
+  from the pre-registered to the local value — a swing of 11 molecules.
+  Gap's δ changes by 2.75 %, about 1.3 bootstrap se of the local MAE (2.2 %),
+  and the choice of window alone moves it anywhere from −3.6 % to −0.6 %.
+  Across seeds the plug − unguided difference is +0.0118 / +0.0096 / +0.0054.
+- **Why a narrower band raised plug's z.** Narrowing the band costs unguided
+  proportionally more in-band molecules than plug (decoded: 870 → 836, −3.9 %,
+  against 993 → 970, −2.3 %): more of unguided's hits sat just inside the old
+  edge. The surplus grows while the se shrinks, so z rises.
+- **Not updated by rescoring:** the frozen strengths (the n = 512 screen kept
+  no sidecars, so whether this δ would have picked other strengths is
+  unknown); the §6 budget table and the strength/Pareto figures (both at the
+  pre-registered δ); and the `dist`-target pilots — BTVG-2, xproj and
+  `pilot_chem` — where "near q90" does not apply and BTVG-family guidance uses
+  δ internally (τ = δ/1.96).
+
+### Other results from the run
+
+- **No mode collapse.** Lowest uniqueness of any single cell is 0.99340
+  against V6's 0.95 threshold.
+- **Guidance is mostly bias, not narrowing.** On mu the best floor-clearing
+  arm (`tfg`) moves bias/δ from −10.87 to −9.72 while residual sd/δ falls only
+  9.07 → 8.21. Same shape as v1.
+- **alpha's size stratification changes nothing.** Required by §2 caveat (b);
+  `tmpd` leads in all four strata (0.0056/0.0201/0.0644/0.1065).
+- **Clustering barely matters here.** Design effect 1.03–1.15, not v1's √3 —
+  the fixed target removes v1's per-molecule target clustering. All three
+  headline z's survive it.
+- **A tension the run exposes, unresolved:** V7 says a floor-limited arm can
+  neither win nor be beaten, yet V8's family tests every arm *against*
+  `lgd_mc`. On gap, 4 of 7 tests are against an arm the same rule says cannot
+  be beaten. Those rows are marked descriptive.
+
+### BTVG-2 cross-projection retest — a null
+
+The 12-cell pilot registered in
+[WORKSHOP_CLAIM_AUDIT.md](../results/WORKSHOP_CLAIM_AUDIT.md) also returned:
+[XPROJ_RETEST.md](../results/XPROJ_RETEST.md). On the audit's registered
+primary metric (decoded coverage) `btvg2_xproj` is ahead of `lgd_mc` at
+z ≥ 3 in **0 of 6** paired comparisons; on continuous in-band, also 0 of 6.
+
+Under the rule fixed before the run, a null narrows the corrected method's
+claim. **The supportable statement is that the projection error was not what
+was costing the method its outcome** — not that the corrected method is
+equivalent to `lgd_mc`. Two things stop it being a clean negative: at n = 2,048
+and one seed the pilot cannot exclude a real effect of ~0.02, and on decoded
+coverage the point estimate favours `btvg2_xproj` on mu at both strengths
+(the continuous metric reverses that sign, so the metric choice decides the
+direction there).
+
+`btvg2_xproj` clips more often than `lgd_mc` in 6 of 6 cells (1.09–1.41× of
+guided sample-steps) at a variance share of 0.16–0.27. **This is not read as a
+mechanism**: the audit pre-registered that correction-versus-LGD alone cannot
+separate objective mismatch, estimator noise and clipping competition, and
+adding a variance term at the same nominal w makes more clipping close to
+definitional. An earlier draft of this section asserted the mechanism anyway;
+that assertion is withdrawn.
+
+### Every BTVG-2 cell, against a GPU-matched `lgd_mc`
+
+All 15 BTVG-2 cells on disk (`btvg2` w 4/8, `btvg2_band` w 8, `btvg2_xproj`
+w 8/16, × 3 properties; one seed, n = 2,048, `dist` target) with the full
+metric block: [BTVG2_FULL_METRICS.md](../results/BTVG2_FULL_METRICS.md),
+regenerate with `python proj1/scripts/btvg2_table.py --md-out
+docs/results/BTVG2_FULL_METRICS.md`.
+
+**What `variant − lgd_mc` measures:** adding the variance term *as
+implemented* — the variants share `lgd_mc`'s draws and mean-term arithmetic,
+but after the first step the trajectories differ, the clip scales the combined
+field (and the variants clip more), and for `btvg2`/`btvg2_band` the
+pulled-back variance step also moves the mean. It is **not** the variance term
+in isolation, as the `btvg2` "What" paragraph above already says. (A first
+draft of this subsection said "isolates"; withdrawn.)
+
+- **0 of 15** comparisons against `lgd_mc` reach |z| ≥ 3 on in-band (either
+  metric) or on molecule stability, in either direction.
+- **In-band leans negative on the continuous metric (13 of 15 point
+  estimates) but not on the decoded one** (3 of 6 xproj comparisons positive;
+  largest mu w = 16, +0.019, z = +1.93). Neither count is a test — the
+  comparisons share molecules and comparators. Decoded exists only for xproj.
+- **MAE falls on mu and alpha in 8 of 10 and rises on gap in 4 of 5**, none
+  at 3σ. On alpha the visible gains (three rows, MAE down ≥ 0.1 δ) are
+  **smaller bias, not tighter spread**: |bias| drops 0.49–0.85 δ while
+  residual sd moves −0.17 to +0.09 δ. The variants shrink `lgd_mc`'s alpha
+  undershoot; they do not concentrate the output. **Stability is a wash**
+  (8 up, 7 down).
+- **Guidance itself creates a growing bias on alpha:** unguided −0.02 δ,
+  `lgd_mc` −1.93 / −2.92 / −3.39 δ at w = 4 / 8 / 16, and the guide's own f_A
+  shows the same (−1.86 / −2.89 / −3.36). It is the guide's view, not a
+  guide–evaluator disagreement. Cause not established.
+- **`btvg2_band` engages less, not negligibly** (variance share 3.5–8.3 %
+  against 16–27 %), and on gap it is the second-worst row (in-band −0.013,
+  z = −1.85; MAE +0.09 δ, z = +2.22). Its gate is a soft Gaussian of width
+  1.96τ around the target, not an inside-the-band switch.
+- **29 of 30 guided cells beat unguided** on continuous in-band at z ≥ 3
+  (gain +0.020 to +0.079, z up to +7.59); the exception is alpha `btvg2` w = 4
+  (z = +2.94). The stability cost reaches 3σ in 6 cells, all on gap: `lgd_mc`
+  at w = 8 and 16 on both GPUs, `btvg2_band` w = 8, `btvg2_xproj` w = 16.
+- **`btvg2` and `btvg2_band` have no decoded view** (no `_dec` fields, no
+  coordinates in the sidecars, no other copy on disk). Only `btvg2_xproj` can
+  be judged on the metric V4 requires; the others need a re-run.
+- **Cost:** generator passes are 3× unguided for `lgd_mc`/`btvg2` and 5× for
+  `btvg2_xproj`; guide passes are equal across the three.
+
+### Removing the velocity clip — a null, and the clip is load-bearing (25 Sep, pilot)
+
+**Source:** [../results/CLIP_PILOT.md](../results/CLIP_PILOT.md), script
+`proj1/scripts/clip_pilot_table.py`. Cells: `results/pilot_clip/{clip1,noclip}/`,
+26 cells = mu × {unguided, plug, btvg, lgd_mc} × w ∈ {0.25, 1, 4, 16} × two clip
+settings, v2's fixed q90 target, n = 256, one seed (20261001), paired.
+
+**Why asked.** The clip caps guidance at 1 × the base velocity, and BTVG
+saturates it on 32 % of guided steps at w = 4 (0.024 / 0.114 / 0.323 / 0.522
+over the grid). If the clip were throttling the aiming term, removing it should
+help.
+
+**It does not, on any reading.**
+- **Sample divergence is the decisive finding.** 222 non-finite samples across
+  4 of the 12 guided no-clip cells; **0** in all 13 clipped cells. `btvg` at
+  w = 16 loses 187 of 256 samples and keeps 0.031 molecule stability.
+- **No frontier improves.** In-band at equal chemistry, unclipped is higher in
+  **0 of 8** comparisons under the convex-hull reading and **0 of 8** under the
+  frozen-single-cell reading.
+- **Only `lgd_mc` carries the direction.** Its clipped w = 4 reaches in_band
+  0.1016 against 0.0352 unclipped at the same floor. Paired at w = 4:
+  −0.0664, z −3.01 — the only comparison at |z| ≥ 3. Under the frozen reading
+  `plug` is an **exact tie** at all three levels and `btvg`'s gaps are one
+  molecule wide; read both as null.
+- **Unclipping frees both terms, and spread wins.** `btvg` w = 4 on the 239
+  rows finite in both: residual sd 6.49 → 11.11 δ while bias improves
+  −7.63 → −7.02. Aiming does get better; the spread grows faster.
+
+**Caveats that must travel.** One seed, n = 256, mu only. No frontier gap
+reaches the 0.053 needed for a difference of two independent cells, so the
+direction is what carries it, not any single gap. The 12 fixed-strength
+comparisons are 3 correlated strength curves on one molecule set. The mechanism
+behind the divergence is not established — only that it happens without the
+clip and not with it.
+
+**Consequence.** The clip is not what limits guidance; it is load-bearing. No
+full run is warranted. **Withdrawn:** the earlier chat reading that the clip
+"makes the terms compete so removing it frees aiming" — it frees whichever term
+is larger, which for BTVG is the variance term.
+
+**Two method defects the adversarial check caught here, worth reusing.**
+(1) An in-band-vs-stability frontier must be the **convex hull** of measured
+cells, not a chain through stability-sorted points: stability is non-monotone
+in w, so a chain routes through dominated cells and understated `lgd_mc` by up
+to 46 %. (2) Residual bias/sd are computed over finite rows, so a cell that
+lost samples is graded on its survivors — `btvg` no-clip w = 16 reads bias
+−1.12 δ, but the clipped cell on the same 69 rows is already −3.82 δ. Always
+state the denominator split and give the like-for-like restriction.
+
+---
+
+## 10e. BDG (batch-dispersion guidance) — reviewed 25 Sep
+
+A team member's handoff proposes **BDG**: plug, plus a feedback term driven by the
+batch variance `V_b` of the guide's predicted property against a setpoint τ². The
+author's record is [BDG_HANDOFF.md](../methods/BDG_HANDOFF.md); the corrected
+reading is **[BDG_REVIEW.md](../methods/BDG_REVIEW.md) — read that first.** The code
+lives in another member's Betty tree. An independent port is on branch
+`worktree-wf_bc7c0f18-844-2` (not merged; it would fast-forward), with its 64 cells
+in `results/bdg_port/`.
+
+**Verdict (three independent judges): sound mechanics with an overstated
+interpretation; incremental; misaimed as an in-band lever; doable only as a
+secondary result.**
+
+- **What holds.**
+  - The gradient and the §3 reduction are exact, and η = 0 is bit-identical to plug.
+  - Cost is the same as plug. The knob moves spread monotonically on 6/6 curves, reproduced by a port built from the prose alone.
+  - Two structural properties are real: `w_eff ≥ 1−η` is bounded where BTVG's coefficient has a pole, and the dispersion term's sign survives the J-pullback (algebra; BTVG-2's flipped on 45–57 % of molecules in a toy).
+- **What BDG is.** In mean/deviation form, `num_i = w[(y−F̄) − w_eff(F_i−F̄)]` with `w_eff = 1+ηe`. It is plug with the centring gain fixed and **only the deviation gain servoed**. It is not negative-weight plug: its widening cells still pull the mean toward the target.
+- **What does not hold as written:**
+  - The law's equilibrium is `V* = τ²(1−1/η)`, not τ². It is an asymptote the 50-step window never reaches.
+  - "Does not reduce to any fixed schedule" is refuted: a schedule replayed on another seed recovers 69.5–96 % of the effect, one seed pair.
+  - "No existing arm widens reproducibly" is false: `rch` widens 1.42×/1.455× on both seeds.
+  - The chemistry floor is borrowed from `results/sweep`.
+  - §8 mis-describes MGD and omits the closed-loop guidance literature.
+- **Why it cannot move the headline.** The handoff never states its target. Its plug control rules out q90, so it ran at q50 or `dist`. Spread governs coverage only near a centred target. At the v2 q90 headline |bias|/σ ≈ 1.2–1.6, and the best the spread lever can do is +0.0001 to +0.007 in-band, at or below the z = 3 resolution even at n = 15,000 per arm. Removing the bias is worth +0.025 to +0.047.
+
+**Decision recommended:**
+- No Betty time, and no BDG number in a q90 headline table.
+- Write it up only after the headline sections are drafted, capped at ~4–6 h.
+
+Use in the paper:
+- the **bias-versus-spread decomposition by target** (§4.3/§4.7/§5), zero compute;
+- **V_b vs V_F** as the continuation of the BTVG failure story;
+- the simplex transfer argument (§3.6);
+- one appendix table labelled with its target, n, device and its own floor.
+
+Any §4.4 row first needs a second replay seed pair, a signed-w plug control and paired
+tests. The required changes are in BDG_REVIEW.md §5.
+
+### BDG full metrics, and the workshop verdict (26 Sep)
+
+**Source:** [../results/BDG_FULL_METRICS.md](../results/BDG_FULL_METRICS.md), generated by
+`proj1/scripts/bdg_full_metrics.py` from the port's 64 cells: n = 256, seed 20260925, one
+batch, RTX 5080, **w = 1 for every BDG cell** (η = 4 ladder, τ_mult 0.5–1.5). Every cell is
+paired molecule-for-molecule against plug w1 and unguided. Three independent recomputes agree.
+Two verifier rounds found 1 major and 8 minor defects, all in prose, all fixed; the third round
+was clean.
+
+- **No floor-clearing BDG cell beats plug w1 at either target.**
+  - 72 paired in-band tests; max |z| 3.07, Šidák p 0.14.
+  - That one test is a *loss*, on a below-floor cell: gap q50 τ 1.5, −0.0625.
+  - At q50 the floor-clearing cells trail plug w1 (mu −0.027 to −0.039; gap τ 1 −0.059, z −2.56).
+  - At q90, 0 of 15 ladder cells clear their own floor (0.9 × own unguided = 0.3902). Bias of −7 to −14 δ dwarfs the spread knob.
+- **The knob works:** sd/unguided runs from 0.65 to 1.03–1.20, monotone. This widening is BDG's
+  only region that plug's positive-w sweep (0.635–1.015) does not reach.
+- **Caveat:** this run's unguided stability (0.4336) is high, so plug w1 fails the run's own floor
+  in 6 of 6 blocks and most verdicts are knife-edge.
+- **BDG was run at a single centring strength (w = 1).** At q90, where bias binds, a w sweep of
+  BDG is needed before any comparison with plug w4.
+
+**Workshop verdict** (11-agent workflow: a math re-derivation, 3 literature angles with ~100
+queries, and 3 reviewer lenses):
+
+| framing | p_accept (3 lenses) | reading |
+|---|---|---|
+| A: BDG as a method paper | 0.10 / 0.15 / 0.12 | do not submit; provably plug with two gains, never beats plug |
+| B: why variance-targeted guidance fails | 0.38 / 0.45 / 0.55 | at the line; the contribution is the diagnosis |
+| C: B with BDG as the instrument | 0.45 / 0.50 / 0.45 | at the line; too big for 4 pages |
+
+- **BDG's proofs** are correct but elementary: the gradient, the reduction (which argues against novelty), V* for a 1-D surrogate, the one-line bound and the first-order sign. Two handoff arguments are **invalid**: "V_b does not vanish, so the loop is stable" and "irreducible to a schedule" (exact replay reproduces it to 5e-16).
+- **New prior art the review missed:** Range-Aware BO arXiv 2606.11574 (the bias/spread tolerance decomposition), MatAgent 2504.00741 (a tolerance hit-rate metric), 2608.08770 and 2605.07456 (inference-time distribution control), Stein Diffusion Guidance 2507.05482.
+- **Venues:** every NeurIPS 2026 workshop deadline has passed. Targets are ICBINB (2027 cycle), ICLR 2027 workshops (~Feb 2027), SPIGM@ICML 2027 and TMLR.
+- **Corrections to the BTVG story:**
+  - The widening likelihood coefficient belongs to the moment-matched likelihood S = s² + V_F(x), not to plug/DPS.
+  - The rigorous V_F point is a calibration failure: E[V_F] exceeds Var f_B by 3–18× at t = 0.5.
+  - "Per-molecule guidance has no separate spread lever" is false; aiming at y + c halves the spread at unchanged bias.
+  - "Gate back to baseline, never past it" is empirical for the tested gate family only.
+- **The two experiments that decide the paper:**
+  1. the signed-w plug control at equal chemistry (the review's pre-registered drop rule);
+  2. a q50 test that the variance term's in-band effect reverses sign, as the interval lemma predicts.
+
+  Separately, VARIANCE_DECOMPOSITION.md must be rewritten before framing B can cite it.
+
+### Why TFG at w = 1 gets high in-band and low stability (26 Sep, diagnostic, NOT YET CITABLE)
+
+**Sources:**
+- cells in `results/bdg_local/` (n = 256, seed 20260925, one batch, RTX 5080);
+- a 14-cell instrumented GPU run with final coordinates and features saved, whose driver and outputs are in the session scratchpad `tfg_why/gpu_diag/` (not in the repo yet);
+- a 5-agent workflow with an adversarial verifier, which reproduced every number quoted below.
+
+**Before any of this goes in the paper**, the driver must be moved into `proj1/scripts/` and a script-generated page written under docs/results.
+
+**What does not explain it:**
+- **Equal w is not equal strength.** Three unnormalised multipliers stack:
+  - plug's `w(1−t)/t` collapses 99× across the window, while TFG's `k_0/h` rises from 51 to 100;
+  - TFG's energy `−((f−y)/mad)²` is 2.9–3.4× steeper;
+  - `strength_scale` returns 1.0 for tfg.
+
+  The realised push ratio tfg/plug runs from 1.7× early to ~40× late. TFG w1 beats plug's best in-band anywhere on plug's 8-point grid, in 6 of 6 cells.
+- **The atom-type channel does not break chemistry.** Final features are 99.3 % top channel, with 0.3 % of atoms ambiguous. The coordinates-only ablation is the worst arm on stability (0.145); features-only is near plug (0.281).
+  - The feature channel inflates the continuous metric: 29 % of tfg's continuous hits do not survive decoding, against 4–8 % for other arms, and the shift is directional.
+- **The velocity clip and rescale_grad are not causes.** The clip binds on 0.7 % of mu steps and never at t ≥ 0.9; rescale_grad fires on 0.04–0.07 %.
+
+**What survives the strength confound: timing.**
+- At **equal chemistry** (mol stab 0.168, mu q90), tfg w1 reaches in-band **0.316 against plug w8's 0.082** (decoded 0.242 vs 0.090), with the same total coordinate displacement (0.50 vs 0.49 Å).
+- The difference is where the displacement lands: 17 % of tfg's is after t = 0.9, against 3.5 % of plug w8's. TFG's push does not decay: 9 % of the base velocity at the last step, against plug's 0.1 %. It peaks at t ≈ 0.90–0.95.
+- For mu the mean piece D0 carries the arm: 83–92 % of the correction norm. D0-only gives in-band 0.285 against the full 0.316; variance-only is indistinguishable from unguided.
+- At q50 the gain is spread narrowing, not bias removal (86 / 85 / 52 %). tfg re-targets rather than nudges: its paired slope on the unguided error is 0.03–0.05, against plug's 0.41–0.46.
+
+**Stability:**
+- **Late edits are geometry-only and unrepairable.** Guidance in only the last 9 steps gives stability 0.160, against 0.168 for the full run, and 69 of its 70 broken molecules keep their atom types. Per Å of displacement, late steps cost about 15× more stability than early ones.
+- **The failure mode is lost bonds and fragmentation.**
+  - Under-valent atoms rise from 3.9 % to 11.7 % (O from 4.1 % to 23.4 %).
+  - Fragmented molecules rise from 10.2 % to 42.6 %, and clashes from 1.6 % to 12.1 %.
+  - Bonded C–O pairs lengthen by 3.1 pm, against the evaluator's 3–10 pm bond-order margins.
+- **Total displacement sets the level.** plug w8 reaches the same 0.168 from the same displacement, by reorganising molecules instead (78 of 86 broken with a type change).
+- **Compounding with clustering.** Atom stability falls from 0.94 to 0.83, and failures cluster at 3.7 bad atoms per unstable molecule against 1.9.
+- **TFG's own tuning:**
+  - its QM9 hyperparameters were chosen on RDKit validity only;
+  - "increase" was chosen on CIFAR/ImageNet and transferred unchanged;
+  - it never reported molecule stability, although its evaluator computes it (arXiv 2409.15761; TFG-Flow 2501.14822).
+
+**Open, and load-bearing:**
+1. TFG's released script uses `mu_schedule=decrease` for mu, while the port follows the paper's "increase". Under "decrease" the late mean-guidance mass largely disappears.
+2. One seed, and the equal-chemistry advantage is shown on mu q90 only.
+3. f_B_dec rises 0.53 D at 0.028 Å RMSD on 58 same-SMILES molecules, so part of the late gain may be evaluator sensitivity.
+
 ## 11. Known defects and corrections — carry these into the write-up
 
 Things measured wrong at some point and since fixed. They belong in the
@@ -1577,6 +2076,19 @@ methods section, not hidden.
 **Verified sound:** local (RTX 5080) and cluster (B200) cells are **genuinely
 paired** — three cluster cells re-run locally matched to 0.15 se on MAE and
 *exactly* on in-band, stability and SMILES. Pooling the two is safe.
+*Qualified 24 Sep:* "exactly" holds for unguided, not for guided cells.
+Measured on the same molecules and seed ([BTVG2_FULL_METRICS.md](../results/BTVG2_FULL_METRICS.md)):
+unguided agrees across the two GPUs (0 in-band, stability or SMILES flips),
+but guided `lgd_mc` diverges molecule by molecule already at w = 4 (mu: 3
+in-band flips, 9 stability flips, 19 SMILES differences, a few molecules off
+by up to 16 δ), growing with strength on mu and gap. Aggregates stay within
+noise (largest cross-GPU |z| 1.77), so pooling is safe for aggregate metrics
+of these cells; a paired, molecule-level comparison of a guided arm should use
+a comparator from the same GPU. Choosing the other GPU's comparator for
+`btvg2_xproj` moves a paired z by at most 0.44 and flips no 3σ call. Measured
+for one arm (`lgd_mc`) at w = 4-16 only. (A first version of this note said
+w = 4 was bit-identical across machines; both copies compared were on the
+5080. Withdrawn.)
 
 **One cell to exclude by hand:** `alpha__smg__q50__w2__tmin0.05.json` —
 MAE 4.36e7, 47/512 non-finite. `select_arms` already filters it.

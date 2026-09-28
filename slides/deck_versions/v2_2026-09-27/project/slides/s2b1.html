@@ -1,0 +1,33 @@
+<section id="s2b1" style="background:#F7F6F2; color:#3A4553; font-family:'IBM Plex Sans', Arial, sans-serif; padding:80px 128px 116px; display:flex; flex-direction:column; gap:24px">
+<div style="display:flex; flex-direction:column; gap:4px">
+<p style="font-size:24px; font-weight:600; letter-spacing:2px; text-transform:uppercase; color:#1F5FA9">Part 2 · Evidence for Modality 1 · guidance 1 of 2</p>
+<h2 style="font-family:'Source Serif 4', Georgia, serif; font-size:56px; font-weight:600; line-height:1.1; color:#16202C">Guidance strategy</h2>
+</div>
+<div style="display:flex; flex-direction:column; gap:12px; background:#FDFCFA; border:1px solid #DDD9CF; border-radius:14px; padding:22px 28px">
+<h3 style="font-size:28px; font-weight:600; line-height:1.25; color:#16202C">Rule and target</h3>
+<img src="/_blob/f88fe2800e7a28f3306b1cf72d899c81" alt="G_i = (num_i / s²) J_iᵀ g_i,  num_i^plug = y − F_i,  F_i = f_A(m_i),  g_i = ∇_m f_A(m_i)" style="width:1248px; height:79px; object-fit:contain">
+<p style="font-size:24px; line-height:1.35">A frozen property predictor f_A is differentiated at the endpoint estimate mᵢ, and the gradient is pulled back to the sampling variable. Target y is the <b>q50</b> value of the property, one fixed number per property. A DPS-style plug-in Gaussian-energy field [12].</p>
+</div>
+<div style="display:flex; gap:24px">
+<div style="flex:1; display:flex; flex-direction:column; gap:8px; background:#FDFCFA; border:1px solid #DDD9CF; border-radius:14px; padding:22px 28px">
+<h3 style="font-size:28px; font-weight:600; line-height:1.25; color:#16202C">Trained, pretrained, frozen</h3>
+<p style="font-size:24px; line-height:1.35"><b>Generator vθ:</b> trained by us, frozen at sampling.</p>
+<p style="font-size:24px; line-height:1.35"><b>Guide f_A:</b> trained by us on train_a; frozen, eval(), gradients disabled.</p>
+<p style="font-size:24px; line-height:1.35"><b>Evaluator f_B:</b> trained on train_b; frozen, and it never participates in sampling.</p>
+<p style="font-size:24px; line-height:1.35"><b>Nothing is trained at guidance time.</b></p>
+</div>
+<div style="flex:1; display:flex; flex-direction:column; gap:8px; background:#FDFCFA; border:1px solid #DDD9CF; border-radius:14px; padding:22px 28px">
+<h3 style="font-size:28px; font-weight:600; line-height:1.25; color:#16202C">Strength schedule, normalisation, clipping</h3>
+<p style="font-size:24px; line-height:1.35"><b>Strength:</b> correction converted by w·(1 − t)/t, w the guidance weight [12, 14].</p>
+<p style="font-size:24px; line-height:1.35"><b>Normalisation:</b> denominator s², with s the guide's property standard deviation.</p>
+<p style="font-size:24px; line-height:1.35"><b>Trust region:</b> Gᵢ rescaled so ‖Gᵢ‖ ≤ ‖vᵢ‖ per sample, after w. Prior practice [13], shared by every arm.</p>
+<p style="font-size:24px; line-height:1.35"><b>Window:</b> guidance on for t ≥ 0.5 only.</p>
+</div>
+</div>
+<div style="background:#E4ECF6; border-left:8px solid #1F5FA9; border-radius:10px; padding:18px 28px">
+<p style="font-size:28px; line-height:1.35; color:#16202C"><b>Takeaway.</b> The trust region is load-bearing, not cosmetic: removing it produces <b>222 non-finite samples</b> where the clipped run produces <b>0</b>.</p>
+</div>
+<p style="position:absolute; left:1616px; top:52px; width:176px; font-size:48px; font-weight:700; line-height:1.15; text-align:center; color:#F7F6F2; background:#1F5FA9; border-radius:14px; padding:8px 12px">2b</p>
+<p style="position:absolute; left:128px; bottom:40px; width:300px; font-size:18px; color:#5F6A77">CIS 6270 · Group 2 · 13 / 29</p>
+<p style="position:absolute; left:448px; bottom:40px; width:1344px; font-size:18px; line-height:1.3; text-align:right; color:#5F6A77">[12] Chung et al. 2023 (DPS) · [13] velocity-relative trust region, adopted practice (see bibliography) · [14] Ho &amp; Salimans 2022 (CFG)</p>
+</section>

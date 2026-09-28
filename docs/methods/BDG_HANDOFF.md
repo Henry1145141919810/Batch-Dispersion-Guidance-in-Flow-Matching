@@ -1,5 +1,20 @@
 # BDG — Batch-Dispersion Guidance: complete handoff
 
+> **⚠️ Reviewed 25 Sep 2026 — read [BDG_REVIEW.md](BDG_REVIEW.md) before relying on
+> anything below.** This document is kept unchanged as the author's record. The
+> review verified the mechanics (the gradient, the §3 reduction, η = 0 ≡ plug, same
+> cost as plug, a monotone knob reproduced by an independent port), but found that
+> several claims below do not hold as written:
+> - **What BDG is.** Plug with the centring gain fixed and only the *deviation* gain `w_eff = 1+ηe` servoed. It is not plug at a negative weight: its widening cells still pull the batch mean toward the target.
+> - **The equilibrium is not the setpoint.** The law settles where w_eff = 0, i.e. `V* = τ²(1−1/η)`, an asymptote the 50-step window never reaches. At η ≤ 1 the controller's own field is never repulsive. "V_b does not vanish, so it is stable" is not the reason; boundedness (`w_eff ≥ 1−η`) is.
+> - **"Does not reduce to any fixed schedule" is refuted as stated.** A schedule replayed on another seed's noise recovers 69.5–96 % of the effect; feedback adds a small real remainder.
+> - **The target is never stated.** The plug control rules out q90, so it is q50 or `dist`. At the project's q90 headline the §1 premise and "widening lowers coverage by definition" are false.
+> - **"No existing arm widens reproducibly / 1.010×" is false.** `rch` widens 1.42×/1.455× on both seeds.
+> - **The floor 0.362109375 is borrowed** from `results/sweep`, and the gap e4t0.5 "FAILS" is knife-edge.
+> - **§8 mis-describes MGD and omits the closed-loop guidance literature.**
+>
+> The required changes are listed in BDG_REVIEW.md §5. This file's code lives in another member's Betty tree; an independent port is on branch `worktree-wf_bc7c0f18-844-2`, with its cells in `results/bdg_port/`.
+
 **Written for:** Henry, and an AI agent working on his behalf. Assumes familiarity with the repo's
 guidance arms but *no* knowledge of this work. Nothing here needs to be re-derived.
 

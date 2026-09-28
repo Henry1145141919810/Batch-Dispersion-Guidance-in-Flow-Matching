@@ -58,9 +58,14 @@ class _Base:
                  n_mc=4, sigma_mc=0.1, want_kappa3=False, rch=None,
                  band_tau=None, band_eta=1.0, band_radius=None,
                  tau=None, spbc_eta=1.0, spbc_radius=None,
-                 bdg_eta=1.0, bdg_tau=None, bdg_onesided=False, schedule=None,
+                 schedule=None,
                  update_rule="euler", update_kw=None, log_velocity=False,
-                 tfg=None):
+                 # BDG. eta DEFAULTS TO 0.0, not 1.0: at eta = 0 the dispersion
+                 # term is multiplied by zero, so an un-configured `bdg` is
+                 # bit-identical to plug rather than silently servoing at unit
+                 # gain. Every caller that wants the controller sets eta.
+                 tfg=None, bdg_eta=0.0, bdg_tau=None, bdg_onesided=False,
+                 bdg_e_override=None):
         self.net, self.mask = net, mask
         self.f_net, self.y, self.s, self.mode, self.w = f_net, y, s, mode, w
         # TFG's configuration (a dict, see guidance_sweep.tfg_config). The arm
@@ -85,8 +90,22 @@ class _Base:
         self.want_kappa3, self.rch = want_kappa3, rch
         self.band_tau, self.band_eta, self.band_radius = band_tau, band_eta, band_radius
         self.tau, self.spbc_eta, self.spbc_radius = tau, spbc_eta, spbc_radius
-        # BDG: dispersion gain, spread setpoint, and the one-sided ablation
-        self.bdg_eta, self.bdg_tau, self.bdg_onesided = bdg_eta, bdg_tau, bdg_onesided
+        # BDG: gain, setpoint sd, and the positive-part ablation. The setpoint
+        # is resolved by the caller (guidance_sweep sets bdg_tau = mult * s
+        # once the guide's y_std is known), so nothing here has to know it.
+        #
+        # THE BATCH IS THE ESTIMATOR for this arm: V_b is taken over the tensor
+        # the sampler hands to guidance_field, which is one batch. Splitting n
+        # across batches runs that many independent controllers, so a BDG cell
+        # must be run with batch == n.
+        self.bdg_eta, self.bdg_tau = bdg_eta, bdg_tau
+        self.bdg_onesided = bdg_onesided
+        # None = the live controller. A float replays that value for this
+        # step with the feedback cut (open-loop control); the replay
+        # harness sets it per step.
+        self.bdg_e_override = bdg_e_override
+        if mode == "bdg" and f_net is not None and bdg_tau is None:
+            raise ValueError("mode='bdg' needs bdg_tau (the setpoint sd)")
         # SHG: [(t_lo, t_hi, mode, w), ...]. The first interval containing t
         # wins; outside every interval, guidance is off. `mode`/`w` on the
         # sampler are the fallback when no schedule is given.
@@ -168,14 +187,34 @@ class _Base:
                  # correction sits above the shared velocity clip
                  "tfg_var_rescaled", "tfg_d0_rescaled", "tfg_d0_frac",
                  "tfg_corr_over_v",
-                 # BDG's controller state. Without these the run is
-                 # unauditable: you can see what the samples did but not what
-                 # the servo was doing, which is the gap the osc arm left
-                 # (obs_var computed every step and never persisted).
-                 # bdg_e is the error signal, and its SIGN is the whole claim --
-                 # e < 0 means the controller was in its widening branch.
-                 "bdg_V_b", "bdg_tau", "bdg_e", "bdg_dev", "bdg_disp",
-                 "bdg_widening")
+                 # BDG's controller state. Without these the arm's mechanism
+                 # is unfalsifiable -- the same gap that made `osc`'s
+                 # mechanism unmeasurable. `bdg_dev_rms`/`bdg_disp_rms` are
+                 # RMS, not mean, because the raw quantities are mean-zero
+                 # over the batch by construction; `bdg_e_raw` is pre-clamp so
+                 # the one-sided cells still show the widening branch's depth.
+                 "bdg_e", "bdg_e_raw", "bdg_e_measured", "bdg_V_b",
+                 "bdg_V_over_tau2",
+                 "bdg_tau", "bdg_dev_rms", "bdg_disp_rms", "bdg_w_eff",
+                 # ...and because THIS accumulator is a mean over guided steps,
+                 # `bdg_w_eff` alone is still unfalsifiable: w_eff was measured
+                 # changing sign up to 34 times in a 50-step window and sitting
+                 # at 0 +- 0.19 near the setpoint, so its run-mean reads ~0 for
+                 # an arm that was violently active. sqrt(mean(bdg_w_eff_sq)) is
+                 # its RMS over steps and mean(bdg_w_eff_neg) is the fraction of
+                 # guided steps on which the deviation term REVERSED. This list
+                 # is a whitelist, so a key absent here is silently dropped.
+                 "bdg_w_eff_sq", "bdg_w_eff_neg",
+                 "bdg_batch",
+                 # bobo's original three, kept so bdg_table.py and test_bdg.py
+                 # keep reading what they expect. `bdg_dev`/`bdg_disp` are
+                 # mean-zero over the batch, so THIS accumulator's mean drives
+                 # them to ~1e-7 -- the _rms pair above is what carries the
+                 # signal. `bdg_widening` is the fraction of guided steps with
+                 # e < 0, i.e. the controller ASKED to widen; `bdg_w_eff_neg`
+                 # is the fraction where 1 + eta*e < 0, i.e. the deviation term
+                 # actually reversed. Both are wanted; they are not the same.
+                 "bdg_dev", "bdg_disp", "bdg_widening")
 
     def _accumulate_diag(self, diag):
         """Running mean of each diagnostic over every guided step and batch."""
@@ -344,7 +383,8 @@ class _Base:
             band_radius=self.band_radius, t_scalar=t,
             tau=self.tau, spbc_eta=self.spbc_eta, spbc_radius=self.spbc_radius,
             bdg_eta=self.bdg_eta, bdg_tau=self.bdg_tau,
-            bdg_onesided=self.bdg_onesided)
+            bdg_onesided=self.bdg_onesided,
+            bdg_e_override=self.bdg_e_override)
         self.last_diag = diag
         self._accumulate_diag(diag)
         if self.want_kappa3 and "kappa3_skew" in diag:

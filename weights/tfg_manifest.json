@@ -1,61 +1,71 @@
 [
  {
-  "path": "audit\\fa_fb_search\\TFG\\tf_predict_mu\\model_ema_2000.npy",
+  "path": "weights/EDMsecond/generative_model_ema.npy",
+  "md5": "6abbd010d766a3e44c06448e0aa94bd3",
+  "bytes": 21422826
+ },
+ {
+  "path": "weights/EDMsecond/args.pickle",
+  "md5": "28d7ffff0ecdd138017de5d74748e632",
+  "bytes": 1088
+ },
+ {
+  "path": "audit/fa_fb_search/TFG/tf_predict_mu/model_ema_2000.npy",
   "md5": "fe4ba055e39f8afa4dd96041c652ab74",
   "bytes": 6724867
  },
  {
-  "path": "audit\\fa_fb_search\\TFG\\tf_predict_mu\\args_2000.pickle",
+  "path": "audit/fa_fb_search/TFG/tf_predict_mu/args_2000.pickle",
   "md5": "a588297715df64d02aa0f2ca55718b1d",
   "bytes": 1211
  },
  {
-  "path": "audit\\fa_fb_search\\TFG\\tf_predict_alpha\\model_ema_2000.npy",
+  "path": "audit/fa_fb_search/TFG/tf_predict_alpha/model_ema_2000.npy",
   "md5": "1b8bf52cac44d2e0e907da2e7c4b985b",
   "bytes": 6724867
  },
  {
-  "path": "audit\\fa_fb_search\\TFG\\tf_predict_alpha\\args_2000.pickle",
+  "path": "audit/fa_fb_search/TFG/tf_predict_alpha/args_2000.pickle",
   "md5": "3323f22c5e043fc2c514d58600b800be",
   "bytes": 1217
  },
  {
-  "path": "audit\\fa_fb_search\\TFG\\tf_predict_gap\\model_ema_2000.npy",
+  "path": "audit/fa_fb_search/TFG/tf_predict_gap/model_ema_2000.npy",
   "md5": "29c21e4a61d49d24bc9ef3d51fe0e234",
   "bytes": 6724867
  },
  {
-  "path": "audit\\fa_fb_search\\TFG\\tf_predict_gap\\args_2000.pickle",
+  "path": "audit/fa_fb_search/TFG/tf_predict_gap/args_2000.pickle",
   "md5": "d7cef4ca43e1f126aa4ab591f565cfa0",
   "bytes": 1213
  },
  {
-  "path": "audit\\fa_fb_search\\TFG\\evaluate_mu\\best_checkpoint.npy",
+  "path": "audit/fa_fb_search/TFG/evaluate_mu/best_checkpoint.npy",
   "md5": "f2e74eed23303485b94739ef34fe37be",
   "bytes": 3003701
  },
  {
-  "path": "audit\\fa_fb_search\\TFG\\evaluate_mu\\args.pickle",
+  "path": "audit/fa_fb_search/TFG/evaluate_mu/args.pickle",
   "md5": "4c65f459cea4783ce4a5dad77892393d",
   "bytes": 636
  },
  {
-  "path": "audit\\fa_fb_search\\TFG\\evaluate_alpha\\best_checkpoint.npy",
+  "path": "audit/fa_fb_search/TFG/evaluate_alpha/best_checkpoint.npy",
   "md5": "15cc4ae1dc21739b450469a988b3d60f",
   "bytes": 3003701
  },
  {
-  "path": "audit\\fa_fb_search\\TFG\\evaluate_alpha\\args.pickle",
+  "path": "audit/fa_fb_search/TFG/evaluate_alpha/args.pickle",
   "md5": "feae2b0ba62b2f6f66ef9bd404be230f",
   "bytes": 642
  },
  {
-  "path": "audit\\fa_fb_search\\TFG\\evaluate_gap\\best_checkpoint.npy",
+  "path": "audit/fa_fb_search/TFG/evaluate_gap/best_checkpoint.npy",
   "md5": "6ff449ceae5e1b8bda44a016d277c462",
   "bytes": 3003701
  },
  {
-  "path": "audit\\fa_fb_search\\TFG\\evaluate_gap\\args.pickle",
+  "path": "audit/fa_fb_search/TFG/evaluate_gap/args.pickle",
   "md5": "7115230d41bf24697f1fd1e041104954",
   "bytes": 638
  }

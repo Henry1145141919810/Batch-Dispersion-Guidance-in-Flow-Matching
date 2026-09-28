@@ -321,7 +321,7 @@ cells already on disk.
 | `smg_mean` ablation rung | not run; the ladder is incomplete without it |
 | Stage 2 at n = 4,096 | after the arm cut |
 | Robustness check (SchNet mu, TFG oracle alpha/gap) | after a winner exists |
-| **M2 DNA simplex** | **not started** |
+| **M2 DNA simplex** | **base model trained and validated, sweep built, NOT RUN** (26 Sep). `proj1/m2/`, checkpoint and data tracked. Outstanding: the run, plus four defects in [MODALITY2_V3_PLAN.md](../protocol/MODALITY2_V3_PLAN.md) §2.2 |
 | `escalate` arm | designed, not implemented |
 | `band` (Component D) | implemented, diverges above w = 0.05, held out |
 | Feature-scaling retrain | not done; would test the 4.9-point base-model gap |

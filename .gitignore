@@ -41,6 +41,13 @@ audit/fa_fb_search/*
 audit/fa_fb_search/TFG/**/logs.txt
 audit/fa_fb_search/TFG/*.html
 
+# The BDG review's evidence (25 Sep 2026): every math check, data check,
+# defence script and the full agent record that docs/methods/BDG_REVIEW.md
+# cites as its provenance. ~2.4 MB of scripts and JSON. Tracked so that the
+# review's numbers can be re-run from a clone, not only from the machine
+# that produced them.
+!audit/bdg_review/
+
 # ---------------------------------------------------------------- scratch
 tmp/
 scratch_schnet/
@@ -122,3 +129,26 @@ proj1/m2/logs/
 proj1/m2/*.bak_*
 # The bundle directory IS tracked (blade needs it); the tarball duplicates it.
 proj1/m2/blade_bundle.tgz
+
+# a build artefact: 35 MB of weights already tracked under audit/ and weights/
+bobo_v3_benchmark.zip
+*.zip
+
+# editor state
+.vscode/
+
+# Per-cell sample tensors: the generated molecules/sequences themselves.
+# ~300 MB, which would quadruple the repo for every clone, so they stay on
+# blade at /scratch2/boboli/projects/cis6270-project1-group2/results/.
+# The stats JSONs beside them ARE tracked, so every reported number is here.
+# M2 samples regenerate EXACTLY from the seed (verified bit-for-bit,
+# ~1.2 min/cell): proj1/m2/backfill_samples.py replays a cell, checks the
+# regenerated JSON matches the committed one, and only then writes the samples.
+*.permol.pt
+
+# DeepFlyBrain's published weights: 12.9 MB of third-party model, not ours to
+# vendor. proj1/m2/deepflybrain.py carries the Zenodo URL and the md5 it checks
+# against, so a fresh clone fetches it in one command:
+#   curl -sL -o weights/deepflybrain/DeepFlyBrain.hdf5 \
+#     "https://zenodo.org/record/5153337/files/DeepFlyBrain.hdf5?download=1"
+weights/deepflybrain/*.hdf5

@@ -1,5 +1,14 @@
 # Full run v2: fixed-target protocol
 
+> **SUPERSEDED, 26 September 2026.** v3 is now the headline —
+> [FULL_RUN_V3_PROTOCOL.md](FULL_RUN_V3_PROTOCOL.md). v2 ran and
+> [its results stand](../results/FULL_RUN_V2_RESULTS.md); by the same rule this
+> document states below, it is **not deleted and not hidden**, and the paper keeps
+> its report of v2. But where this document and v3 disagree — on the target (q90
+> vs q50), the strength rule (per-arm freeze vs w = 1) and above all the
+> **chemistry floor (mandatory here, removed in v3)** — v3 governs the v3 tree and
+> this one governs nothing new. Do not start a run from this page.
+
 **24 September 2026. Pre-registration. Nothing here has been run.** Henry's
 decisions of 24 Sep are folded in; the one remaining choice is §6.
 
@@ -59,6 +68,16 @@ distribution.**
 Figures: `../results/figs/targets_{mu,alpha,gap}.png` — the QM9 distribution,
 the target, the +-delta band, and what the unguided generator actually
 produces.
+
+> **Post-registration note (24 Sep, after the run; the table above is
+> unchanged).** delta above is the pre-registered one and every headline uses
+> it. At Henry's request a post-hoc sensitivity analysis kept k = 2 but took
+> f_B's MAE only over val molecules whose true property lies near the target
+> (train_a q85–q95): delta = 0.16992 / 0.46754 / 0.00739, a change of
+> +1.2 / −2.9 / −2.8 %. It does not replace this table. Rescored tables:
+> [FULL_RUN_V2_RESULTS_LOCAL_DELTA.md](../results/FULL_RUN_V2_RESULTS_LOCAL_DELTA.md);
+> method, window robustness and limits:
+> [status doc §6 and §10d](../status/SCOPE_FM_GUIDANCE_STATUS.md).
 
 **Why the 90th percentile, and not something else.**
 

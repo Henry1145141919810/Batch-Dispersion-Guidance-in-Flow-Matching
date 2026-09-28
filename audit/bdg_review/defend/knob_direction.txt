@@ -1,0 +1,6 @@
+mu    q50: plug w0.01-4  d(sd)= 3.15 d(bias)= 2.23 ratio= 1.41 | plug w<=1 ratio= 1.19 (d sd 1.83, d bias 1.54) | bdg tau0.5-1.5 d(sd)= 3.66 d(bias)= 0.68 ratio= 5.40
+alpha q50: plug w0.01-4  d(sd)= 6.47 d(bias)= 4.03 ratio= 1.61 | plug w<=1 ratio= 1.25 (d sd 3.66, d bias 2.93) | bdg tau0.5-1.5 d(sd)= 8.15 d(bias)= 0.87 ratio= 9.38
+gap   q50: plug w0.01-4  d(sd)= 1.59 d(bias)= 0.36 ratio= 4.45 | plug w<=1 ratio= 2.19 (d sd 0.72, d bias 0.33) | bdg tau0.5-1.5 d(sd)= 1.83 d(bias)= 0.30 ratio= 6.03
+mu    q90: plug w0.01-4  d(sd)= 1.90 d(bias)= 4.11 ratio= 0.46 | plug w<=1 ratio= 0.26 (d sd 0.58, d bias 2.21) | bdg tau0.5-1.5 d(sd)= 4.53 d(bias)= 1.17 ratio= 3.88
+alpha q90: plug w0.01-4  d(sd)= 4.74 d(bias)= 9.45 ratio= 0.50 | plug w<=1 ratio= 0.61 (d sd 3.50, d bias 5.70) | bdg tau0.5-1.5 d(sd)= 6.08 d(bias)= 1.46 ratio= 4.16
+gap   q90: plug w0.01-4  d(sd)= 1.50 d(bias)= 4.33 ratio= 0.35 | plug w<=1 ratio= 0.23 (d sd 0.67, d bias 2.87) | bdg tau0.5-1.5 d(sd)= 2.12 d(bias)= 0.27 ratio= 7.74

@@ -1,0 +1,10 @@
+pooled p = 0.39609 (N=16024), floor 0.35648; chi2 = 3.51 on 4 df, p = 0.476
+  v2 s20261001                       0.3906  z vs pool -0.79
+  v2 s20261002                       0.4038  z vs pool +1.11
+  v2 s20261003                       0.3960  z vs pool -0.01
+  sweep s20260921 B200/128           0.4023  z vs pool +0.29
+  sweep_v2_seed2 s20260922 B200/128  0.3691  z vs pool -1.25
+  rho 0.21: own-control sd 0.0255  pooled sd 0.0214
+  rho 0.25: own-control sd 0.0248  pooled sd 0.0214
+  rho 0.45: own-control sd 0.0213  pooled sd 0.0214
+  rho 0.59: own-control sd 0.0184  pooled sd 0.0214

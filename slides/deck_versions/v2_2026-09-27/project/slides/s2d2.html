@@ -1,0 +1,39 @@
+<section id="s2d2" style="background:#F7F6F2; color:#3A4553; font-family:'IBM Plex Sans', Arial, sans-serif; padding:80px 128px 116px; display:flex; flex-direction:column; gap:24px">
+<div style="display:flex; flex-direction:column; gap:4px">
+<p style="font-size:24px; font-weight:600; letter-spacing:2px; text-transform:uppercase; color:#1F5FA9">Part 2 · Evidence for Modality 1 · ablations 2 of 2</p>
+<h2 style="font-family:'Source Serif 4', Georgia, serif; font-size:56px; font-weight:600; line-height:1.1; color:#16202C">What the ablations establish</h2>
+</div>
+<div style="display:flex; gap:28px; align-items:start">
+<div style="flex:1; display:flex; flex-direction:column">
+<table style="font-size:24px; color:#2B3440">
+<tr style="background:#ECEAE3"><th style="width:38%; text-align:left">Comparison</th><th style="width:62%; text-align:left">What it rules out</th></tr>
+<tr><td>η = 0 vs plug-in</td><td>that anything other than the dispersion term changed</td></tr>
+<tr><td>one-sided vs two-sided</td><td>that the expansion branch is decorative</td></tr>
+<tr><td>the τ ladder</td><td>that the setpoint does not reach achieved spread</td></tr>
+<tr><td>plug-in at w = 4</td><td>that the coverage came from controlling rather than pushing</td></tr>
+<tr><td>open-loop e replay</td><td>that the effect is feedback rather than a time-varying schedule</td></tr>
+<tr><td style="color:#C62828">signed-w plug-in [TODO]</td><td>that the same spread is not available more cheaply</td></tr>
+</table>
+</div>
+<div style="flex:1.1; display:flex; flex-direction:column; gap:16px">
+<div style="display:flex; flex-direction:column; gap:6px; background:#FDFCFA; border:1px solid #DDD9CF; border-radius:14px; padding:18px 26px">
+<h3 style="font-size:28px; font-weight:600; line-height:1.25; color:#16202C">1 · The setpoint controls spread</h3>
+<p style="font-size:24px; line-height:1.35">Monotone on <b>6 of 6</b> curves: 0.670 → 1.219 on the guide's scale, 0.650 → 1.197 on the evaluator's, reaching expansion above 1.0 on all six, which the strength dial does not reach. w_eff changes sign up to <b>34 times</b> in the 50-step window and spans [−2.64, +10.35] against the bound w_eff ≥ −3.</p>
+</div>
+<div style="display:flex; flex-direction:column; gap:6px; background:#FDFCFA; border:1px solid #DDD9CF; border-radius:14px; padding:18px 26px">
+<h3 style="font-size:28px; font-weight:600; line-height:1.25; color:#16202C">2 · Coverage does not improve</h3>
+<p style="font-size:24px; line-height:1.35">No rung beats plug-in at |z| ≥ 3: over <b>72 paired tests</b> the largest is 3.07, which a Šidák correction turns into <b>p = 0.14</b>. Removing the chemistry floor does not change this.</p>
+</div>
+<div style="display:flex; flex-direction:column; gap:6px; background:#FDFCFA; border:1px solid #DDD9CF; border-radius:14px; padding:18px 26px">
+<h3 style="font-size:28px; font-weight:600; line-height:1.25; color:#16202C">3 · The trade-off moves, not the coverage</h3>
+<p style="font-size:24px; line-height:1.35">At <i>matched</i> in-band of 0.1406, BDG keeps molecule stability <b>0.3359</b> against plug-in's <b>0.2656</b>.</p>
+</div>
+</div>
+</div>
+<div style="background:#E4ECF6; border-left:8px solid #1F5FA9; border-radius:10px; padding:18px 28px">
+<p style="font-size:28px; line-height:1.35; color:#16202C"><b>Honest reading.</b> The schedule largely transfers across seeds (69.5–96% recovered open-loop), and feedback adds a small measurable remainder (0.3–6.6%). We do not claim the loop is irreducible to a schedule.</p>
+</div>
+<p style="position:absolute; left:1616px; top:52px; width:176px; font-size:48px; font-weight:700; line-height:1.15; text-align:center; color:#F7F6F2; background:#1F5FA9; border-radius:14px; padding:8px 12px">2d</p>
+<p style="position:absolute; left:128px; bottom:40px; width:300px; font-size:18px; color:#5F6A77">CIS 6270 · Group 2 · 20 / 29</p>
+<p style="position:absolute; left:448px; bottom:40px; width:1344px; font-size:18px; line-height:1.3; text-align:right; color:#5F6A77">Original analysis (this work)</p>
+</section>

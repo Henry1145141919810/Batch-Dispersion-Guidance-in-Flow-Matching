@@ -1,0 +1,39 @@
+<section id="s3a" style="background:#F7F6F2; color:#3A4553; font-family:'IBM Plex Sans', Arial, sans-serif; padding:80px 128px 116px; display:flex; flex-direction:column; gap:24px">
+<div style="display:flex; flex-direction:column; gap:4px">
+<p style="font-size:24px; font-weight:600; letter-spacing:2px; text-transform:uppercase; color:#1F5FA9">Part 3 · Test transfer and close the story</p>
+<h2 style="font-family:'Source Serif 4', Georgia, serif; font-size:56px; font-weight:600; line-height:1.1; color:#16202C">The transferred method</h2>
+</div>
+<div style="display:flex; gap:24px; align-items:start">
+<div style="flex:1; display:flex; flex-direction:column; gap:10px; background:#FBF1F0; border:3px solid #B3261E; border-radius:14px; padding:20px 26px">
+<h3 style="font-size:28px; font-weight:600; line-height:1.25; color:#B3261E">What stays the same</h3>
+<p style="font-size:24px; line-height:1.35; color:#2B3440">The <b>whole controller</b>: F̄, V_b, the error e, the setpoint τ, the gain η, the bound w_eff ≥ 1 − η, and the reduction. <b>Transferred with zero code change.</b></p>
+<p style="font-size:24px; line-height:1.35; color:#2B3440">Why it can: BDG's step is a per-sample scalar times the plug-in step, so it inherits that step's tangency and needs <b>no covariance matrix and no inverse</b>. That matters here, because the natural simplex covariance diag(p) − ppᵀ is <b>singular</b>.</p>
+</div>
+<div style="flex:1.3; display:flex; flex-direction:column; gap:14px">
+<table style="font-size:24px; color:#2B3440">
+<tr style="background:#ECEAE3"><th style="width:22%; text-align:left">What must change</th><th style="width:32%; text-align:left">Modality 1 (QM9)</th><th style="width:46%; text-align:left">Modality 2 (DNA) [4, 5]</th></tr>
+<tr><td>State space</td><td>ℝᴺˣ³</td><td>(Δ³)ᴸ</td></tr>
+<tr><td>Generator</td><td>EGNN</td><td>linear-path flow model on the simplex</td></tr>
+<tr><td>Property</td><td>trained equivariant network</td><td>analytic, differentiable relaxation of GC content</td></tr>
+<tr><td>Evaluator</td><td>f_B</td><td>exact GC count</td></tr>
+<tr><td>Decoder</td><td>none</td><td>per-position argmax</td></tr>
+</table>
+<div style="background:#E4ECF6; border-left:8px solid #1F5FA9; border-radius:10px; padding:12px 24px">
+<p style="font-size:24px; line-height:1.35; color:#16202C"><b>Takeaway.</b> The transfer tests the <i>controller</i>, not the property network: that is the point of changing the property from a learned net to an exact function.</p>
+</div>
+</div>
+</div>
+<div style="display:flex; gap:24px">
+<div style="flex:1; display:flex; flex-direction:column; gap:8px; background:#FDFCFA; border:1px solid #DDD9CF; border-radius:14px; padding:20px 28px">
+<h3 style="font-size:28px; font-weight:600; line-height:1.25; color:#16202C">Training procedure (M2)</h3>
+<p style="font-size:24px; line-height:1.35">Linear-path flow matching on (Δ³)ᴸ, trained on all 6,126 Kenyon-cell sequences [3], validation-based early stopping, checkpoint selected on validation loss. Architecture and budget: <span style="color:#C62828"><b>[TODO: v3 Job B]</b></span>.</p>
+</div>
+<div style="flex:1; display:flex; flex-direction:column; gap:8px; background:#FDFCFA; border:1px solid #DDD9CF; border-radius:14px; padding:20px 28px">
+<h3 style="font-size:28px; font-weight:600; line-height:1.25; color:#16202C">Sampling procedure (M2)</h3>
+<p style="font-size:24px; line-height:1.35">Same solver family and step count as M1, guidance on the same window, same velocity-relative trust region, decode by per-position argmax. The clip fired on <b>0–3%</b> of steps; the expanding cell clipped <b>once in 25,600</b>.</p>
+</div>
+</div>
+<p style="position:absolute; left:1616px; top:52px; width:176px; font-size:48px; font-weight:700; line-height:1.15; text-align:center; color:#F7F6F2; background:#1F5FA9; border-radius:14px; padding:8px 12px">3a</p>
+<p style="position:absolute; left:128px; bottom:40px; width:300px; font-size:18px; color:#5F6A77">CIS 6270 · Group 2 · 23 / 29</p>
+<p style="position:absolute; left:448px; bottom:40px; width:1344px; font-size:18px; line-height:1.3; text-align:right; color:#5F6A77">[3] Chen et al. 2025 (MOG-DFM; enhancer data) · [4] Stark et al. 2024 (Dirichlet FM) · [5] Davis et al. 2024 (Fisher Flow)</p>
+</section>
