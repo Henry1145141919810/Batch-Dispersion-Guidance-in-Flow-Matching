@@ -136,3 +136,12 @@ bobo_v3_benchmark.zip
 
 # editor state
 .vscode/
+
+# Per-cell sample tensors: the generated molecules/sequences themselves.
+# ~300 MB, which would quadruple the repo for every clone, so they stay on
+# blade at /scratch2/boboli/projects/cis6270-project1-group2/results/.
+# The stats JSONs beside them ARE tracked, so every reported number is here.
+# M2 samples regenerate EXACTLY from the seed (verified bit-for-bit,
+# ~1.2 min/cell): proj1/m2/backfill_samples.py replays a cell, checks the
+# regenerated JSON matches the committed one, and only then writes the samples.
+*.permol.pt
