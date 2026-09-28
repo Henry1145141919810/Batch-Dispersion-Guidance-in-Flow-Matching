@@ -163,7 +163,7 @@ Figure~\ref{fig:overview} carries the QM9 chain in panel~(a) and the transfer in
 \section{Results}
 \subsection{Evaluation Protocol}\label{sec:protocol}
 \subsubsection{Metrics}
-On QM9, controllability is band coverage $\IB$, the decoded fraction within $\delta=2\operatorname{MAE}_{\mathrm{cal}}(f_B)$ of the median training target $y$ (Appendix~\ref{app:evaluation}); fidelity and diversity are molecule stability, RDKit validity, uniqueness and distinct-valid yield. On the DNA simplex it is GC-band coverage under the exact count, with 3-mer fidelity and pairwise distinctness (Appendix~\ref{app:m2}).
+Every target is the \textbf{q50} value, the median of that property's training distribution, for all five properties across both modalities; no other quantile is run. Bold marks our method in every table; no value is bolded as largest. On QM9, controllability is band coverage $\IB$, the decoded fraction within $\delta=2\operatorname{MAE}_{\mathrm{cal}}(f_B)$ of that target (Appendix~\ref{app:evaluation}); fidelity and diversity are molecule stability, RDKit validity, uniqueness and distinct-valid yield. On the DNA simplex it is GC-band coverage under the exact count, with 3-mer fidelity and pairwise distinctness (Appendix~\ref{app:m2}).
 
 \subsubsection{Fair Comparison and Computational Budget}
 The operator chose $n{=}2{,}000$ per cell in batches of 500 over three seeds, against the pre-registered power table. The run cost $81.2$ GPU-hours; settings, hardware and the cost split are in Appendices~\ref{app:training} and~\ref{app:evaluation}. Two mismatches remain: equal $w$ is equal nominal strength, not equal applied force, and external checkpoints stay inside their own generator (Table~\ref{tab:backends}).
@@ -196,7 +196,7 @@ Guidance raises decoded coverage in 8 of 9 generator and property pairs, paid fo
 
 \begin{table}[!htbp]
 \centering\small
-\caption{Guidance against a matched unguided control on our flow model, $w{=}1$, $n{=}2{,}000\times3$ seeds. Cells are $\mu$\,/\,$\alpha$\,/\,gap; DV is distinct-valid molecules per attempt. The strength axis exists only in the ablation (Table~\ref{tab:ablation}).}
+\caption{Guidance against a matched unguided control on our flow model at the q50 target, $w{=}1$, $n{=}2{,}000\times3$ seeds. Cells are $\mu$\,/\,$\alpha$\,/\,gap; DV is distinct-valid molecules per attempt. The strength axis exists only in the ablation (Table~\ref{tab:ablation}).}
 \label{tab:guidance}
 \begin{tabular}{lcccc}
 \toprule
@@ -210,7 +210,7 @@ Plug-in & $.106$\,/\,$.061$\,/\,$.126$ & $.356$\,/\,$.372$\,/\,$.336$ & $.725$\,
 
 
 \subsection{Modality 1: Innovation Ablations}\label{sec:ablations}
-The mechanism is isolated here, because $w$ is held fixed along every row (Table~\ref{tab:ablation}). Coverage tracks the \emph{measured} deviation gain $\weff$, at Spearman $0.92$ to $0.99$ in all twelve grids. The contracting row raises coverage in 5 of 12 grids, four of them at $w{=}1$, while the expanding row lowers it in 12 of 12 and clears the bar in 11. Three further controls did not run: a one-sided residual, an open-loop replay, and a signed-strength plug-in. Without the replay the grid cannot show that the \emph{feedback} is necessary. It does show an operating point the strength cannot reach: the expanding setpoint widens the batch past unguided, $R$ $1.15$ to $1.25$, in 6 of 6 cells, where the strength dial at $w{=}4$ only narrows it. On our generator the setpoint is also cheaper, buying $0.52$ to $0.81$ coverage points per point of stability against $0.38$ to $0.53$; on the borrowed one they are indistinguishable.
+The mechanism is isolated here, because $w$ is held fixed along every row (Table~\ref{tab:ablation}). Coverage tracks the \emph{measured} deviation gain $\weff$, at Spearman $0.92$ to $0.99$ in all twelve grids. The contracting row raises coverage in 5 of 12 grids, four at $w{=}1$; the expanding row lowers it in 12 of 12, clearing the bar in 11, and widens the batch past unguided, $R$ $1.15$ to $1.25$, in 6 of 6 cells. That last is an operating point no strength reaches: at $w{=}4$ the strength dial still only narrows. Appendix~\ref{app:evaluation} prices the two dials against each other. Three controls did not run, a one-sided residual, an open-loop replay and a signed-strength plug-in, and without the replay the grid cannot show the \emph{feedback} is necessary.
 
 \begin{table}[!htbp]
 \centering\small
@@ -245,10 +245,10 @@ Unguided, internal reference & $.078$\,/\,$.050$\,/\,$.103$ & $.397$\,/\,$.397$\
 DPS-style plug-in \citep{chung2023dps} & $.106$\,/\,$.061$\,/\,$.126$ & $.356$\,/\,$.372$\,/\,$.336$\\
 TMPD-inspired \citep{boys2024tmpd} & $.090$\,/\,$.061$\,/\,$.116$ & $.384$\,/\,$.389$\,/\,$.373$\\
 LGD-MC \citep{song2023lgd} & $.096$\,/\,$.052$\,/\,$.108$ & $.399$\,/\,$.392$\,/\,$.395$\\
-TFG \citep{ye2024tfg} & $\mathbf{.288}$\,/\,$\mathbf{.105}$\,/\,$\mathbf{.275}$ & $.245$\,/\,$.268$\,/\,$.144$\\
+TFG \citep{ye2024tfg} & $.288$\,/\,$.105$\,/\,$.275$ & $.245$\,/\,$.268$\,/\,$.144$\\
 \midrule
-BDG, $\tau_{\mathrm{mult}}{=}0.5$ (ours) & $.112$\,/\,$.070$\,/\,$.142$ & $.351$\,/\,$.364$\,/\,$.300$\\
-BDG, $\tau_{\mathrm{mult}}{=}1$ (ours) & $.089$\,/\,$.056$\,/\,$.106$ & $.405$\,/\,$.379$\,/\,$.376$\\
+\textbf{BDG, $\tau_{\mathrm{mult}}{=}0.5$ (ours)} & $.112$\,/\,$.070$\,/\,$.142$ & $.351$\,/\,$.364$\,/\,$.300$\\
+\textbf{BDG, $\tau_{\mathrm{mult}}{=}1$ (ours)} & $.089$\,/\,$.056$\,/\,$.106$ & $.405$\,/\,$.379$\,/\,$.376$\\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -267,8 +267,8 @@ Method & IB, $w{=}1$$\uparrow$ & IB, $w{=}4$$\uparrow$ & JSD$\downarrow$ & Diver
 \midrule
 Simplex FM, unguided & $0.1395$ & $-$ & $0.00045$ & $0.7456$\\
 Simplex FM $+$ plug-in & $0.1403$ & $0.1410$ & $0.00045$ & $0.7456$\\
-Simplex FM $+$ BDG, $\tau_{\mathrm{mult}}{=}0.5$ & $0.1445$ & $\mathbf{0.1642}$ & $0.00049$ & $0.7456$\\
-Simplex FM $+$ BDG, $\tau_{\mathrm{mult}}{=}1$ & $0.1402$ & $0.1407$ & $0.00045$ & $0.7456$\\
+\textbf{Simplex FM $+$ BDG, $\tau_{\mathrm{mult}}{=}0.5$} & $0.1445$ & $0.1642$ & $0.00049$ & $0.7456$\\
+\textbf{Simplex FM $+$ BDG, $\tau_{\mathrm{mult}}{=}1$} & $0.1402$ & $0.1407$ & $0.00045$ & $0.7456$\\
 \midrule
 Dirichlet FM, Fisher Flow, MOG-DFM \citep{stark2024dirichlet,davis2024fisher,chen2025multi} & $-$ & $-$ & $-$ & $-$\\
 \bottomrule
@@ -284,7 +284,7 @@ Guidance works and is paid for in chemistry, and the dispersion residual behaves
 
 Equation~\eqref{eq:bdg} accounts for the null: BDG reaches nothing outside the plug-in field's two-parameter family, and what predicts coverage is the realised gain $\weff$, not the setpoint.
 
-Three limitations bound the claim, each with its experiment. A held-out predictor scores coverage, so an arm can gain by exploiting it; a second evaluator changes 11 of 84 verdicts, and a third at a common band would settle it. The grid cannot separate feedback from schedule, which the open-loop replay it lacks would settle. And the borrowed generator's sampler is non-deterministic, so its re-runs move coverage by as much as the effects measured on it. The narrowest claim supported is that the setpoint reaches spread states no strength setting does, on two state spaces, without improving band coverage over the rule it modifies.
+Three limitations bound the claim. A held-out predictor scores coverage, so an arm can gain by exploiting it; a second evaluator already changes 11 of 84 verdicts, and a third at a common band would settle that. The grid cannot separate feedback from schedule, which the open-loop replay would settle. And the borrowed generator's sampler is non-deterministic, so its re-runs move coverage by as much as the effects measured on it. The narrowest claim supported is that the setpoint reaches spread states no strength setting reaches, without improving coverage over the rule it modifies.
 % MAIN_TEXT_END
 \clearpage
 \bibliographystyle{ieeetr}
@@ -344,7 +344,7 @@ x_u&=a(u)x_1+\sigma(u)\epsilon,\quad a(u)=e^{-\frac12(0.1u+9.95u^2)},\quad \sigm
 with $\beta(u)=0.1+19.9u$ and probability-flow ODE $\mathrm dx/\mathrm du=-\tfrac12\beta(u)(x+s_\phi)$, where $s_\phi=-\epsilon_\phi/\sigma$. QM9 preprocessing keeps coordinates and one-hot types unscaled, and the dataset supplies 133{,}885 molecules before splitting.
 
 \subsection{Evaluation and Cost Accounting}\label{app:evaluation}
-The molecular protocol fixes seeds 20261001, 20261002, and 20261003, q50 targets, $w=1$, $t_{\min}=0.5$, and batch 500. Per-cell $n$ was 2{,}000, run as four separately coupled batches of 500, so each reported fraction pools $3n=6{,}000$ samples over the three seeds. Increasing $n$ adds batches without changing each variance estimator's sample count. Batch size is a BDG design parameter. Band coverage is $\IB=n^{-1}\sum_i\mathbf1\{|f_B(\hat x_i)-y|\le\delta\}$ over decoded samples, with $\delta=2\operatorname{MAE}_{\mathrm{cal}}(f_B)$; it inherits $f_B$'s error, so a guided arm can raise it by exploiting the evaluator.
+Pricing the two dials against each other on the ablation grid, in coverage points gained per point of molecule stability lost against the same $\eta{=}0$, $w{=}1$ cell: on our generator the setpoint buys $0.52$ to $0.81$ against the strength dial's $0.38$ to $0.53$, so it is the cheaper dial there; on the borrowed generator the two are indistinguishable ($0.06$ to $0.39$ against $0.08$ to $0.37$). The molecular protocol fixes seeds 20261001, 20261002, and 20261003, q50 targets, $w=1$, $t_{\min}=0.5$, and batch 500. Per-cell $n$ was 2{,}000, run as four separately coupled batches of 500, so each reported fraction pools $3n=6{,}000$ samples over the three seeds. Increasing $n$ adds batches without changing each variance estimator's sample count. Batch size is a BDG design parameter. Band coverage is $\IB=n^{-1}\sum_i\mathbf1\{|f_B(\hat x_i)-y|\le\delta\}$ over decoded samples, with $\delta=2\operatorname{MAE}_{\mathrm{cal}}(f_B)$; it inherits $f_B$'s error, so a guided arm can raise it by exploiting the evaluator.
 
 The calibration pool contains 3{,}000 molecules from the two training halves. Internal predictors are calibrated only on the half they did not train on. Evaluator-specific acceptance widths differ from $\tau=\tau_{\mathrm{mult}}f_A.\texttt{y\_std}$. Cells record widths and predictor identities (Table~\ref{tab:backends}).
 
