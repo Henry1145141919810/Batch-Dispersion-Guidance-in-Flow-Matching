@@ -145,3 +145,10 @@ bobo_v3_benchmark.zip
 # ~1.2 min/cell): proj1/m2/backfill_samples.py replays a cell, checks the
 # regenerated JSON matches the committed one, and only then writes the samples.
 *.permol.pt
+
+# DeepFlyBrain's published weights: 12.9 MB of third-party model, not ours to
+# vendor. proj1/m2/deepflybrain.py carries the Zenodo URL and the md5 it checks
+# against, so a fresh clone fetches it in one command:
+#   curl -sL -o weights/deepflybrain/DeepFlyBrain.hdf5 \
+#     "https://zenodo.org/record/5153337/files/DeepFlyBrain.hdf5?download=1"
+weights/deepflybrain/*.hdf5
