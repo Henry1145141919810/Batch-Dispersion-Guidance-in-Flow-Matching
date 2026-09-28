@@ -536,8 +536,24 @@ def main():
     r["ckpt"] = os.path.basename(a.ckpt)
     r["minutes"] = (time.time() - t0) / 60
     json.dump(r, open(path, "w"), indent=1)
-    torch.save({"prop": S.PROPS[a.prop][1](x),
-                "conf": x.max(-1).values.mean(-1)},
+    # THE SEQUENCES THEMSELVES, not just two summaries of them. Modality 1
+    # stores SMILES per molecule, so any property can be recomputed from its
+    # cells forever; M2 stored only the scored property and the decode
+    # confidence, so a cell could never answer a question it had not been asked
+    # at run time -- CpG on a GC-guided batch, a motif count, a different k.
+    #
+    # `tok` is the argmax-decoded sequence as uint8 base indices [n, L]: 1 MB
+    # per cell at n=2000, against 16 MB for the full simplex tensor, and it is
+    # exactly what every HARD (scored) property is a function of. The soft
+    # values are kept too, because they need the simplex point and it is gone
+    # after this line.
+    torch.save({"tok": x.argmax(-1).to(torch.uint8).cpu(),
+                "prop": S.PROPS[a.prop][1](x).cpu(),
+                "prop_soft": S.PROPS[a.prop][0](x).detach().cpu(),
+                "gc_hard": S.gc_hard(x).cpu(),
+                "cpg_hard": S.cpg_hard(x).cpu(),
+                "conf": x.max(-1).values.mean(-1).cpu(),
+                "prop_name": a.prop, "crop": ck["crop"], "seed": a.seed},
                path.replace(".json", ".permol.pt"))
     print("  in_band %.4f | gc %.4f +/- %.4f | conf %.3f | kmerJS %.5f | div %.4f | %.1f min"
           % (r["in_band_fraction"], r["gc_mean"], r["gc_sd"], r["decode_conf"],
