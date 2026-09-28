@@ -6,6 +6,7 @@ to the full training checkpoints they came from.
 | file | size | what it is |
 |---|---|---|
 | `fm_ema.pt` | 14.3 MB | the frozen flow-matching generator, **EMA weights only** |
+| `diff_ema.pt` | 15.1 MB | the frozen VP-diffusion generator, **EMA weights only** |
 | `f_A_{mu,alpha,gap}.pt` | 1.7 MB each | property **guides** — trained on `train_a`, the same half as the generator |
 | `f_B_{mu,alpha,gap}.pt` | 1.7 MB each | property **evaluators** — trained on `train_b`, disjoint from everything else |
 
@@ -21,6 +22,28 @@ uses. Verified: `max |w_slim - w_full| = 0.0` across every parameter.
 
 To resume *training* you need the full checkpoint, which is not in this repo —
 it is on the cluster at `proj1/checkpoints/fm_last.pt`.
+
+## diff_ema.pt
+
+Stripped from `diff.pt` (30.1 MB) the same way, dropping the non-EMA
+`state_dict`. Verified: `max |w_slim - w_full| = 0.0` across every parameter.
+
+- source md5: `4dc2383a7d462132025edaddb770c7ac`
+- EGNN, hidden 256, 8 layers; trained on `train_a`, EMA 0.9999, lr 2e-4, batch 256
+- `family = "vp_diffusion"`, **epoch 1475**, `tau_min = 0.001`
+- val_loss 0.20784, atom_stability 0.9069, mol_stability 0.2969
+
+**Take the epoch number seriously.** Training ran to epoch 1500 and there are
+checkpoints named `diff_last.pt` and `diff_ep1500.pt`, but neither is the one
+the reported numbers came from. `diff.pt` is the *selected* checkpoint at epoch
+1475, and the matched evaluation loaded it (`logs/matched-8670133.out`:
+`epoch=1475`). Its val_loss and atom_stability match the `best_loss` and
+`best_stab` recorded inside `diff_last.pt`, which is the cross-check that it is
+the selected one. Publishing either epoch-1500 file would ship weights that do
+not reproduce the table.
+
+Loads through the same `load_fm` as the flow model; `family` distinguishes the
+two samplers.
 
 ## Why f_A and f_B are separate
 
