@@ -16,6 +16,11 @@ BODY = MAIN.split("% MAIN_TEXT_START", 1)[1].split("% MAIN_TEXT_END", 1)[0]
 # appendix in main.tex, and each may point at the other.
 BOTH = MAIN
 
+# Style checks run on rendered text only. A LaTeX comment cannot render an em
+# dash or a banned phrase, and TikZ section banners like "% ---- panel (a)"
+# otherwise trip the em-dash rule.
+PROSE = re.sub(r"(?<!\\)%.*", "", BODY)
+
 # Phrases our own adversarial review refuted; none may appear.
 BANNED = [
     "variance control",
@@ -94,7 +99,7 @@ def main() -> int:
         print("  template asks for four or five")
         fail = 1
 
-    em = BODY.count("\u2014") + BODY.count("---")
+    em = PROSE.count("\u2014") + PROSE.count("---")
     print(f"em dashes          : {em}")
     if em:
         fail = 1

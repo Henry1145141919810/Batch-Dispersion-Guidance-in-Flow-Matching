@@ -5,6 +5,81 @@ now `paper/main.tex`; `paper/body.tex` points readers there. Numbered snapshots
 are retained when the live paper changes. Paper version numbers and experiment
 protocol version numbers are independent.
 
+## v4 - 28 Sep 2026
+
+**Calibrated against the course paper template**, section by section, after a
+conformance audit of all 14 template pages. Five pages of main text, 0 overfull
+boxes, 0 undefined references, `tools/check.py` passing.
+
+### The conditional-flow-matching question, settled from the code
+
+`proj1/scripts/train_fm.py` uses `x_t = t*x_1 + (1-t)*eps` with target
+`u = x_1 - eps`. That **is** the conditional flow-matching objective, the
+template's own Equation (2): the target is the velocity conditioned on the
+endpoint pair. The paper wrote the equation without naming it, which read as if
+we had used something non-standard. Section 3.2 now names it and states that the
+conditioning is on the pair, not on a property.
+
+Separately, the trainer records that *"atom count is not generated, we condition
+on a mask drawn from the data"*. That is a conditioning variable and the template
+requires any such variable to be defined precisely. Section 3.1 now states that
+generation is unconditional in the property sense and defines the atom-count mask
+`M`; the fields are written `v_theta(x_t,t;M)` and `epsilon_phi(x_u,u;M)`, which
+also resolves a contradiction where 3.1 declared a condition and 3.2 denied one.
+
+### Section 4.1, rebuilt to the template's structure
+
+It covered one modality, gave no compute budget and no statistical reporting. It
+now has the three required subsubsections: Metrics (both modalities, quality plus
+diversity plus controllability, each with a stated limitation), Fair Comparison
+and Computational Budget (what is matched, and the mismatches stated rather than
+glossed), and Statistical Reporting (three seeds, mean and standard deviation,
+paired differences, and the batch as the unit of uncertainty because BDG couples
+samples within one).
+
+### Section 3.7 and Figure 1
+
+Section 3.7 was a single sentence and the figure showed neither the source
+distribution, the two pathways, the guidance signal, nor the pretrained
+components. The figure was redrawn to carry all of them with a trained / frozen /
+pretrained key, and it now sits on the same page as Section 3.7. Panel (b) had a
+solid arrow from the trained simplex generator to the analytic property map,
+which asserted that the generator produces that map; it now runs generator to
+frozen backbone, mirroring panel (a).
+
+### Also fixed
+
+- Section 3.5 is the largest rubric item and was missing both bookends the
+  template mandates: it opened on a definition and closed on a cost remark. It
+  now opens with the weakness and the hypothesis and closes with the three
+  controls that isolate the innovation.
+- Five foundational works the template names were sitting in the bibliography
+  **uncited**: stochastic interpolants, SiT, rectified flow, classifier-free
+  guidance and Guided Flows. A guidance paper that never cites classifier-free
+  guidance is a visible gap. All five are now cited.
+- Section 4.2 never stated which family is carried forward or why.
+- Section 4.7 delivered none of its synthesis duties and did not end with an
+  answer to the paper's central question.
+- The Discussion had two of three mandated paragraphs; the missing one is the
+  limitations paragraph, which the rubric prices separately. It now carries two
+  limitations, the experiment that would settle each, and the narrowest claim the
+  evidence supports.
+- Table 4 had no internal base-model row, which the template requires beside the
+  external methods. Table 3 had no guidance-strength axis.
+- Appendix floats now number S1, S2, ... as the template sets them.
+- `tools/check.py` counted em dashes inside LaTeX comments, so TikZ section
+  banners tripped it. Style checks now run on rendered text only.
+
+### Cost
+
+The template-required additions ran the main text to a full six pages. It is back
+to five, paid for by moving training settings, protocol constants, split
+arithmetic and metric limits into the appendix, which does not count toward the
+limit. One regression caught in review: a compression pass cut the abstract to
+140 words, under the template's 200 floor. It is 205.
+
+Files: `v4_main.tex`, `v4_main.pdf`, and `v4_2026-09-28/` with `SHA256SUMS.txt`.
+
 ## v3 - 27 Sep 2026
 
 **BDG selected; final results pending.** Revised against the assignment rubric,
