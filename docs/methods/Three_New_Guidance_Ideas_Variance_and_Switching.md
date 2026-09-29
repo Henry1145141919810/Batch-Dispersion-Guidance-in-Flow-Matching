@@ -25,10 +25,10 @@ The three proposals below are new relative to the earlier QPMG, DBFG, MAG, compl
 
 ## 2. Evidence inspected and the outcome table
 
-The unnamed document in the request was interpreted as [FINDINGS_SO_FAR.md](FINDINGS_SO_FAR.md), which contains the latest outcome tables and the target-variance suggestion. I also inspected:
+The unnamed document in the request was interpreted as [FINDINGS_SO_FAR.md](../status/FINDINGS_SO_FAR.md), which contains the latest outcome tables and the target-variance suggestion. I also inspected:
 
-- [GUIDANCE_EXPERIMENT_PLAN.md](GUIDANCE_EXPERIMENT_PLAN.md), [FINDING_QUADRATIC_CLOSURE_VALIDITY.md](FINDING_QUADRATIC_CLOSURE_VALIDITY.md), and [SPLIT_PROTOCOL.md](SPLIT_PROTOCOL.md).
-- [The previous three proposals](output/guidance_learning/Three_New_Guidance_Proposals.md) and [the TOP6 review](top%20guidance%20new/TOP6_GUIDANCE_RECOMMENDATIONS.md).
+- [GUIDANCE_EXPERIMENT_PLAN.md](../protocol/GUIDANCE_EXPERIMENT_PLAN.md), [FINDING_QUADRATIC_CLOSURE_VALIDITY.md](../results/FINDING_QUADRATIC_CLOSURE_VALIDITY.md), and [SPLIT_PROTOCOL.md](../protocol/SPLIT_PROTOCOL.md).
+- [The previous three proposals](../../archive/guidance_learning_output/Three_New_Guidance_Proposals.md) and [the TOP6 review](../../audit/top_guidance_2026/TOP6_GUIDANCE_RECOMMENDATIONS.md).
 - The actual screening, sampler, guidance, property-wrapper, and evaluation implementations under `proj1/`, and the closure diagnostic under `results/bench/`.
 - All **141** JSON result cells currently in `results/sweep/`, excluding archived audit runs in other directories.
 
@@ -48,7 +48,7 @@ The unnamed document in the request was interpreted as [FINDINGS_SO_FAR.md](FIND
 
 The raw cell files name `fm_last.pt`; `fm_v1` is the project documentation's checkpoint label. A basename is not a checkpoint identity. Future result records should include checkpoint and code hashes. Existing records also omit the actual likelihood width `s`; the inspected runner sets `s = f_A.y_std`.
 
-The accompanying [audit script](audit/guidance_variance_switching_2026/audit_results_and_math.py) records SHA-256 hashes for all 141 input files, rebuilds the table, and runs the small mathematical checks. Outputs are [screening_audit.json](audit/guidance_variance_switching_2026/screening_audit.json), [reconstructed_screening_table.csv](audit/guidance_variance_switching_2026/reconstructed_screening_table.csv), and [mathematical_checks.json](audit/guidance_variance_switching_2026/mathematical_checks.json).
+The accompanying [audit script](../../audit/guidance_variance_switching_2026/audit_results_and_math.py) records SHA-256 hashes for all 141 input files, rebuilds the table, and runs the small mathematical checks. Outputs are [screening_audit.json](../../audit/guidance_variance_switching_2026/screening_audit.json), [reconstructed_screening_table.csv](../../audit/guidance_variance_switching_2026/reconstructed_screening_table.csv), and [mathematical_checks.json](../../audit/guidance_variance_switching_2026/mathematical_checks.json).
 
 ### 2.2 Reconstructed full-window outcomes
 
@@ -1057,7 +1057,7 @@ The script rewrites only its audit outputs. If new result cells arrive later, it
 
 ### 10.1 Additional checks for the bias-and-spread revision
 
-The separate [revision check script](audit/guidance_variance_switching_2026/check_bias_and_spread_revision.py) and [its results](audit/guidance_variance_switching_2026/bias_spread_revision_checks.json) add:
+The separate [revision check script](../../audit/guidance_variance_switching_2026/check_bias_and_spread_revision.py) and [its results](../../audit/guidance_variance_switching_2026/bias_spread_revision_checks.json) add:
 
 | Check | Executed result | What it establishes |
 |---|---|---|

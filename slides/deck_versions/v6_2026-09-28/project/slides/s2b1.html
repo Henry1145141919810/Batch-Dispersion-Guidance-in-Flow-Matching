@@ -1,0 +1,35 @@
+<section id="s2b1" style="background:#F7F6F2; color:#3A4553; font-family:'IBM Plex Sans', Arial, sans-serif; padding:80px 128px 116px; display:flex; flex-direction:column; gap:22px">
+<div style="display:flex; flex-direction:column; gap:4px">
+<p style="font-size:24px; font-weight:600; letter-spacing:2px; text-transform:uppercase; color:#1F5FA9">Part 2 · Evidence for Modality 1 · guidance 1 of 2</p>
+<h2 style="font-family:'Source Serif 4', Georgia, serif; font-size:56px; font-weight:600; line-height:1.1; color:#16202C">Guidance strategy: the plug-in rule</h2>
+</div>
+<div style="display:flex; gap:26px; align-items:stretch">
+<div style="flex:1.3; display:flex; flex-direction:column; gap:20px">
+<div style="display:flex; flex-direction:column; gap:8px; background:#FDFCFA; border:1px solid #DDD9CF; border-radius:14px; padding:20px 28px">
+<h3 style="font-size:30px; font-weight:600; line-height:1.25; color:#16202C">The rule: DPS-style plug-in [12]</h3>
+<img src="/_blob/4a83339c4e2d9822af7c6e19c39ecb33" alt="G_i = (y − F_i)/s² · J_iᵀ ∇_m f_A(m_i),  F_i = f_A(m_i),  J_i = ∂m_i/∂x^(i)" style="width:874px; height:80px; object-fit:contain">
+<p style="font-size:26px; line-height:1.35">mᵢ is the model's one-step estimate of the final sample: x_t + (1 − t)vθ for flow matching, the Tweedie mean for diffusion (1c, 1d). y is the property's training median (q50); s is its standard deviation over the 3,000-molecule calibration pool.</p>
+</div>
+<div style="display:flex; flex-direction:column; gap:8px; background:#FDFCFA; border:1px solid #DDD9CF; border-radius:14px; padding:20px 28px">
+<h3 style="font-size:30px; font-weight:600; line-height:1.25; color:#16202C">How it enters each sampler</h3>
+<img src="/_blob/c92b394fcced663136ad33b05dd09ec5" alt="flow: dx/dt = vθ + clip_‖vθ‖( w (1 − t)/t G_i );  diffusion: dx/du = f_φ + clip_‖f_φ‖( −½ β(u) w G_i ),  f_φ = −½ β(u)(x + s_φ)" style="width:943px; height:158px; object-fit:contain">
+<p style="font-size:26px; line-height:1.35">The same Gᵢ, strength w = 1 [14], cap and window in both: guidance acts only in the second half of sampling (flow t ≥ 0.5, diffusion u ≤ 0.5).</p>
+</div>
+</div>
+<div style="flex:1; display:flex; flex-direction:column; gap:20px">
+<div style="display:flex; flex-direction:column; gap:8px; background:#FDFCFA; border:1px solid #DDD9CF; border-radius:14px; padding:20px 28px">
+<h3 style="font-size:30px; font-weight:600; line-height:1.25; color:#16202C">Frozen at sampling</h3>
+<p style="font-size:26px; line-height:1.35"><b>Generator:</b> ours, frozen.</p>
+<p style="font-size:26px; line-height:1.35"><b>Guide f_A:</b> ours, trained on train_a; differentiated, never updated.</p>
+<p style="font-size:26px; line-height:1.35"><b>Evaluator f_B:</b> trained on train_b; never inside the sampler.</p>
+</div>
+<div style="display:flex; flex-direction:column; gap:6px; background:#FBEFE3; border-left:8px solid #A35A12; border-radius:10px; padding:16px 28px; flex:1; padding:20px 28px">
+<h3 style="font-size:30px; font-weight:600; line-height:1.25; color:#16202C">Why the cap</h3>
+<p style="font-size:26px; line-height:1.35; color:#2B3440">Early in sampling (1 − t)/t is large, and an uncapped correction can overwhelm the model's own velocity: trajectories diverge and coordinates overflow to NaN. In one diagnostic run, <b>222 molecules broke without the cap and none with it</b>. The cap is prior practice [13], identical for every arm.</p>
+</div>
+</div>
+</div>
+<p style="position:absolute; left:1616px; top:52px; width:176px; font-size:48px; font-weight:700; line-height:1.15; text-align:center; color:#F7F6F2; background:#1F5FA9; border-radius:14px; padding:8px 12px">2b</p>
+<p style="position:absolute; left:128px; bottom:40px; width:300px; font-size:18px; color:#5F6A77">CIS 6270 · Group 2 · 13 / 29</p>
+<p style="position:absolute; left:448px; bottom:40px; width:1344px; font-size:18px; line-height:1.3; text-align:right; color:#5F6A77">[12] Chung et al. 2023 (DPS) · [13] velocity-relative trust region, adopted practice (see bibliography) · [14] Ho &amp; Salimans 2022 (CFG)</p>
+</section>

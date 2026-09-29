@@ -8,7 +8,7 @@
 
 This document is the consolidated explanation of the v7 proposal. It distinguishes exact identities, controlled approximations, practical design choices, and untested hypotheses. Where older brainstorming notes make stronger claims about approximation order, novelty, or experimental success, use the qualifications here.
 
-Related project files: [Innovation v7](SMG_FULL_MATH_AND_PROOFS.md), [formula-level prior-work audit and Heun specification](SMG_PRIOR_WORK_AUDIT.md), and [experiment plan](FEASIBILITY_TESTS_HOW_TO_RUN_AND_DECIDE.md).
+Related project files: [Innovation v7](SMG_FULL_MATH_AND_PROOFS.md), [formula-level prior-work audit and Heun specification](SMG_PRIOR_WORK_AUDIT.md), and [experiment plan](../../archive/FEASIBILITY_TESTS_HOW_TO_RUN_AND_DECIDE.md).
 
 ### Reading map
 

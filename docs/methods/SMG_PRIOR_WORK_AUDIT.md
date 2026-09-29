@@ -8,7 +8,7 @@ This note supersedes broader novelty claims in the original 17 Sep brainstorm.
 
 **Status:** Heun's prior use is verified; the formula comparisons below are scoped to the
 specified published equations. SMG's research novelty and molecular benefit remain unestablished.
-The solver experiment is specified in [Feasibility tests, M-4](FEASIBILITY_TESTS_HOW_TO_RUN_AND_DECIDE.md#m-4-eulerheun--guidance-comparison--required-solver-control).
+The solver experiment is specified in [Feasibility tests, M-4](../../archive/FEASIBILITY_TESTS_HOW_TO_RUN_AND_DECIDE.md#m-4-eulerheun--guidance-comparison--required-solver-control).
 
 ## 1. Three different meanings of second order
 

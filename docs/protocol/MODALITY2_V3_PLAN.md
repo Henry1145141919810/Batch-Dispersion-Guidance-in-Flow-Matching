@@ -1,5 +1,10 @@
 # Modality 2 under protocol v3: what it would take
 
+> **Superseded.** [MODALITY2_V3_PROTOCOL.md](MODALITY2_V3_PROTOCOL.md) (26 Sep) is the
+> pre-registration M2 actually ran under, on blade, 27-28 Sep. Results:
+> [M2_V3_RESULTS.md](../results/M2_V3_RESULTS.md). This scoping note is kept for the
+> record; its "nothing here has been run" is no longer true.
+
 **26 September 2026. Nothing here has been run, and nothing here is
 pre-registered** — this is a scoping document, written because
 `transfer_sweep.V3_BACKENDS` points at it to explain why Modality 2 is *not* a

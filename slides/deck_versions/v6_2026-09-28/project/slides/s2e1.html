@@ -1,0 +1,32 @@
+<section id="s2e1" style="background:#F7F6F2; color:#3A4553; font-family:'IBM Plex Sans', Arial, sans-serif; padding:76px 128px 112px; display:flex; flex-direction:column; gap:20px">
+<div style="display:flex; flex-direction:column; gap:4px">
+<p style="font-size:24px; font-weight:600; letter-spacing:2px; text-transform:uppercase; color:#1F5FA9">Part 2 · Evidence for Modality 1 · recent work 1 of 2</p>
+<h2 style="font-family:'Source Serif 4', Georgia, serif; font-size:56px; font-weight:600; line-height:1.1; color:#16202C">Position against recent work</h2>
+</div>
+<div style="display:flex; flex-direction:column; gap:8px">
+<table style="font-size:25px; color:#2B3440">
+<tr style="background:#ECEAE3"><th style="width:23%; text-align:left">Method</th><th style="width:12%; text-align:right">In-band μ ↑</th><th style="width:12%; text-align:right">In-band α ↑</th><th style="width:13%; text-align:right">In-band gap ↑</th><th style="width:17%; text-align:right">Mol. stab. μ / α / gap ↑</th><th style="width:13%; text-align:right">Passes: gen. / guide</th><th style="width:10%; text-align:right">s / sample</th></tr>
+<tr><td style="text-align:left">Unguided</td><td style="text-align:right">7.8 ± 0.1</td><td style="text-align:right">5.0 ± 0.3</td><td style="text-align:right">10.3 ± 1.0</td><td style="text-align:right">39.7 / 39.7 / 39.7</td><td style="text-align:right">400 / 0</td><td style="text-align:right">0.051</td></tr>
+<tr><td style="text-align:left">DPS-style plug-in [12]</td><td style="text-align:right">10.6 ± 0.4</td><td style="text-align:right">6.1 ± 0.3</td><td style="text-align:right">12.6 ± 0.7</td><td style="text-align:right">35.6 / 37.2 / 33.6</td><td style="text-align:right">1,000 / 400</td><td style="text-align:right">0.119</td></tr>
+<tr><td style="text-align:left">TMPD-inspired [22]</td><td style="text-align:right">9.0 ± 0.6</td><td style="text-align:right">6.1 ± 0.4</td><td style="text-align:right">11.6 ± 0.9</td><td style="text-align:right">38.4 / 38.9 / 37.3</td><td style="text-align:right">1,200 / 400</td><td style="text-align:right">0.255</td></tr>
+<tr><td style="text-align:left">LGD-MC [23]</td><td style="text-align:right">9.6 ± 0.8</td><td style="text-align:right">5.2 ± 0.4</td><td style="text-align:right">10.8 ± 0.7</td><td style="text-align:right">39.9 / 39.2 / 39.5</td><td style="text-align:right">1,200 / 2,000</td><td style="text-align:right">0.229</td></tr>
+<tr><td style="text-align:left">TFG [15]</td><td style="text-align:right">28.8 ± 1.6</td><td style="text-align:right">10.5 ± 0.3</td><td style="text-align:right">27.5 ± 0.3</td><td style="text-align:right">24.5 / 26.8 / 14.4</td><td style="text-align:right">800 / 2,000</td><td style="text-align:right">0.122</td></tr>
+<tr style="background:#FBF1F0"><td style="text-align:left"><b>BDG, τ_m = 0.5 (ours)</b></td><td style="text-align:right">11.2 ± 1.1</td><td style="text-align:right">7.0 ± 0.5</td><td style="text-align:right">14.2 ± 0.8</td><td style="text-align:right">35.1 / 36.4 / 30.0</td><td style="text-align:right">1,000 / 400</td><td style="text-align:right">0.119</td></tr>
+<tr style="background:#FBF1F0"><td style="text-align:left"><b>BDG, τ_m = 1 (ours)</b></td><td style="text-align:right">8.9 ± 0.2</td><td style="text-align:right">5.6 ± 0.5</td><td style="text-align:right">10.6 ± 0.2</td><td style="text-align:right">40.5 / 37.9 / 37.6</td><td style="text-align:right">1,000 / 400</td><td style="text-align:right">0.119</td></tr>
+</table>
+<p style="font-size:24px; line-height:1.35; color:#5F6A77">Our FM, QM9, q50, w = 1, t ≥ 0.5. Decoded in-band and molecule stability in percent (mean ± seed s.d., 3 × 2,000). Passes per 2,000-molecule cell. Time: RTX A6000, μ cells, scoring included.</p>
+</div>
+<div style="display:flex; gap:24px">
+<div style="flex:1; display:flex; flex-direction:column; gap:8px; background:#FDFCFA; border:1px solid #DDD9CF; border-radius:14px; padding:20px 28px; padding:18px 28px">
+<h3 style="font-size:30px; font-weight:600; line-height:1.25; color:#16202C">Why these four</h3>
+<p style="font-size:26px; line-height:1.35">All are recent inference-time guidance rules that steer a frozen generator with a frozen predictor. Running them on <i>our</i> checkpoint isolates <b>the guidance rule</b>, which is what our contribution changes.</p>
+</div>
+<div style="flex:1; display:flex; flex-direction:column; gap:8px; background:#FDFCFA; border:1px solid #DDD9CF; border-radius:14px; padding:20px 28px; padding:18px 28px">
+<h3 style="font-size:30px; font-weight:600; line-height:1.25; color:#16202C">Efficiency, measured</h3>
+<p style="font-size:26px; line-height:1.35">BDG costs exactly plug-in's calls: <b>1,000 generator and 400 guide passes</b> per cell, 0.119 s per sample. LGD-MC and TFG need 5× the guide passes; TMPD and LGD-MC take about twice the time. TFG uses fewer generator passes (800).</p>
+</div>
+</div>
+<p style="position:absolute; left:1616px; top:52px; width:176px; font-size:48px; font-weight:700; line-height:1.15; text-align:center; color:#F7F6F2; background:#1F5FA9; border-radius:14px; padding:8px 12px">2e</p>
+<p style="position:absolute; left:128px; bottom:40px; width:300px; font-size:18px; color:#5F6A77">CIS 6270 · Group 2 · 21 / 29</p>
+<p style="position:absolute; left:448px; bottom:40px; width:1344px; font-size:18px; line-height:1.3; text-align:right; color:#5F6A77">[12] Chung et al. 2023 (DPS) · [22] Boys et al. 2024 (TMPD) · [23] Song et al. 2023 (LGD-MC) · [15] Ye et al. 2024 (TFG) · cells: results/v3/fm/v3/n2000</p>
+</section>

@@ -1,0 +1,18 @@
+<section id="s1b2" style="background:#F7F6F2; color:#3A4553; font-family:'IBM Plex Sans', Arial, sans-serif; padding:80px 128px 116px; display:flex; flex-direction:column; gap:28px">
+<div style="display:flex; flex-direction:column; gap:4px">
+<p style="font-size:24px; font-weight:600; letter-spacing:2px; text-transform:uppercase; color:#1F5FA9">Part 1 · Set up the study · data 2 of 2</p>
+<h2 style="font-family:'Source Serif 4', Georgia, serif; font-size:56px; font-weight:600; line-height:1.1; color:#16202C">Representations, conditioning and handling</h2>
+</div>
+<table style="font-size:26px; color:#2B3440">
+<tr style="background:#ECEAE3"><th style="width:18%; text-align:left"></th><th style="width:41%; text-align:left">QM9 molecules</th><th style="width:41%; text-align:left">DeepFlyBrain DNA</th></tr>
+<tr><td><b>Representation</b></td><td>Each atom: 3D coordinates plus a one-hot type over {H, C, N, O, F}. Types are relaxed to continuous values during generation and read back by argmax.</td><td>Each position: a probability vector over {A, C, G, T}. A sequence is a point of (Δ³)⁵⁰⁰, the simplex view of Dirichlet FM and Fisher Flow [4, 5]; read back by argmax.</td></tr>
+<tr><td><b>Conditioning</b></td><td>None on the property. The only other input is the atom mask, drawn from QM9's size distribution and shared by every arm.</td><td>None. Cell-type labels are not given to the generator.</td></tr>
+<tr><td><b>Symmetry and constraints</b></td><td>Translation: noise projected to zero centre of mass. Rotation, reflection, permutation: an E(3)-equivariant EGNN [9]; property nets are invariant. 12/12 equivariance checks pass.</td><td>No rotation group. After each step, values are clamped at zero and renormalised per position, so every position stays on the simplex.</td></tr>
+</table>
+<div style="display:flex; flex-direction:column; gap:6px; background:#E4ECF6; border-left:8px solid #1F5FA9; border-radius:10px; padding:16px 28px; padding:18px 28px">
+<p style="font-size:28px; line-height:1.35; color:#16202C"><b>Unconditional on purpose.</b> The property enters only at sampling time, through guidance, which is exactly where BDG acts. Both modalities therefore test the same thing.</p>
+</div>
+<p style="position:absolute; left:1616px; top:52px; width:176px; font-size:48px; font-weight:700; line-height:1.15; text-align:center; color:#F7F6F2; background:#1F5FA9; border-radius:14px; padding:8px 12px">1b</p>
+<p style="position:absolute; left:128px; bottom:40px; width:300px; font-size:18px; color:#5F6A77">CIS 6270 · Group 2 · 4 / 29</p>
+<p style="position:absolute; left:448px; bottom:40px; width:1344px; font-size:18px; line-height:1.3; text-align:right; color:#5F6A77">[4] Stark et al. 2024 (Dirichlet FM) · [5] Davis et al. 2024 (Fisher Flow) · [9] Satorras et al. 2021 (EGNN)</p>
+</section>

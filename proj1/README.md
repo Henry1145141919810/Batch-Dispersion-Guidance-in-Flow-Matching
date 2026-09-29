@@ -1,43 +1,28 @@
-# CIS 6270 Project 1 — Group 2
+# proj1/ — the code
 
-Continuous generative modelling across two modalities: 3D molecules (QM9) and DNA
-enhancer sequences on the probability simplex.
-
-**Status:** empty scaffold. Structure lands in Phase 0 (12–14 Sep).
-
-## Team
-
-Bobo Li · Henry Huang · Idea Idehpour · Haimo Fang
-
-## Planning documents
-
-These live one directory up, outside the repo, until we decide to track them here:
-
-- `PROJECT_GUIDE.md` — scope, methods, the innovation, evaluation protocol, timeline, roles
-- `FEASIBILITY_TESTS.md` — the go/no-go tests to run before committing (decision due 16 Sep)
-
-## Planned layout
+Everything that runs lives here. The project overview, the reproduction steps
+and the map from each paper table to the script that produced it are in the
+[root README](../README.md); new teammates should start with
+[ONBOARDING.md](../ONBOARDING.md).
 
 ```
-configs/     one YAML per experiment
-src/
-  data/      dataset loaders and splits
-  models/    EGNN, 1D CNN, prediction heads
-  flows/     flow matching and diffusion
-  guidance/  baseline guidance + our method   <- the innovation
-  modality/  zero-CoM and simplex projections
-  sampling/  Euler / Heun / DDIM with guidance hooks
-  eval/      metrics, quantum chemistry, frontier plotting
-scripts/     train.py  sample.py  evaluate.py  sweep.py  make_figures.py
-results/     raw/  tables/  figures/
-paper/
-slides/
+src/           the library: guidance.py (every guidance arm, including BDG),
+               sampling.py, diffusion.py, evaluation.py, dist_metrics.py,
+               models/ (EGNN generator, property predictors), external/
+               (borrowed backends: TFG, EquiFM, the EDM schedule)
+scripts/       entry points: train_fm.py, train_predictor.py, guidance_sweep.py,
+               transfer_sweep.py, benchmark_base.py, and one *_table.py per
+               results table
+tests/         closed-form gates; run them before any sweep, they take seconds
+cluster/       SLURM job scripts for PARCC Betty (see docs/protocol/BETTY_RUNBOOK.md)
+m2/            Modality 2: DNA enhancer sequences on the probability simplex
+checkpoints/   training histories (tracked); the .pt files are ignored, and the
+               published weights are in ../weights/
+logs/          local training logs (ignored)
 ```
 
-## Setup
-
-TBD — `environment.yml` lands with the scaffold.
-
-## Reproducing the paper
-
-TBD — a table mapping each script and config to the table or figure it produces.
+Most scripts find `data/`, `weights/`, `results/` and `betty_pull/` from their
+own location (`ROOT` = two directories above the script), so **those folders
+must stay at the repository root**. A few defaults are relative to the working
+directory instead (e.g. `src/schnet_ref.py` uses `scratch_schnet/`), so run
+everything from the root.

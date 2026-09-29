@@ -1,0 +1,36 @@
+<section id="s2b2" style="background:#F7F6F2; color:#3A4553; font-family:'IBM Plex Sans', Arial, sans-serif; padding:80px 128px 116px; display:flex; flex-direction:column; gap:24px">
+<div style="display:flex; flex-direction:column; gap:4px">
+<p style="font-size:24px; font-weight:600; letter-spacing:2px; text-transform:uppercase; color:#1F5FA9">Part 2 · Evidence for Modality 1 · guidance 2 of 2</p>
+<h2 style="font-family:'Source Serif 4', Georgia, serif; font-size:56px; font-weight:600; line-height:1.1; color:#16202C">Guidance works, and what it costs</h2>
+</div>
+<div style="display:flex; flex-direction:column; gap:12px">
+<table style="font-size:26px; color:#2B3440">
+<tr style="background:#ECEAE3"><th style="width:34%; text-align:left">Arm</th><th style="width:22%; text-align:right">in-band ↑</th><th style="width:22%; text-align:right">Spread / unguided</th><th style="width:22%; text-align:right">Mol. stab. ↑</th></tr>
+<tr><td>unguided</td><td style="text-align:right">.090 / .121 / .051</td><td style="text-align:right">1.00 / 1.00 / 1.00</td><td style="text-align:right">.434 / .434 / .434</td></tr>
+<tr><td>plug-in (best w) [12]</td><td style="text-align:right">.184 / .219 / .133</td><td style="text-align:right">0.52 / 0.60 / 0.47</td><td style="text-align:right">.246 / .199 / .320</td></tr>
+<tr><td>TFG (w = 4, μ only) [15]</td><td style="text-align:right; color:#1F5FA9">.535 / – / –</td><td style="text-align:right">0.22 / – / –</td><td style="text-align:right">.172 / – / –</td></tr>
+<tr style="background:#FBF1F0"><td>BDG (w = 32, τ_mult = 0.5)</td><td style="text-align:right">.180 / .227 / .106</td><td style="text-align:right">0.49 / 0.68 / 0.53</td><td style="text-align:right; color:#1F5FA9">.348 / .262 / .340</td></tr>
+</table>
+<p style="font-size:24px; line-height:1.35; color:#5F6A77">§4.3. Cells are μ / gap / α at q50, otherwise matched: one generator, one seed, n = 256, best strength per arm over w ∈ {0.05, …, 32}, no chemistry floor. Three-seed confirmation: <span style="color:#C62828"><b>[TODO: v3]</b></span></p>
+</div>
+<div style="display:flex; gap:24px">
+<div style="flex:1; display:flex; flex-direction:column; gap:10px; background:#FDFCFA; border:1px solid #DDD9CF; border-radius:14px; padding:22px 28px">
+<h3 style="font-size:30px; font-weight:600; line-height:1.25; color:#16202C">The target improves</h3>
+<p style="font-size:26px; line-height:1.35">Plug-in: <b>2.0×</b> μ, <b>1.9×</b> gap, <b>2.6×</b> α over unguided. TFG reaches <b>6.0×</b> on μ.</p>
+</div>
+<div style="flex:1; display:flex; flex-direction:column; gap:10px; background:#FDFCFA; border:1px solid #DDD9CF; border-radius:14px; padding:22px 28px">
+<h3 style="font-size:30px; font-weight:600; line-height:1.25; color:#16202C">The cost is real</h3>
+<p style="font-size:26px; line-height:1.35">Molecule stability falls 0.434 → 0.246 (plug-in, μ) and → 0.172 (TFG). Validity follows.</p>
+</div>
+<div style="flex:1.05; display:flex; flex-direction:column; gap:10px; background:#FDFCFA; border:1px solid #DDD9CF; border-radius:14px; padding:22px 28px">
+<h3 style="font-size:30px; font-weight:600; line-height:1.25; color:#16202C">The mechanism is visible</h3>
+<p style="font-size:26px; line-height:1.35">Spread contracts 1.00 → 0.22–0.60. Guidance works <b>by concentrating the batch</b>: the arm that contracts most wins in-band and loses the most chemistry.</p>
+</div>
+</div>
+<div style="background:#E4ECF6; border-left:8px solid #1F5FA9; border-radius:10px; padding:18px 28px">
+<p style="font-size:28px; line-height:1.35; color:#16202C"><b>That trade-off is inherited, not chosen.</b> 2c asks whether the user can choose it instead.</p>
+</div>
+<p style="position:absolute; left:1616px; top:52px; width:176px; font-size:48px; font-weight:700; line-height:1.15; text-align:center; color:#F7F6F2; background:#1F5FA9; border-radius:14px; padding:8px 12px">2b</p>
+<p style="position:absolute; left:128px; bottom:40px; width:300px; font-size:18px; color:#5F6A77">CIS 6270 · Group 2 · 14 / 29</p>
+<p style="position:absolute; left:448px; bottom:40px; width:1344px; font-size:18px; line-height:1.3; text-align:right; color:#5F6A77">[15] Ye et al. 2024 (TFG) · [12] Chung et al. 2023 (DPS)</p>
+</section>

@@ -316,7 +316,7 @@ cells already on disk.
 | item | state |
 |---|---|
 | Sweep completion (`unguided`, real `tmpd`, strengths 0.01/0.05, **q90**) | running |
-| Diffusion base model | queued, ~14.6 h |
+| Diffusion base model | **done 28 Sep** (trained by Bobo; 18 v3 cells, 0.81 GPU-h) |
 | **`s` (tolerance) sweep** | **not run -- see Gap 0** |
 | `smg_mean` ablation rung | not run; the ladder is incomplete without it |
 | Stage 2 at n = 4,096 | after the arm cut |

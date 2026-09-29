@@ -121,9 +121,27 @@ gate("out_dir_includes_the_stage_level",
 # which arms it runs. The job file lists the backends, and v3_table names them
 # again (it must not import torch, so it cannot read the registry). All three
 # have to agree or the array runs backends the table cannot read.
-gate("slurm_backends_are_registry_backends",
-     set(BE) == set(T.V3_BACKENDS),
-     "slurm %s vs registry %s" % (sorted(BE), sorted(T.V3_BACKENDS)))
+gate("slurm_backends_are_chain_backends",
+     set(BE) == set(T.V3_CHAIN_BACKENDS),
+     "slurm %s vs chain %s -- the job file lists what the CHAIN submits, "
+     "which is a subset of the registry. The preflight is submit_v3.sh's one "
+     "afterok link and loops this list, so a backend whose checkpoint is "
+     "missing stops every other backend from running"
+     % (sorted(BE), sorted(T.V3_CHAIN_BACKENDS)))
+gate("chain_backends_are_registered",
+     set(T.V3_CHAIN_BACKENDS) <= set(T.V3_BACKENDS),
+     "%s submitted by the chain but not in V3_BACKENDS"
+     % sorted(set(T.V3_CHAIN_BACKENDS) - set(T.V3_BACKENDS)))
+gate("table_chain_matches_registry_chain",
+     set(re.findall(r'^CHAIN_BACKENDS = \((.*)\)$',
+                    io.open(os.path.join(ROOT, "proj1", "scripts",
+                                         "v3_table.py"),
+                            encoding="utf-8").read(), re.M)[0]
+         .replace('"', "").replace("'", "").replace(",", " ").split())
+     == set(T.V3_CHAIN_BACKENDS),
+     "v3_table.CHAIN_BACKENDS drives --both and must match "
+     "transfer_sweep.V3_CHAIN_BACKENDS, or the table job goes red on a "
+     "backend nobody submitted")
 gate("table_backends_are_registry_backends",
      set(re.findall(r'^BACKENDS = \((.*)\)$',
                     io.open(os.path.join(ROOT, "proj1", "scripts",
@@ -558,6 +576,102 @@ flags = set(re.findall(r"(--[a-z][a-z0-9-]+)", help_txt))
 gate("slurm_passes_only_real_flags", bool(used) and used <= flags,
      "passes %d flags; not in transfer_sweep.py: %s"
      % (len(used), sorted(used - flags) or "none"))
+
+# ---- the vp bench suite ---------------------------------------------------
+#
+# vp is NOT in the chain (V3_CHAIN_BACKENDS), so v3_run.slurm never drives it
+# and none of the gates above touch it. Its own job file gets the same
+# treatment: the flags must be real, the grid must match the registry, and the
+# array must tile the work exactly -- the stride bug these gates exist for
+# does not care which job file it lives in.
+_VPJ = os.path.join(ROOT, "proj1", "cluster", "vp_bench.slurm")
+_VPS = os.path.join(ROOT, "proj1", "cluster", "submit_vp_bench.sh")
+gate("vp_bench_files_exist", os.path.exists(_VPJ) and os.path.exists(_VPS),
+     "vp_bench.slurm and submit_vp_bench.sh must both be present")
+if os.path.exists(_VPJ):
+    vsrc = io.open(_VPJ, encoding="utf-8").read()
+    ssrc = io.open(_VPS, encoding="utf-8").read() if os.path.exists(_VPS) else ""
+
+    vprops = re.findall(r"^PROPS=\((.*)\)$", vsrc, re.M)[0].split()
+    vseeds = re.findall(r"^SEEDS=\((.*)\)$", vsrc, re.M)[0].split()
+    varms = re.findall(r'^ARMS="([^"]*)"', vsrc, re.M)[0].split(",")
+
+    gate("vp_bench_arms_are_the_registry_arms",
+         tuple(varms) == tuple(T.V3_BACKENDS["vp"]["arms"]),
+         "job says %s, V3_BACKENDS['vp'] says %s -- two arms, not seven"
+         % (varms, list(T.V3_BACKENDS["vp"]["arms"])))
+    gate("vp_bench_props_and_seeds_match_v3",
+         vprops == list(PROPS) and vseeds == [str(s) for s in T.V3_SEEDS],
+         "vp must run the same 3 properties and 3 seeds as every other v3 "
+         "row: job has %s / %s" % (vprops, vseeds))
+    # The array tiles the grid exactly: 9 tasks, 9 distinct (prop, seed).
+    _ns = len(vseeds)
+    _tiles = [(vprops[t // _ns], vseeds[t % _ns])
+              for t in range(len(vprops) * _ns)]
+    gate("vp_bench_array_tiles_the_grid",
+         len(set(_tiles)) == len(_tiles) == len(vprops) * _ns,
+         "PROPS[t/NS] / SEEDS[t%%NS] must cover each pair once: %d tasks, "
+         "%d distinct" % (len(_tiles), len(set(_tiles))))
+    # n and batch are PINNED, not defaulted: v3_sanity.PINNED refuses anything
+    # else, and it runs in STAGE=table -- after all 18 cells are paid for.
+    gate("vp_bench_pins_n_and_batch_to_sanity",
+         re.search(r'"\$N" -ne 2000 \]\s*\|\|\s*\[ "\$BATCH" -ne 500', vsrc)
+         is not None,
+         "vp_bench must REFUSE n != 2000 or batch != 500 up front")
+    # THE MD5 PIN. Its absence cost a whole run on 28 Sep: the sweep loaded
+    # the epoch-75 remains of the crashed job 8590174 (md5 93ab4f72) instead of
+    # the published epoch-1475 model (8a3390a6). Same family, split, hidden and
+    # layers, so every field check passed; 18 cells came out at atom_stab 0.763
+    # against the real 0.905, and nothing raised. A field check cannot
+    # substitute for an identity check.
+    gate("vp_bench_pins_the_checkpoint_md5",
+         re.search(r'VP_MD5="\$\{VP_MD5:-[0-9a-f]{32}\}"', vsrc) is not None
+         and '"$GOT" != "$VP_MD5"' in vsrc,
+         "vp_bench must pin the checkpoint md5 and FAIL on a mismatch -- "
+         "family/split/hidden/layers all pass on a partially trained file")
+    gate("vp_bench_asserts_a_gpu",
+         "cuda.is_available" in vsrc,
+         "transfer_sweep falls back to CPU silently and CPU is ~26x slower; "
+         "the job must assert a usable GPU, not just print one")
+    # An EXECUTION of submit_v3.sh, not a mention of it: both files warn
+    # against it in prose, and a substring test would fail on the warning.
+    _chain = [ln for ln in (vsrc + ssrc).splitlines()
+              if re.match(r"\s*(bash|sh|sbatch|source|\.)\s+\S*submit_v3", ln)]
+    gate("vp_bench_never_invokes_the_v3_chain", not _chain,
+         "the vp suite must not reach the fm/equifm/edm chain: %s" % _chain)
+    gate("vp_bench_touches_only_vp",
+         not re.search(r"results/v3/(fm|equifm|edm)", vsrc),
+         "the vp suite must not name another backend's result tree")
+    # Same agreement check the chain gets: the wrapper derives the array range
+    # from the job file, and both must see the same grid.
+    gate("vp_submit_derives_the_array_range",
+         "sed -n 's/^PROPS=(//p'" in ssrc and "wc -w" in ssrc
+         and "--array=0-$MAX" in ssrc,
+         "submit_vp_bench.sh must compute the array range from the job file "
+         "(whitespace-agnostic), never hardcode it")
+    gate("vp_submit_checks_every_sbatch",
+         ssrc.count("FATAL: sbatch failed for") >= 1 and "sub ()" in ssrc,
+         "an unchecked sbatch leaves an empty job id and the next "
+         "--dependency=afterok: is rejected as invalid")
+    gate("vp_submit_table_depends_on_the_gate_too",
+         "afterok:$A,afterany:$B" in ssrc,
+         "a job killed for a never-satisfiable dependency has TERMINATED, "
+         "which satisfies afterany -- so the table would still run and go "
+         "red, hiding a gate failure")
+    # Against the first real INVOCATION, not the first mention -- the header
+    # explains the hazard in prose well before any command runs.
+    _first_sbatch = ssrc.find("sbatch --parsable")
+    gate("vp_submit_makes_logs_before_sbatch",
+         _first_sbatch > 0
+         and ssrc.index('mkdir -p "$PROJ/logs"') < _first_sbatch,
+         "#SBATCH --output is opened before the body runs, so the job's own "
+         "mkdir is too late and every task fails at launch")
+
+    vused = set(re.findall(r"(--[a-z][a-z0-9-]+)", vsrc))
+    vused &= flags | {"--md-out", "--root", "--help"}   # other scripts' flags
+    gate("vp_bench_passes_only_real_flags",
+         vused <= flags | {"--md-out", "--root"},
+         "not in transfer_sweep.py: %s" % sorted(vused - flags - {"--md-out", "--root"}))
 
 bad = sorted(k for k, v in R.items() if not v)
 print("")

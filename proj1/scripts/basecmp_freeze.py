@@ -73,6 +73,22 @@ from transfer_sweep import (BACKENDS, BASECMP_FLOOR, BASECMP_ROOT,  # noqa: E402
 RC_OK, RC_INCOMPLETE, RC_ERROR = 0, 2, 3
 # v2's V6 threshold: below this, in-band may be collapse rather than steering
 UNIQ_MIN = 0.95
+# delta is recomputed inside every array task (`local_delta`, float32 on the
+# GPU), so one property's cells legitimately differ in about the 7th
+# significant figure -- measured on the 25 Sep screen, relative spread <= 9.0e-7
+# on both bases. Exact equality at 12 decimals therefore refused every real
+# screen (and the chain's STAGE=plan with it). A real change of rule is orders
+# larger (local vs global delta differ by 5-60 %), so 1e-5 separates the two.
+DELTA_RTOL = 1e-5
+
+
+def delta_consistent(ds, rtol=DELTA_RTOL):
+    """True when every delta in `ds` agrees within float noise."""
+    ds = [float(x) for x in ds]
+    if len(ds) < 2:
+        return True
+    lo, hi = min(ds), max(ds)
+    return (hi - lo) <= rtol * max(abs(lo), abs(hi))
 
 
 def se_prop(p, n):
@@ -138,7 +154,7 @@ def load_screen(out_dir, props, arms, backend, require_grid=True):
         return RC_INCOMPLETE
     for p in props:
         ds = {round(float(r["delta"]), 12) for r in rows if r["prop"] == p}
-        if len(ds) > 1:
+        if not delta_consistent(ds):
             print("INCONSISTENT delta for %s: %s -- in-band means a different "
                   "thing in each cell" % (p, sorted(ds)))
             return RC_INCOMPLETE

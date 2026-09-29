@@ -1,0 +1,26 @@
+<section id="s1b2" style="background:#F7F6F2; color:#3A4553; font-family:'IBM Plex Sans', Arial, sans-serif; padding:80px 128px 116px; display:flex; flex-direction:column; gap:28px">
+<div style="display:flex; flex-direction:column; gap:4px">
+<p style="font-size:24px; font-weight:600; letter-spacing:2px; text-transform:uppercase; color:#1F5FA9">Part 1 · Set up the study · data 2 of 2</p>
+<h2 style="font-family:'Source Serif 4', Georgia, serif; font-size:56px; font-weight:600; line-height:1.1; color:#16202C">Representations, conditioning, handling</h2>
+</div>
+<div style="display:flex; gap:28px">
+<div style="flex:1; display:flex; flex-direction:column; gap:14px; background:#FDFCFA; border:1px solid #DDD9CF; border-radius:14px; padding:24px 28px">
+<h3 style="font-size:30px; font-weight:600; line-height:1.25; color:#16202C">Representations</h3>
+<p style="font-size:26px; line-height:1.35"><b>M1:</b> coordinates plus a <i>relaxed</i> one-hot over {H, C, N, O, F}. The relaxation is what lets one continuous flow carry geometry and discrete types together.</p>
+<p style="font-size:26px; line-height:1.35"><b>M2:</b> a point of (Δ³)ᴸ. The simplex is continuous by the assignment's definition, and the native geometry of the sequence literature [4, 5].</p>
+</div>
+<div style="flex:1; display:flex; flex-direction:column; gap:14px; background:#FDFCFA; border:1px solid #DDD9CF; border-radius:14px; padding:24px 28px">
+<h3 style="font-size:30px; font-weight:600; line-height:1.25; color:#16202C">Conditioning: none</h3>
+<p style="font-size:26px; line-height:1.35">Both base models are <b>unconditional</b>. The property enters only at sampling time, through guidance.</p>
+<p style="font-size:26px; line-height:1.35">Deliberate: a conditional model gives the controller nothing to steer, and breaks the M1/M2 parallel we are testing.</p>
+</div>
+<div style="flex:1.1; display:flex; flex-direction:column; gap:14px; background:#FDFCFA; border:1px solid #DDD9CF; border-radius:14px; padding:24px 28px">
+<h3 style="font-size:30px; font-weight:600; line-height:1.25; color:#16202C">Modality-specific handling</h3>
+<p style="font-size:26px; line-height:1.35"><b>M1 invariance:</b> translation by projection onto the zero-centre-of-mass subspace; rotation through squared pairwise distances, with updates along difference vectors; permutation by symmetric pooling. <b>12/12 numerical gates pass to ~1e-17.</b></p>
+<p style="font-size:26px; line-height:1.35"><b>M2 mapping:</b> sequences relaxed onto the simplex, decoded by per-position argmax, scored by an <b>exact</b> GC count.</p>
+</div>
+</div>
+<p style="position:absolute; left:1616px; top:52px; width:176px; font-size:48px; font-weight:700; line-height:1.15; text-align:center; color:#F7F6F2; background:#1F5FA9; border-radius:14px; padding:8px 12px">1b</p>
+<p style="position:absolute; left:128px; bottom:40px; width:300px; font-size:18px; color:#5F6A77">CIS 6270 · Group 2 · 4 / 29</p>
+<p style="position:absolute; left:448px; bottom:40px; width:1344px; font-size:18px; line-height:1.3; text-align:right; color:#5F6A77">[4] Stark et al. 2024 (Dirichlet FM) · [5] Davis et al. 2024 (Fisher Flow)</p>
+</section>

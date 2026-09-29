@@ -1,0 +1,32 @@
+<section id="s3b" style="background:#F7F6F2; color:#3A4553; font-family:'IBM Plex Sans', Arial, sans-serif; padding:76px 128px 108px; display:flex; flex-direction:column; gap:16px">
+<div style="display:flex; flex-direction:column; gap:4px">
+<p style="font-size:24px; font-weight:600; letter-spacing:2px; text-transform:uppercase; color:#1F5FA9">Part 3 · Test transfer and close the story</p>
+<h2 style="font-family:'Source Serif 4', Georgia, serif; font-size:56px; font-weight:600; line-height:1.1; color:#16202C">Transfer results: DeepFlyBrain DNA</h2>
+</div>
+<p style="font-size:27px; line-height:1.4">DeepFlyBrain, length 500; GC and CpG in-band reported separately at strengths w = 1 and 4; 3-mer JSD names the fidelity cost. One generator, window and band for every guided row.</p>
+<div style="display:flex; flex-direction:column; gap:6px">
+<table style="font-size:24px; color:#2B3440">
+<tr style="background:#ECEAE3"><th style="width:26%; text-align:left">Method</th><th style="width:13%; text-align:right">GC, w=1 ↑</th><th style="width:13%; text-align:right">GC, w=4 ↑</th><th style="width:13%; text-align:right">CpG, w=1 ↑</th><th style="width:13%; text-align:right">CpG, w=4 ↑</th><th style="width:16%; text-align:right">JSD w=4 ↓</th></tr>
+<tr><td style="text-align:left">Unguided</td><td style="text-align:right">14.0 ± 1.0</td><td style="text-align:right">14.0 ± 1.0</td><td style="text-align:right">50.2 ± 1.6</td><td style="text-align:right">50.2 ± 1.6</td><td style="text-align:right">4.53 / 4.53</td></tr>
+<tr><td style="text-align:left">DPS-style plug-in [12]</td><td style="text-align:right">14.0 ± 0.9</td><td style="text-align:right">14.1 ± 1.0</td><td style="text-align:right">50.5 ± 1.8</td><td style="text-align:right">51.6 ± 1.4</td><td style="text-align:right">4.61 / 4.63</td></tr>
+<tr><td style="text-align:left">TMPD / LGD-MC [22, 23]</td><td style="text-align:right">14.0 ± 0.9</td><td style="text-align:right">14.1 ± 1.0</td><td style="text-align:right">50.5 ± 1.8</td><td style="text-align:right">51.6 ± 1.4</td><td style="text-align:right">4.61 / 4.63</td></tr>
+<tr><td style="text-align:left">TFG-MC [15]</td><td style="text-align:right">14.1 ± 1.0</td><td style="text-align:right">14.1 ± 1.0</td><td style="text-align:right">50.4 ± 1.7</td><td style="text-align:right">51.1 ± 1.7</td><td style="text-align:right">4.59 / 4.58</td></tr>
+<tr style="background:#FBF1F0"><td style="text-align:left"><b>BDG, τ_m = 0.5 (ours)</b></td><td style="text-align:right">14.5 ± 1.0</td><td style="text-align:right">16.4 ± 1.2</td><td style="text-align:right">55.3 ± 0.8</td><td style="text-align:right">68.5 ± 1.2</td><td style="text-align:right">5.93 / 7.73</td></tr>
+<tr style="background:#FBF1F0"><td style="text-align:left"><b>BDG, τ_m = 1 (ours)</b></td><td style="text-align:right">14.0 ± 1.0</td><td style="text-align:right">14.1 ± 1.0</td><td style="text-align:right">50.2 ± 1.6</td><td style="text-align:right">50.3 ± 1.5</td><td style="text-align:right">4.54 / 4.52</td></tr>
+</table>
+<p style="font-size:24px; line-height:1.35; color:#5F6A77">Decoded in-band, percent (mean ± seed s.d., 3 × 2,000). JSD ×10⁻⁴, GC / CpG at w = 4; unguided JSD 4.53. Plug-in, TMPD and LGD-MC coincide to ≤ 4×10⁻⁶ here (one effective comparator). BDG − plug: GC +0.42 (w1), +2.32 (w4); CpG +4.82 (w1), +16.83 (w4).</p>
+</div>
+<div style="display:flex; gap:24px">
+<div style="display:flex; flex-direction:column; gap:8px; background:#FDFCFA; border:1px solid #DDD9CF; border-radius:14px; padding:20px 28px; flex:1; padding:16px 26px">
+<h3 style="font-size:28px; font-weight:600; line-height:1.25; color:#16202C">Fair study</h3>
+<p style="font-size:24px; line-height:1.35">All rows share the generator, length, target, band, decoding and reference data. Endpoint uncertainty nearly vanishes late, so plug-in, TMPD and LGD-MC collapse onto one comparator; TFG-MC is a restricted port. Dirichlet FM, Fisher Flow and MOG-DFM are <b>not</b> evaluated here [3,4,5].</p>
+</div>
+<div style="display:flex; flex-direction:column; gap:6px; background:#FBEFE3; border-left:8px solid #A35A12; border-radius:10px; padding:16px 28px; flex:1; padding:16px 26px">
+<h3 style="font-size:28px; font-weight:600; line-height:1.25; color:#16202C">Fair discussion</h3>
+<p style="font-size:24px; line-height:1.35">The contracting setpoint (τ_m = 0.5) raises CpG coverage at both strengths and GC at w = 4; τ_m = 1 moves neither. The gains cost 3-mer fidelity (JSD up to 7.73 vs 4.53) and clip hard (CpG w = 4: 7.4% of steps).</p>
+</div>
+</div>
+<p style="position:absolute; left:1616px; top:52px; width:176px; font-size:48px; font-weight:700; line-height:1.15; text-align:center; color:#F7F6F2; background:#1F5FA9; border-radius:14px; padding:8px 12px">3b</p>
+<p style="position:absolute; left:128px; bottom:40px; width:300px; font-size:18px; color:#5F6A77">CIS 6270 · Group 2 · 24 / 29</p>
+<p style="position:absolute; left:448px; bottom:40px; width:1344px; font-size:18px; line-height:1.3; text-align:right; color:#5F6A77">[3] Chen et al. 2025 (MOG-DFM) · [4] Stark et al. 2024 (Dirichlet FM) · [5] Davis et al. 2024 (Fisher Flow) · guidance ports [12] [15] [22] [23] · cells results/m2 (this work)</p>
+</section>

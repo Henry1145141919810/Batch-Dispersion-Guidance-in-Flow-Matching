@@ -141,7 +141,7 @@ generator. Whether local re-implementations satisfy that requirement is argued
 | D-Flow, OC-Flow, FlowGrad, full TFG, FreeDoM, real DPS | ❌ none implemented |
 
 **This is a grading risk, not a research one.** `FlowGrad` is the cheapest —
-it reuses the existing VJP path. Also: `proj1_tex/citation.bib` has 28 entries
+it reuses the existing VJP path. Also: `course/citation.bib` has 28 entries
 and contains **none** of TFG, DPS, TMPD, ΠGDM, LGD, EEGSDE, OC-Flow, D-Flow or
 FlowGrad. Every method we compare against is currently uncited.
 

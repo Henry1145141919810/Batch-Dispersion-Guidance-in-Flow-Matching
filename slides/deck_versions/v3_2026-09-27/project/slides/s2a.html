@@ -1,0 +1,31 @@
+<section id="s2a" style="background:#F7F6F2; color:#3A4553; font-family:'IBM Plex Sans', Arial, sans-serif; padding:80px 128px 116px; display:flex; flex-direction:column; gap:24px">
+<div style="display:flex; flex-direction:column; gap:4px">
+<p style="font-size:24px; font-weight:600; letter-spacing:2px; text-transform:uppercase; color:#1F5FA9">Part 2 · Build the evidence for Modality 1</p>
+<h2 style="font-family:'Source Serif 4', Georgia, serif; font-size:56px; font-weight:600; line-height:1.1; color:#16202C">Choose the base model</h2>
+</div>
+<div style="display:flex; flex-direction:column; gap:12px">
+<table style="font-size:26px; color:#2B3440">
+<tr style="background:#ECEAE3"><th style="width:22%; text-align:left">Model</th><th style="width:13%; text-align:left">Source</th><th style="width:15%; text-align:right">Atom stab. ↑</th><th style="width:13%; text-align:right">Mol. stab. ↑</th><th style="width:13%; text-align:right">Validity ↑</th><th style="width:9%; text-align:right">Uniq. ↑</th><th style="width:7%; text-align:right">NFE ↓</th><th style="width:8%; text-align:right">Params</th></tr>
+<tr style="background:#E9F0F8"><td>Flow matching (ours)</td><td>reproduced</td><td style="text-align:right; color:#1F5FA9">0.9366 ±.0012</td><td style="text-align:right; color:#1F5FA9">0.3993 ±.0085</td><td style="text-align:right; color:#1F5FA9">0.7625 ±.0031</td><td style="text-align:right">0.9939</td><td style="text-align:right">100</td><td style="text-align:right">3.75M</td></tr>
+<tr><td>VP diffusion (ours)</td><td>reproduced</td><td style="text-align:right; color:#C62828">[TODO: v3 Job A]</td><td style="text-align:right; color:#C62828">[TODO]</td><td style="text-align:right; color:#C62828">[TODO]</td><td style="text-align:right; color:#C62828">[TODO]</td><td style="text-align:right">101</td><td style="text-align:right">3.75M</td></tr>
+<tr><td>EDMsecond [2]</td><td>borrowed ckpt.</td><td style="text-align:right">0.9644</td><td style="text-align:right">0.6725</td><td style="text-align:right">0.8490</td><td style="text-align:right; color:#C62828">[TODO]</td><td style="text-align:right">100</td><td style="text-align:right">5.34M</td></tr>
+<tr><td>EDM, published [2]</td><td>quoted</td><td style="text-align:right">0.9870</td><td style="text-align:right">0.8200</td><td style="text-align:right">0.9190</td><td style="text-align:right">—</td><td style="text-align:right">1000</td><td style="text-align:right">—</td></tr>
+<tr><td>EDM, unscaled one-hot [2]</td><td>quoted</td><td style="text-align:right">0.9570</td><td style="text-align:right">0.4690</td><td style="text-align:right">—</td><td style="text-align:right">—</td><td style="text-align:right">1000</td><td style="text-align:right">—</td></tr>
+<tr><td>Real QM9 (ceiling)</td><td>measured</td><td style="text-align:right">0.9940</td><td style="text-align:right">0.9560</td><td style="text-align:right">0.9820</td><td style="text-align:right">1.0000</td><td style="text-align:right">—</td><td style="text-align:right">—</td></tr>
+</table>
+<p style="font-size:24px; line-height:1.35; color:#5F6A77">§4.2. QM9, unconditional, 100-step Euler probability-flow ODE, our evaluator under EDM conventions. Our flow row: 3 seeds × 10,000. EDMsecond: a single-seed gate run at n = 2,000, not directly comparable.</p>
+</div>
+<div style="display:flex; gap:24px">
+<div style="flex:1.25; display:flex; flex-direction:column; gap:10px; background:#E4ECF6; border-left:8px solid #1F5FA9; border-radius:10px; padding:22px 28px">
+<h3 style="font-size:30px; font-weight:600; line-height:1.25; color:#16202C">Carried forward: flow matching — not for a fidelity win</h3>
+<p style="font-size:26px; line-height:1.35; color:#2B3440">The matched own-diffusion row is <span style="color:#C62828"><b>[TODO: v3 Job A]</b></span>, and a borrowed checkpoint differing in architecture, training half and feature scaling cannot decide a family question. We carry flow matching for its <b>closed-form endpoint estimate at every t</b> — the object every guidance rule differentiates — at NFE 100 against a 1000-step published protocol.</p>
+</div>
+<div style="flex:1; display:flex; flex-direction:column; gap:10px; background:#FDFCFA; border:1px solid #DDD9CF; border-radius:14px; padding:22px 28px">
+<h3 style="font-size:30px; font-weight:600; line-height:1.25; color:#16202C">Our stability gap, ranked</h3>
+<p style="font-size:26px; line-height:1.35"><b>1. Unscaled one-hot:</b> the published ablation removing exactly that scaling costs 3 atom and 35 molecule points [2]. <b>2. Budget:</b> 303k steps vs ~1.56M. <b>Ruled out:</b> the half-data split (0.33 points) and the evaluator (bond tables match entry-for-entry).</p>
+</div>
+</div>
+<p style="position:absolute; left:1616px; top:52px; width:176px; font-size:48px; font-weight:700; line-height:1.15; text-align:center; color:#F7F6F2; background:#1F5FA9; border-radius:14px; padding:8px 12px">2a</p>
+<p style="position:absolute; left:128px; bottom:40px; width:300px; font-size:18px; color:#5F6A77">CIS 6270 · Group 2 · 12 / 29</p>
+<p style="position:absolute; left:448px; bottom:40px; width:1344px; font-size:18px; line-height:1.3; text-align:right; color:#5F6A77">[2] Hoogeboom et al. 2022 (EDM), Tables 1 and 10</p>
+</section>

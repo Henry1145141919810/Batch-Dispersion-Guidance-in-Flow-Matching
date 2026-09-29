@@ -1,0 +1,29 @@
+<section id="s1e2" style="background:#F7F6F2; color:#3A4553; font-family:'IBM Plex Sans', Arial, sans-serif; padding:80px 128px 116px; display:flex; flex-direction:column; gap:24px">
+<div style="display:flex; flex-direction:column; gap:4px">
+<p style="font-size:24px; font-weight:600; letter-spacing:2px; text-transform:uppercase; color:#1F5FA9">Part 1 · Set up the study · comparison plan 2 of 2</p>
+<h2 style="font-family:'Source Serif 4', Georgia, serif; font-size:56px; font-weight:600; line-height:1.1; color:#16202C">Fairness: what is matched, what is not</h2>
+</div>
+<table style="font-size:26px; color:#2B3440">
+<tr style="background:#ECEAE3"><th style="width:31%; text-align:left">Factor</th><th style="width:31%; text-align:left">Matched</th><th style="width:38%; text-align:left">Disclosed mismatch</th></tr>
+<tr><td>Data, split, preprocessing, conditioning</td><td>identical; unconditional both</td><td>none</td></tr>
+<tr><td>Atom counts, evaluator, metric code, δ</td><td>identical, EDM conventions [2]</td><td>none</td></tr>
+<tr><td>Starting noise, seeds</td><td>shared, so arms are paired</td><td>nothing paired across backends</td></tr>
+<tr><td>Backbone, parameters</td><td>EGNN 256×8, 3.75M vs 3.75M</td><td>borrowed comparator 256×9 + attention, 5.34M</td></tr>
+<tr><td>Sampling budget</td><td>100 steps both</td><td>diffusion needs NFE 101 for its endpoint jump</td></tr>
+<tr><td>Training compute</td><td>identical recipe</td><td style="color:#C62828">[TODO: v3 Job A]; borrowed budget unknown</td></tr>
+<tr><td>Feature scaling</td><td>ours unscaled one-hot</td><td>borrowed comparator scales by ¼</td></tr>
+</table>
+<div style="display:flex; gap:24px">
+<div style="flex:1; display:flex; flex-direction:column; gap:8px; background:#FDFCFA; border:1px solid #DDD9CF; border-radius:14px; padding:20px 28px">
+<h3 style="font-size:30px; font-weight:600; line-height:1.25; color:#16202C">Equal w is not equal force</h3>
+<p style="font-size:26px; line-height:1.35">The headline fixes <b>w = 1</b> everywhere: what each rule does at one dial setting, not at its own optimum. Applied-correction share spans <b>5.8×</b> across the arms where it can be measured — so every headline number carries "at w = 1".</p>
+</div>
+<div style="flex:1; display:flex; flex-direction:column; gap:8px; background:#FDFCFA; border:1px solid #DDD9CF; border-radius:14px; padding:20px 28px">
+<h3 style="font-size:30px; font-weight:600; line-height:1.25; color:#16202C">Statistics</h3>
+<p style="font-size:26px; line-height:1.35">Binomial standard errors; paired within a backend; multiplicity-corrected significance beside the single-test value, since each arm is selected over a grid. <b>in-band never crosses backends</b> — δ belongs to that backend's evaluator.</p>
+</div>
+</div>
+<p style="position:absolute; left:1616px; top:52px; width:176px; font-size:48px; font-weight:700; line-height:1.15; text-align:center; color:#F7F6F2; background:#1F5FA9; border-radius:14px; padding:8px 12px">1e</p>
+<p style="position:absolute; left:128px; bottom:40px; width:300px; font-size:18px; color:#5F6A77">CIS 6270 · Group 2 · 10 / 29</p>
+<p style="position:absolute; left:448px; bottom:40px; width:1344px; font-size:18px; line-height:1.3; text-align:right; color:#5F6A77">Original table (this work); evaluation conventions from [2] Hoogeboom et al. 2022 (EDM)</p>
+</section>

@@ -1007,4 +1007,4 @@ Verify all arXiv IDs and years before they enter the bibliography.
 | MolGuidance 2026 | arXiv 2512.12198 |
 | Density/coverage metrics — Naeem et al. 2020 | arXiv 2002.09797 **(verify)** |
 
-Already in `proj1_tex/citation.bib`: Lipman flow matching, Karras EDM, stochastic interpolants, Rectified Flow, OT-CFM, Multisample FM, SiT, CFG, Guided Flows, Dirichlet FM, Gumbel-Softmax FM, Fisher Flow, GeoDiff, E(3)-EDM, SemlaFlow, and the lab's MOG-DFM / AReUReDi / PepTune / TR2-D2 / moPPIt.
+Already in `course/citation.bib`: Lipman flow matching, Karras EDM, stochastic interpolants, Rectified Flow, OT-CFM, Multisample FM, SiT, CFG, Guided Flows, Dirichlet FM, Gumbel-Softmax FM, Fisher Flow, GeoDiff, E(3)-EDM, SemlaFlow, and the lab's MOG-DFM / AReUReDi / PepTune / TR2-D2 / moPPIt.

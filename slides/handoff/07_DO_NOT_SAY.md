@@ -38,9 +38,13 @@ that the work was checked properly, so it is worth being on the right side of it
    lists them.** What is unclaimed is only the narrow composition, and we say the search
    was bounded (about eight queries, abstracts only).
 
-3. **The base-model comparison is incomplete.** Our own VP diffusion has not finished
-   training at scale. Slide 2a says flow matching is carried forward *without a fidelity
-   win*, because the matched row is pending and the measured comparator is borrowed.
+3. **The base-model comparison is COMPLETE as of 28 Sep, and it is now a positive
+   result.** Our own VP diffusion trained to epoch 1500 and ran through v3 (18 cells).
+   Matched on backbone, parameters, epochs, batch, EMA, split and seed, **flow matching
+   beats it on all three chemistry metrics** (mol stab 0.3970 vs 0.2883, validity 0.7562 vs 0.6617, atom stab 0.9356 vs 0.9070; every gap 7-14x the sd of the difference). So slide 2a may now say flow matching
+   is carried forward **with** a measured fidelity win over the matched diffusion model.
+   Do NOT say the matched row is pending, and do NOT say the only diffusion comparator
+   is borrowed -- `edm` is borrowed, `vp` is ours.
 
 ---
 

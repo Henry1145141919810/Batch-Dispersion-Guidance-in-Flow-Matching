@@ -1,0 +1,18 @@
+<section id="s3d" style="background:#F7F6F2; color:#3A4553; font-family:'IBM Plex Sans', Arial, sans-serif; padding:80px 128px 116px; display:flex; flex-direction:column; gap:24px">
+<div style="display:flex; flex-direction:column; gap:4px">
+<p style="font-size:24px; font-weight:600; letter-spacing:2px; text-transform:uppercase; color:#1F5FA9">Part 3 · Test transfer and close the story</p>
+<h2 style="font-family:'Source Serif 4', Georgia, serif; font-size:56px; font-weight:600; line-height:1.1; color:#16202C">Limitations and failure modes</h2>
+</div>
+<div style="display:grid; grid-template-columns:1fr 1fr; gap:22px">
+<div style="display:flex; flex-direction:column; gap:8px; background:#FDFCFA; border:1px solid #DDD9CF; border-radius:14px; padding:20px 28px; padding:20px 28px"><h3 style="font-size:30px; font-weight:600; line-height:1.25; color:#16202C">1 · The evaluator bounds the claim</h3><p style="font-size:26px; line-height:1.35">In-band inherits f_B's error, and guidance is an optimiser that can find f_B's blind spots. Disjoint training halves reduce this risk; they do not remove it.</p></div>
+<div style="display:flex; flex-direction:column; gap:8px; background:#FDFCFA; border:1px solid #DDD9CF; border-radius:14px; padding:20px 28px; padding:20px 28px"><h3 style="font-size:30px; font-weight:600; line-height:1.25; color:#16202C">2 · What is guided is not what is scored</h3><p style="font-size:26px; line-height:1.35">The guide reads a relaxed endpoint (continuous atom types, or DNA off the simplex) while scoring uses decoded samples. The gap can hide an effect or fake one.</p></div>
+<div style="display:flex; flex-direction:column; gap:8px; background:#FDFCFA; border:1px solid #DDD9CF; border-radius:14px; padding:20px 28px; padding:20px 28px"><h3 style="font-size:30px; font-weight:600; line-height:1.25; color:#16202C">3 · The cap and the projection edit the correction</h3><p style="font-size:26px; line-height:1.35">A velocity cap or a simplex projection can truncate BDG's term, and a cap-limited change is not a controller effect. Hence clip frequency and realised w_eff are reported with every cell.</p></div>
+<div style="display:flex; flex-direction:column; gap:8px; background:#FDFCFA; border:1px solid #DDD9CF; border-radius:14px; padding:20px 28px; padding:20px 28px"><h3 style="font-size:30px; font-weight:600; line-height:1.25; color:#16202C">4 · The batch is the estimator</h3><p style="font-size:26px; line-height:1.35">F̄ and V_b couple the samples, so results depend on the batch size (500), and uncertainty must be computed over batches, not molecules.</p></div>
+</div>
+<div style="display:flex; flex-direction:column; gap:6px; background:#FBEFE3; border-left:8px solid #A35A12; border-radius:10px; padding:16px 28px; padding:18px 28px">
+<p style="font-size:26px; line-height:1.35; color:#2B3440"><b>Also open:</b> the base-model choice (our diffusion model is not yet trained); equal nominal w is not equal applied force across arms; the four external methods are adaptations run in our pipeline.</p>
+</div>
+<p style="position:absolute; left:1616px; top:52px; width:176px; font-size:48px; font-weight:700; line-height:1.15; text-align:center; color:#F7F6F2; background:#1F5FA9; border-radius:14px; padding:8px 12px">3d</p>
+<p style="position:absolute; left:128px; bottom:40px; width:300px; font-size:18px; color:#5F6A77">CIS 6270 · Group 2 · 26 / 29</p>
+<p style="position:absolute; left:448px; bottom:40px; width:1344px; font-size:18px; line-height:1.3; text-align:right; color:#5F6A77">Original analysis (this work)</p>
+</section>

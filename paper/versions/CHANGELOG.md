@@ -5,6 +5,62 @@ now `paper/main.tex`; `paper/body.tex` points readers there. Numbered snapshots
 are retained when the live paper changes. Paper version numbers and experiment
 protocol version numbers are independent.
 
+## v7 - 28 Sep 2026
+
+Revised all eight requested points and incorporated the newly arrived own-VP
+benchmark. The paper remains five main pages, with one reference page and
+fifteen appendix pages. Previous releases remain preserved.
+
+- Removed Haimo Fang from the current author list.
+- Replaced the abstract's broad DNA-collapse statement with the measured BDG
+  findings; separately checked both GC and CpG and distinguished TFG-MC.
+- Added Hamming diversity to main Table 4 at matched strength.
+- Filled our VP results and justified carrying FM forward from stability and
+  validity. Explicitly labeled EquiFM as flow and EDMsecond as diffusion.
+- Replaced qualitative Table 2 with numeric dipole ablations at q50 = 2.4932 D.
+  Added all 612 molecular ablation cells as six complete appendix tables.
+- Emphasized BDG's six positive mean-coverage and lower-MAE comparisons,
+  while retaining seed variation and the registered uncertainty result.
+- Highlighted the correct zero-gain limit: eta = 0 gives plug-in; tau = 0 is
+  undefined. Setpoint changes demonstrably adjust spread and occupancy.
+- Rebuilt sixteen inline table blocks and three vector figures, with hashes
+  and audit results for 973 input files. All pages visually reviewed; no
+  overflowing boxes or unresolved references.
+
+See `v7_revision_notes.md` for the request-by-request evidence map.
+
+## v6 - 28 Sep 2026
+
+**Full evidence and presentation revision using the completed local v3-final
+run. Our trained VP benchmark remains pending.** The prior live v5 source/PDF
+is preserved in `v5_pre_v6_2026-09-28/`.
+
+- Rewrote the abstract, introduction, methods, interpretation and discussion.
+  Removed the false cross-modality null: contracting BDG has measured CpG gains.
+  Molecular differences remain unresolved under the declared test; this is not
+  a proof of equivalence or a mechanistic prediction of failure.
+- Restored the own-VP benchmark row as pending and removed the assertion that
+  the user's comparison was cancelled. Borrowed EDMsecond remains separate.
+- Generated eight inline numerical table blocks from the final cells, with
+  seed variation and separate strength/backend definitions. DNA coverage and
+  fidelity now come from the same strength; both GC and CpG are visible.
+- Replaced the overview and added a final-run two-panel result graphic plus
+  complete molecular ablation heatmaps. The old pilot mechanism graphic is not
+  used. All 955 source files have hashes in `results_manifest_v6.json`.
+- Corrected the molecular guidance scale to the calibration-pool standard
+  deviation, verified the DNA checkpoint's best epoch (1450 of 1500), filled
+  predictor training seeds, and separated solver NFE from actual neural calls.
+- Removed GPU-hour, universal-strength, feedback-necessity and across-property
+  window claims that the data do not establish. Added coupled-batch and rerun
+  uncertainty limitations; threshold-sized differences are not called power.
+- Described DNA baselines as implemented guidance adaptations. Their numerical
+  collapse is explicit; unrun sequence generators are no longer empty result rows.
+- Preserved five main-text pages with the unmodified template. Expanded the
+  appendix, verified all references/float links, and inspected rendered pages.
+
+See `v6_revision_notes.md` for the grading map and exact remaining limitations.
+`v6_2026-09-28/` is the rebuildable source/PDF snapshot.
+
 ## v5 - 28 Sep 2026
 
 **The run landed, so the paper reports it.** Every result now comes from the

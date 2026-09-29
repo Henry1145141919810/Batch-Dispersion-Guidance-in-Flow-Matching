@@ -243,7 +243,7 @@ table. Put the full arm inventory, failed revisions and extended grids in the
 appendix. Do not turn the paper into a chronological account of every idea.
 
 **The course and a workshop impose different completion conditions.** The
-[assignment](../../proj1_tex/Project1_Paper_Instructions.tex) permits honest
+[assignment](../../course/Project1_Paper_Instructions.tex) permits honest
 underperformance (around line 294) but still requires a substantive methodological
 idea, its component controls, and transfer of the *same* idea to a genuinely
 different modality (around lines 219-249). Another molecular generator is not

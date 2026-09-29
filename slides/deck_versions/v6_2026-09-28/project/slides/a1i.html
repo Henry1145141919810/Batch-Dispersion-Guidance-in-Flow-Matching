@@ -1,0 +1,40 @@
+<section id="a1i" style="background:#F7F6F2; color:#3A4553; font-family:'IBM Plex Sans', Arial, sans-serif; padding:80px 128px 116px; display:flex; flex-direction:column; gap:22px">
+<div style="display:flex; flex-direction:column; gap:4px">
+<p style="font-size:24px; font-weight:600; letter-spacing:2px; text-transform:uppercase; color:#1F5FA9">Appendix A1 · EquiFM 1 of 2</p>
+<h2 style="font-family:'Source Serif 4', Georgia, serif; font-size:56px; font-weight:600; line-height:1.1; color:#16202C">EquiFM: the borrowed generator</h2>
+</div>
+<div style="display:flex; gap:28px; align-items:start">
+<div style="flex:1.05; display:flex; flex-direction:column">
+<table style="font-size:26px; color:#2B3440">
+<tr style="background:#ECEAE3"><th style="width:30%; text-align:left">Released checkpoint</th><th style="width:70%; text-align:left"></th></tr>
+<tr><td>Paper</td><td>Song et al., NeurIPS 2023 [24]</td></tr>
+<tr><td>Backbone</td><td>EDM-style equivariant GNN dynamics [2, 9], 256 × 9</td></tr>
+<tr><td>Parameters</td><td>5,339,920 (EMA)</td></tr>
+<tr><td>State per atom</td><td>3 coordinates (Å) + 5 one-hot ÷ 4 + charge ÷ 10; explicit H</td></tr>
+<tr><td>Training data</td><td>the full 100K QM9 partition, unconditional</td></tr>
+</table>
+</div>
+<div style="flex:1; display:flex; flex-direction:column; gap:10px; background:#FDFCFA; border:1px solid #DDD9CF; border-radius:14px; padding:20px 28px">
+<h3 style="font-size:30px; font-weight:600; line-height:1.25; color:#16202C">Hybrid probability path</h3>
+<p style="font-size:26px; line-height:1.35">Native time τ: 1 = noise, 0 = data.</p>
+<p style="font-size:26px; line-height:1.35"><b>Coordinates:</b> almost linear — but the noise is rotated (Kabsch) and permuted (Hungarian) onto the molecule first, an equivariant optimal-transport coupling, plus an angle penalty.</p>
+<p style="font-size:26px; line-height:1.35"><b>Types and charge:</b> variance-preserving, β from 0.1 to 20. <b>Sampling:</b> Euler, τ = 1 → 0.</p>
+</div>
+</div>
+<div style="background:#FFFFFF; border:1px solid #DDD9CF; border-radius:14px; padding:14px 28px">
+<img src="/_blob/9fa95e415dee5596d5c98a5142152450" alt="x_τ = (1 − τ) x_0 + s_x(τ) z, s_x = ε + (1 − ε)τ;  h_τ = a h_0 + sqrt(1 − a²) z′, a = exp(−T(τ)/2)" style="width:1400px; height:58px; object-fit:contain">
+</div>
+<div style="display:flex; gap:24px">
+<div style="flex:1; display:flex; flex-direction:column; gap:8px; background:#FDFCFA; border:1px solid #DDD9CF; border-radius:14px; padding:18px 28px">
+<h3 style="font-size:30px; font-weight:600; line-height:1.25; color:#16202C">Unguided, same protocol as ours</h3>
+<p style="font-size:26px; line-height:1.35">3 seeds × 2,000, 100 Euler steps: atom <b>98.6%</b>, molecule <b>86.2 ± 0.3%</b>, validity <b>93.8 ± 0.6%</b>, uniqueness 99.7%; 0.086 s per sample on an RTX A6000.</p>
+</div>
+<div style="flex:1; display:flex; flex-direction:column; gap:8px; background:#FDFCFA; border:1px solid #DDD9CF; border-radius:14px; padding:18px 28px">
+<h3 style="font-size:30px; font-weight:600; line-height:1.25; color:#16202C">Why its chemistry beats ours</h3>
+<p style="font-size:26px; line-height:1.35">Four candidates, none isolated by us: ~2× the training data, 5.34M vs 3.75M parameters, one-hot scaled by ¼ (our leading suspect in 2a), and the aligned coordinate path.</p>
+</div>
+</div>
+<p style="position:absolute; left:1616px; top:52px; width:176px; font-size:48px; font-weight:700; line-height:1.15; text-align:center; color:#F7F6F2; background:#4A5A6E; border-radius:14px; padding:8px 12px">A1</p>
+<p style="position:absolute; left:128px; bottom:40px; width:300px; font-size:18px; color:#5F6A77">CIS 6270 · Group 2 · Appendix</p>
+<p style="position:absolute; left:448px; bottom:40px; width:1344px; font-size:18px; line-height:1.3; text-align:right; color:#5F6A77">[24] Song et al. 2023 (EquiFM) · [2] Hoogeboom et al. 2022 · [9] Satorras et al. 2021 · checkpoint SHA-256 47b40ae6…, audited in this work</p>
+</section>

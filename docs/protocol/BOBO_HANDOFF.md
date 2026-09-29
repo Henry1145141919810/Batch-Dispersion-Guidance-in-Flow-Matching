@@ -151,7 +151,16 @@ decision):
 |---|---|---|---|
 | `fm` | ours | **ours** | all 7 |
 | `equifm` | EquiFM | **TFG's** | all 7 |
-| `edm` | QM9 diffusion (EDMsecond) | **ours** | `unguided`, `plug` only |
+| `edm` | QM9 diffusion (TFG's EDMsecond, **borrowed**) | **ours** | `unguided`, `plug` only |
+| `vp` | QM9 diffusion (**ours**, trained here) | **ours** | `unguided`, `plug` only |
+
+⚠️ The **f_A / f_B** column says whose *property pair* scores the backend, not
+whose *generator* it is. `edm` and `vp` are both diffusion and only `vp` is
+ours. Added 28 Sep — see FULL_RUN_V3_PROTOCOL.md §1.3.
+
+⚠️ **`vp` is NOT in `submit_v3.sh`'s chain** — by design, permanently. It runs
+as its own 9-task array via `submit_vp_bench.sh`. `bash submit_v3.sh` submits `fm`, `equifm` and `edm` — 27 tasks, array
+0-26 — exactly as before. Nothing in this handoff changes for you.
 
 **The ablation needs `--w`.** It sweeps w ∈ {1, 4}, so its tree holds two
 cells per (property, arm) per seed. `v3_table` refuses to pool them —
@@ -215,9 +224,11 @@ python proj1/scripts/transfer_sweep.py --stage v3 --backend fm     --props mu --
   defects must be fixed before any run — see
   [MODALITY2_V3_PLAN.md](MODALITY2_V3_PLAN.md) §2.2. Notably its cell names
   omit `n`, so a smoke run and a real run collide silently.
-- **Our own VP-diffusion QM9 model is not in the repo** and is not wired into
-  `transfer_sweep.py`. The QM9-diffusion backend in v3 is **TFG's EDMsecond**,
-  not ours.
+- ~~Our own VP-diffusion QM9 model~~ **DONE 28 Sep** — no longer an open item.
+  Trained by Bobo, published as `weights/diff_ema.pt` (md5 `8a3390a6`, selected
+  epoch 1475), benchmarked as `--backend vp`: 18 cells, 0.81 GPU-h, 0
+  non-finite. `fm` beats it on all three chemistry metrics. v3 now has **two**
+  diffusion backends: `vp` (ours) and `edm` (TFG's borrowed EDMsecond).
 - The cluster memory figures in the protocol are a **laptop extrapolation**.
   The preflight measures your real card before the array starts — read what it
   writes, especially at large n.

@@ -6,7 +6,8 @@ restricted to **Modality 1 (QM9) with the flow-matching generator**. The
 diffusion generator and Modality 2 (DNA simplex) are explicitly out of scope of
 this document and are listed as not-started in §10.
 
-Status as of **2026-09-24**, except for the v3 block immediately below.
+Status as of **2026-09-24**, except for the v3 blocks immediately below (updated
+**28 Sep** with the blade run).
 Submission **29 Sep 08:30**, defence **30 Sep**.
 
 > ## The live plan is protocol v3 (26 Sep) — read this before anything dated 24 Sep
@@ -23,16 +24,16 @@ Submission **29 Sep 08:30**, defence **30 Sep**.
 > | strength | **w = 1 for every arm** |
 > | chemistry floor | **removed** — nothing is excluded; chemistry is reported |
 > | arms | unguided, plug, tmpd, lgd_mc, tfg + **BDG** (the innovation target). `btvg`/`btvg_var` **dropped** |
-> | base models | **three**, each with its OWN property pair (26 Sep): `fm` (ours) + **our** f_A/f_B · `equifm` + **TFG's** f_A/f_B · `edm` = QM9 diffusion (TFG's EDMsecond) + **our** f_A/f_B, **unguided+plug only** |
+> | base models | **four**, each with its OWN property pair: `fm` (ours) + **our** f_A/f_B · `equifm` + **TFG's** f_A/f_B · `edm` = QM9 diffusion (TFG's **borrowed** EDMsecond) + **our** f_A/f_B, unguided+plug only · **`vp` = QM9 diffusion (OURS, 28 Sep) + our f_A/f_B, unguided+plug only** -- the matched partner to `fm`. `vp` is registered but NOT in `V3_CHAIN_BACKENDS`: it runs as its own 9-task array via `submit_vp_bench.sh` |
 > | ⚠️ pair consequence | δ = k × MAE(f_B), so **the pair sets the band width**, and the two oracles differ. **Measured, held out** ([V3_PAIR_DELTA.md](../results/V3_PAIR_DELTA.md)): ours/TFG = **1.12× mu, 3.07× alpha, 2.00× gap** — ours is **wider on all three**. (Each of our nets is scored on the calibration half it did not train on; scoring on the whole pool flatters them ~19 % and briefly made mu look narrower.) **in_band is NOT comparable across backends with different pairs**, in either direction. Within a backend all arms share one δ, so the arm ranking — the actual question — is untouched |
 > | seeds | **three, for BOTH stages** (the ablation ran one seed until 26 Sep) |
 > | n | **not pre-registered** — the operator picks it. Batch stays **500** whatever n is, so a cell runs n ÷ 500 BDG controllers, each estimating V_b from 500 samples (6.3 % se, independent of n). n must divide by 500 |
 > | BDG τ_mult | headline **{0.5, 1.0}** (0.75 dropped 26 Sep; it runs in the ablation). This is the SETPOINT knob, not the t ≥ 0.5 window |
-> | size | **144** headline cells + **612** ablation = 756. The ablation is ~3× the headline's cost. Cost depends on n: see [V3_POWER.md](../results/V3_POWER.md) |
+> | size | **162** headline cells (63 `fm` + 63 `equifm` + 18 `edm` + 18 `vp`) + **612** ablation = 774. `edm` and `vp` sit out the ablation by design. The ablation is ~3× the headline's cost. Cost depends on n: see [V3_POWER.md](../results/V3_POWER.md) |
 > | strength | headline **w = 1, fixed** for every arm; normalising the strengths instead was considered and **declined** 26 Sep, so §2.2's "equal w is not equal force" caveat stands. The ABLATION sweeps **w ∈ {1, 4}** — `w` scales the mean and deviation terms together while `w_eff = 1 + ηe` reweights the deviation term alone, so this is the control that separates "pushed harder" from "controlled spread". Watch `clipped_sample_steps`: the clip is applied after `w`, so a w = 4 row can be clip-limited |
 > | how to choose n | **by power, not by budget.** `proj1/scripts/v3_power.py` prints the minimum detectable in-band difference against n. A BDG-vs-plug effect is expected at ~1 pp, which needs n in the **low thousands**; below ~1000 nothing under ~2 pp is resolvable and a null says little. Pre-registered in FULL_RUN_V3_PROTOCOL.md §6.1 |
 > | trees | `results/v3/<backend>/<stage>/n<N>/seed<S>/` — the **stage** directory separates the headline from the ablation, since n and the seeds no longer do |
-> | Modality 2 | **not a v3 backend.** Separate stack; see [MODALITY2_V3_PLAN.md](../protocol/MODALITY2_V3_PLAN.md) |
+> | Modality 2 | **not a v3 backend.** Separate stack, run 27–28 Sep on v3's settings; see [MODALITY2_V3_PROTOCOL.md](../protocol/MODALITY2_V3_PROTOCOL.md) (supersedes the PLAN) |
 >
 > **Cancelled 26 Sep:** the `basecmp` (base-model-comparison) chain queued 25 Sep.
 > Its target, strength rule and arm set differ from v3, so its cells could not be
@@ -43,11 +44,309 @@ Submission **29 Sep 08:30**, defence **30 Sep**.
 > 1. `w_eff`, BDG's weight on the deviation term, run-means at **111–1019** on real
 >    trajectories, not the 13.00/4.11/1.00/−1.22 a closed form predicted — that form
 >    is **withdrawn** ([BDG_LADDER_MEASURED.md](../results/BDG_LADDER_MEASURED.md)).
+>    **28 Sep: the v3 cells do not reproduce this magnitude either.** The blade run
+>    records seed-mean w_eff of **−1.51 to 4.52 (fm)** and **−1.94 to 7.18 (equifm)**
+>    over the 16 η > 0 ablation rungs. The headline `bdg_e4t0.5` is 2.39 / 3.28 / 2.53 on
+>    fm mu/alpha/gap, and `bdg_e4t1` is 0.13 / 0.30 / 0.11. Quote the measured values; the
+>    "order 10³" figure applies to the 26 Sep probe, not to v3
+>    ([V3_FINAL_SUMMARY.md](../results/V3_FINAL_SUMMARY.md) §2–3 caveats).
 > 2. The BDG arms are **clip-saturated** (2516 clipped steps against plug's 884), so
->    a BDG null is at least as likely to be the clip as the controller.
+>    a BDG null is at least as likely to be the clip as the controller. *(26 Sep probe
+>    figures. In the v3 headline, `bdg_e4t0.5` clips 0.22–5.62 % of guided sample-steps
+>    (per backend and property, pooled over seeds) against plug's 0.06–1.46 %. The
+>    ablation's worst single cell is 24.0 % (fm mu `bdg_e8t1.5`, w = 4); see
+>    V3_FINAL_SUMMARY.md.)*
 > 3. The controller's sign flips — at τ_mult 1.5, **62 %** of guided steps push the
 >    wrong way — so cells now record `bdg_w_eff_sq` and `bdg_w_eff_neg` as well as
 >    the signed mean, which alone was unfalsifiable.
+
+---
+
+## v3 FINISHED ON BLADE (27–28 Sep): Bobo's drop, merged and cross-checked 28 Sep
+
+Bobo pushed 17 commits (`993920d`..`23e8813`, 994 files) and ran v3 on the blade
+box, which has four RTX A6000s. It **completes both stages** that the Betty run did not.
+Merged into our uncommitted 27 Sep work on 28 Sep. `README.md`, `.gitignore` and
+`v3_table.py` were merged by hand; both sides had fixed `v3_table`'s delta
+tolerance, and Bobo's version was kept. All 24 gate files pass, including Bobo's
+42 M2 protocol gates. They needed a UTF-8 fix to run on Windows.
+
+| stage | cells | where |
+|---|---|---|
+| M1 headline, fm + equifm + edm | 63 + 63 + 18 = 144 | `results/v3/<be>/v3/n2000/` |
+| M1 ablation, 17-arm η×τ grid at w ∈ {1,4} | 306 + 306 = 612 | `results/v3/<be>/v3abl/n2000/` |
+| M2 gc: headline at w ∈ {1,4}, 17-arm grid, 9 t ≥ 0 window cells | 153 | `results/m2/m2*/n2000/` |
+| M2 cpg replication at w ∈ {1,4} | 42 | same |
+
+**Provenance.** n = 2000 × seeds 20261001/2/3 (M1) or 20260921/2/3 (M2), batch 500,
+100-step Euler, q50, t ≥ 0.5, headline w = 1. Cells record `pair` (`ours` for fm/edm,
+`tfg` for equifm), which closes the gap the Betty run left. fm is `fm_ema.pt` md5
+`e19ccc06`; Betty used `fm_last.pt` md5 `a190ac83`, which holds the same EMA weights.
+Measured cost, from the cells' own `seconds` on one RTX A6000 each: headline
+4.9 (fm) + 9.6 (equifm) + 1.5 (edm) GPU-h; ablation **24.0 (fm) + 41.2 (equifm)**,
+i.e. 11.9 + 21.1 at w = 1 plus 12.1 + 20.1 at w = 4 (an earlier version of this line
+gave only the w = 1 half). M2: 5.3 h of recorded minutes, device not recorded
+([V3_FINAL_SUMMARY.md](../results/V3_FINAL_SUMMARY.md) §5). The per-molecule `*.permol.pt` sidecars **stay on blade** (gitignored).
+
+| doc | holds | regenerate |
+|---|---|---|
+| **[V3_FINAL_SUMMARY.md](../results/V3_FINAL_SUMMARY.md)** | **start here**: one section per component (QM9 diffusion `edm`, fm, equifm, M2), full metric blocks, every head-to-head at the bar with MDD, costs, the verdict scoreboard, what is pending | `python proj1/scripts/v3_final_summary.py --md-out docs/results/V3_FINAL_SUMMARY.md` |
+| [M2_V3_RESULTS.md](../results/M2_V3_RESULTS.md) | Modality 2 in full: gc and cpg at w 1 and 4, controls, window, w-sweep, grid, functional scorers | `python proj1/m2/m2_v3_results.py --n 2000 --md-out docs/results/M2_V3_RESULTS.md` |
+| [PAPER_TABLE_FILL_V3.md](../results/PAPER_TABLE_FILL_V3.md) | every `\pend` cell in `paper/main.tex` mapped to its v3 value, as paste-ready LaTeX with options and page costs, plus the rows no run can fill | `python proj1/scripts/paper_fill_v3.py --md-out docs/results/PAPER_TABLE_FILL_V3.md --latex-check` |
+| [V3_RESULTS.md](../results/V3_RESULTS.md) (+ `_fm`, `_equifm`, `_edm`) | headline full metric block, unpaired | `python proj1/scripts/v3_table.py --both --stage v3 --n 2000 --md-out docs/results/V3_RESULTS.md` |
+| [V3_RESULTS_ABL_w1.md](../results/V3_RESULTS_ABL_w1.md), [`_w4`](../results/V3_RESULTS_ABL_w4.md) | ablation grid, full metrics (Bobo's pipeline built these but never committed them; generated 28 Sep) | `... --stage v3abl --w 1` (or `4`) `--md-out docs/results/V3_RESULTS_ABL_w1.md` |
+| [V3_BLADE_READOUT.md](../results/V3_BLADE_READOUT.md) | BDG vs plug per cell at z = 2.99; the README's pooled figure reproduced; the grid against η = 0; **blade against Betty** | `python proj1/scripts/v3_blade_readout.py --md-out docs/results/V3_BLADE_READOUT.md` |
+| M2: [M2_ABLATION_GRID.md](../results/M2_ABLATION_GRID.md), [M2_RESULTS_gc.txt](../results/M2_RESULTS_gc.txt), [M2_SHARE.md](../results/M2_SHARE.md); hand-written [M2_MECHANISM.md](../results/M2_MECHANISM.md), [M2_WINDOW_DOMINATES.md](../results/M2_WINDOW_DOMINATES.md) | Modality 2 | `proj1/m2/m2_ablation_grid.py`, `m2_table.py`, `measure_share.py`; protocol [MODALITY2_V3_PROTOCOL.md](../protocol/MODALITY2_V3_PROTOCOL.md). `M2_RESULTS_ABL_gc_w*.txt` hold **refusals**, not tables (the tree mixes t_min 0 and 0.5) |
+
+### What it shows, at the pre-registered bar
+
+Everything below was recomputed twice, by `v3_blade_readout.py` and by an independent
+checker, and the two agree.
+
+**BDG against plug, per cell** (unpaired z, bar 2.99, 6 (base, property) cells):
+
+| arm vs `plug` | continuous | decoded | second oracle | chemistry vs unguided (6 cells) |
+|---|---|---|---|---|
+| `bdg_e4t0.5` | 0 above / 0 below / 6 tie | 0 / 0 / 6 | 0 / 0 / 6 | mol_stab **−7.15 pp** (plug **−3.96**) |
+| `bdg_e4t1` | 0 / **3 below** / 3 | 0 / 3 / 3 | 0 / 0 / 6 | −0.94 pp |
+
+**The README's "+0.95 pp, t = 5.71" is real arithmetic, but it is not the
+pre-registered test.** It pools 18 (base, property, seed) differences for the
+better of the two BDG arms. The same pooling gives `bdg_e4t1` **−1.21 pp,
+t = −5.97**. So the fair summary is "τ_mult 0.5 raises in-band over plug by about
+1 pp on average, consistently in sign (15 of 18 cells), significant in no single
+cell unpaired, at about 1.8× plug's chemistry cost. τ_mult 1.0 lowers it by the
+same amount." The −4.49 pp quoted for plug includes edm, which has no BDG arm.
+
+**Ablation (M1, 12 grids = 2 bases × 3 properties × 2 w).** In-band against the
+η = 0 cell tracks the **measured** w_eff: Spearman 0.92–0.99 in every grid. The
+τ = 1.5 row ends below η = 0 in **12 of 12**, all significant. The τ = 0.5 row
+rises with η in **5 of 12** (5 of 6 at w = 1, **0 of 6 at w = 4**), and e8 t0.5
+clears η = 0 in 4 of 12. So what the grid supports is **"the deviation term's
+weight, not the global w, carries the effect"**. It does not support "the
+feedback controller is necessary", because no fixed-w_eff control was run and
+BDG_REVIEW.md's schedule replay recovers 69.5–96 %.
+
+**The two v3 runs replicate.** On equifm, which used TFG's pair in both, **0 of 21**
+(property, arm) in-band rows and 0 of 21 stability rows differ between blade
+(n = 2000) and Betty (n = 5000) at |z| ≥ 2.99. BDG − plug has the same sign in 11
+of 12 (base, property, arm). Betty's fm cells were **guided** by TFG's f_A as well
+as scored by TFG's f_B, so its guided fm rows are a different experiment. Only its
+unguided rows are like-for-like, and they agree.
+
+**Reproducibility.** fm is bit-exact: η = 0 equals plug exactly, and same-seed
+re-runs are identical. **equifm is not.** The headline's two BDG arms rerun in the
+ablation move in-band by up to **7.0e-3**, the same order as equifm's BDG − plug
+effects (+0.25 to +1.38 pp), so equifm's binomial error bars understate its noise.
+`V3_REPRO_ENVELOPE.md` records fm as **not** bit-stable at n = 64. That disagrees
+with this run and has not been reconciled. **edm is not bit-exact either**, which
+contradicts the blade README. Its three unguided cells per seed (one per property)
+are the same generation run, since guidance is off. On fm and equifm they agree
+exactly; on edm they differ by up to 1.5e-3 in molecule stability and 5.0e-4 in
+validity.
+
+### Corrections to the blade README (recorded there too)
+
+1. **M2 window.** "Best inside v3's window +2.5 pp" is wrong: `bdg_e8t0.5` at w = 4
+   reaches **+4.23 pp**, so **on gc** the window is worth about 5× the method, not 10×.
+   Both terms are gc-only: cpg has no t = 0 cell, and its in-window gain is +18.30 pp,
+   so the ratio does not hold for M2 as a whole. At t = 0, against plug, `bdg_e4t0.5`
+   is a tie (−2.33 pp, unpaired z −2.67), while `bdg_e4t1` is a clear loss
+   (−20.80 pp, z −26.58).
+2. **"On M1 BDG fixes bias and spread."** It fails on our own base: |bias|/δ
+   worsens on fm/alpha (−1.085 → +1.495, an overshoot) and fm/gap
+   (−0.893 → −1.242). On fm/mu, plug does almost all of the debiasing.
+3. **M2/cpg +18.30 pp** is confirmed, but at **w = 4** (+5.15 vs +0.33 at w = 1).
+   BDG applies 6–10× plug's correction share there, bias worsens
+   (+0.343 → +0.546 δ), and k-mer JS rises (0.00045 → 0.00077). No generated doc
+   holds this number.
+4. **DeepFlyBrain.** AUC 0.992, 0.279 / 0.13–0.14 real, 0.190 / 0.030 base: all
+   confirmed from `results/m2_gate_scores.json` and `m2_dfb_activity.json`. The
+   "verified identical to Keras, max|d| 4.5e-08" is in **no committed file**, and
+   `deepflybrain.py`'s own docstring says the port was validated *without* TF,
+   against real-vs-shuffled sequences. The w = 64 row is **one seed**. The
+   gate-correlation figures (+0.001 / −0.004) are also uncommitted.
+5. **"18,738 checks, 0 failures".** 18,738 = `v3_sanity` 14,958 + `m2_sanity
+   --stage m2` 1,440 + `--stage m2abl` 2,340. One full `m2_sanity` run gives
+   4,246, so the total is **19,204** (reproduced 28 Sep). 0 FAIL holds. There are
+   **68 warnings** (11 M1 clip, 57 M2). Most of the M2 ones are the plug ≡ tmpd ≡
+   lgd_mc identity that finding 2 reports. They also include two BDG pairings that
+   finding 2 does not cover (`bdg_e2t1.5` ≡ `bdg_e8t1`, `bdg_e4t1` ≡ `tfg_mc`, on
+   one seed each).
+
+### Defects found in Bobo's validators (reported, not fixed)
+
+- `v3_sanity.clipped_frac` divides by `guided_steps × n`, but `guided_steps` is
+  already summed over the n/500 batches (`transfer_sweep.py:2352`). **Every M1
+  clip fraction it prints is 4× too low**: its "5–6 %" warnings are really
+  20–24 %, and 158 ablation cells exceed 5 %. The raw counts in V3_RESULTS* are
+  correct.
+- Its within-group checks key on arm only, so w = 1 and w = 4 cells overwrite each
+  other, and the identical-arm checks never see the headline BDG cells.
+- The equifm η = 0 tolerance (2e-2 in-band) is larger than equifm's whole BDG − plug
+  effect, and the M1 η = 0 control runs only at w = 1.
+
+### Still to run (blade, where the sidecars are)
+
+- **Useful yield, paired**, which is how the Betty run was read:
+  `python proj1/scripts/v3_paired.py --n 2000 --backends fm,equifm --md-out docs/results/V3_BLADE_PAIRED.md`,
+  and the same with `--stage v3abl --w 1` (then 4) for the grid. Our `v3_paired.py`
+  was not on blade before this merge.
+- Commit the M2 cpg table and the DeepFlyBrain-vs-Keras check, or withdraw the numbers.
+
+### What the paper can now fill
+
+`tab:recent` (24 `\pend`) from V3_RESULTS.md, `tab:m2` (24) from the M2 docs, and
+probably `tab:guidance` (15). `tab:ablation` (15) is defined as a **paired** change
+from plug, so it waits for `v3_paired.py` on blade. **`tab:fmvd` is now fillable
+in full** (28 Sep): all 8 of its pending cells, the VP four from the `vp` backend
+-- ready-to-paste bodies in
+[PAPER_TABLE_FILL_V3.md](../results/PAPER_TABLE_FILL_V3.md) section 2. One caveat:
+vp's `s/sample` was measured on a B200 MIG slice while the other three rows are
+RTX A6000. `tab:training`
+need other runs.
+
+---
+
+## THE v3 HEADLINE RAN ON BETTY (26–27 Sep) — now a replication, not the headline
+
+> **Superseded as v3-final by the blade run above (28 Sep).** Blade ran v3 as
+> registered: each backend with its own pair, and the ablation. This Betty run is kept
+> as a **replication**: on equifm, which used the same pair in both runs, 0 of 21
+> in-band rows differ at |z| >= 2.99 ([V3_BLADE_READOUT.md](../results/V3_BLADE_READOUT.md) §4).
+> Its **useful-yield** reading below is still the only paired, per-molecule reading
+> of v3 until `v3_paired.py` runs on blade.
+
+Pulled to the laptop 27 Sep. **72 cells per base model, 0 failed cells, 0
+non-finite samples, 3 complete seeds on both bases.** Two script-generated
+tables, both re-runnable:
+
+| doc | what it holds | regenerate |
+|---|---|---|
+| [V3_BETTY_HEADLINE.md](../results/V3_BETTY_HEADLINE.md) | full metric block per arm, **unpaired** z | `python proj1/scripts/v3_table.py --layout flat --backends fm,equifm --n 5000 --md-out docs/results/V3_BETTY_HEADLINE.md` |
+| [V3_BETTY_PAIRED.md](../results/V3_BETTY_PAIRED.md) | **useful yield**, paired McNemar | `python proj1/scripts/v3_paired.py --n 5000 --layout flat --backends fm,equifm --md-out docs/results/V3_BETTY_PAIRED.md` |
+
+**Provenance.** `fm` = `fm_last.pt` md5 `a190ac83`; `equifm` = md5 `89db17e7`.
+q50, w = 1, t ≥ 0.5, n = 5000 × seeds 20261001/2/3, batch 500, 100-step Euler.
+Array `8723902`–`8727915`, finished 27 Sep 03:37. **"0 failed" is true of cells,
+not of jobs:** `8718613` (preflight) and `8723905` (the on-cluster table job,
+which refused on the delta check) both exited non-zero.
+
+**Measured cost 17.2 GPU-h (`fm`) + 25.5 (`equifm`) = 42.7** — but summed across
+two unequal MIG slices (`1g.45gb` and `2g.45gb`), so it is not one unit. The
+**1.48× EquiFM/ours ratio is robust**: both backends got the identical 32/40
+split across slices, and the ratio inside each slice is 1.483 and 1.485. The
+protocol budgeted **1.83×**, borrowed from the EDMsecond backend
+(FULL_RUN_V3_PROTOCOL.md:508). This is one of two independent measurements of
+EquiFM's cost; `basecmp`'s device-matched screen comparison gives 1.28–1.59×
+per molecule (see BASECMP_PARTIAL_RESULTS.md) — same direction, well below the
+budgeted figure, and the two are not measuring quite the same thing.
+
+### What this run is not
+
+1. **Not v3-final.** It was submitted before two 26-Sep decisions landed. Its
+   `fm` cells are scored with **TFG's property pair**, not ours (the pair became
+   per-backend in `transfer_sweep.V3_BACKENDS`), and it carries `bdg_e4t0.75`,
+   the rung dropped from the headline the same day. δ is therefore TFG's, which
+   is **narrower on all three properties** (ours/TFG ≈ 1.12× mu, 3.07× alpha,
+   2.00× gap), so these `fm` in-band numbers read **low** against a
+   declared-pair run and are not comparable to one. Within a backend every arm
+   shares one δ, so the arm comparison — the actual question — is unaffected.
+   **Caution: no cell records a `pair` field at all.** `v3_table.py` falls back
+   to the literal `"tfg"`, which is right here (every cell's `guide`/`oracle`
+   are literally TFG's nets, and δ matches the TFG constants to 3e-6) but it is
+   a **default, not a reading**: a run that genuinely used our pair throughout
+   would be mislabelled and would pass. `transfer_sweep` should write `pair`.
+2. **The ablation never ran: 0 of 306 cells per base.** The current plan is 17
+   arms × 3 properties × 3 seeds × 2 strengths; the headline is 63, so the tree
+   is 72/63 — **9 cells over** the headline plan (the extra `bdg_e4t0.75`), and
+   nothing at all on the ablation. (The literal "198" in the job file is
+   superseded; `v3_run.slurm:386` says so.) There is no η × τ_mult grid and no
+   w ∈ {1,4} control, so **nothing here separates "pushed harder" from
+   "controlled spread"**.
+3. **The decision bar moved, and this section reports it back.** The scripts
+   originally called verdicts at a 3-sigma family rate over the arms present
+   (z = 3.55). The **pre-registered** rule is Bonferroni α = 0.05/18 contrasts,
+   two-sided, **z = 2.99** (FULL_RUN_V3_PROTOCOL.md:582, V3_POWER.md). Every
+   number below is at the pre-registered bar. At 3.55 the BDG scoreboard reads
+   1 W / 4 L / 13 T instead of 2/5/11 — the ruling is unchanged, the counts are not.
+
+### The metric, and what it does and does not protect against
+
+v3 has no chemistry floor, so in-band alone crowns whichever arm destroyed the
+most chemistry. The reported metric is this project's own **useful yield —
+decoded in-band AND molecule-stable, per attempt**. It does **not** make an arm
+immune to spending chemistry: an arm can still buy yield by pushing harder, and
+several do. It *charges* for it, because a molecule that stops being stable
+leaves the numerator. **Useful yield ignores uniqueness**, and the strict column
+that also requires RDKit validity is printed beside it. Continuous and
+second-oracle columns are printed too, and every verdict that a different
+scoring choice would change is named in the table.
+
+### What it shows
+
+**BDG does not beat its own mean term.** `plug` is BDG's η = 0 limit, so it is
+the base arm. Paired on useful yield, 18 BDG cells (3 rungs × 3 properties ×
+2 bases), continuity-corrected McNemar, bar z = 2.99:
+
+| BDG vs `plug` | count | cells |
+|---|---|---|
+| above plug | **2** | `equifm`/mu `bdg_e4t0.5` (+0.0082, z +4.69); `equifm`/gap `bdg_e4t0.5` (+0.0049, z +4.08) |
+| below plug | **5** | `fm`/mu e4t0.5 (−3.66) and e4t0.75 (−3.51); `fm`/gap e4t1 (−3.55); `equifm`/mu e4t1 (−5.09); `equifm`/gap e4t1 (−5.65) |
+| tie | 11 | |
+
+Both wins are on the **borrowed** base model and both at τ_mult = 0.5.
+**`bdg_e4t1` is never a win and is a loss in 3 of 6** — the rung the withdrawn
+closed form called "plug at onset". On our own base, BDG never clears plug.
+
+**The metric change cuts both ways, and both sides are reported.** Ranking on
+continuous in-band alone would credit BDG with four wins over plug that useful
+yield does not keep — *and* four losses it does not keep either. Useful yield is
+a different measurement, not a strictly stricter one.
+
+**`tfg` leads useful yield on every property and both bases** (+0.0062 to
++0.0295, z +5.55 to +14.93 vs unguided) *while* losing 11–30 points of molecule
+stability. So "tfg only wins by destroying chemistry" does not survive this
+metric: at w = 1 it does return the most decoded-in-band, stable molecules per
+attempt. What it cannot survive is a chemistry **floor** — 0.167–0.253 stability
+on our base is a rejectable operating point whatever the yield — and v3
+deliberately removed the floor. State it that way: not a tfg win, not a tfg
+dismissal. Its **validity** also falls to 0.478 on `fm`/gap against unguided's
+0.758, which useful yield does not charge for.
+
+**Baselines against unguided, on useful yield at z = 2.99:** `plug` clears
+**6 of 6**, `tfg` 6 of 6, `bdg_e4t0.5` 4 of 6, `bdg_e4t0.75` 3 of 6, **`lgd_mc`
+1 of 6**, `tmpd` **0 of 6**.
+
+**The second oracle does NOT simply agree.** OC-Flow is a different net scoring
+at its **own δ**, so it is a re-measurement in a different band, not a
+reproduction. On it, both `fm`/mu BDG losses fall to ties (−3.04, −2.96) and
+`fm`/gap e4t1 does too (−2.92); the two BDG wins survive (+4.45, +4.25). The
+table names every such disagreement per row. **No verdict should be quoted
+without checking that column.**
+
+**One cell has a meaningless error block.** `equifm`/gap/`tfg` seed 20261002
+contains one sample at 70,391 × δ from target (RMSE/MAE 51.2 against ≤ 3.0 for
+all other 143 cells). It is finite, so "0 non-finite" is true and says nothing.
+Its `MAE/d`, `bias/d` and `sd/d` — including the `sd/d = 336.286` printed in the
+headline table — are not meaningful. Threshold metrics are unaffected, and the
+paired script flags it.
+
+**No Simpson reversal.** Every sign agrees across all three seeds in all 37
+pooled verdicts. But the four BDG losses are a **pooling** result — no single
+seed clears the bar alone — and this project has been bitten by a single-seed
+effect before.
+
+### What it does not license
+
+No paper number. The paper reports q50, which this run is, but its `fm` half is
+scored with the wrong pair for v3-final, the ablation is entirely missing, and
+`bdg_e4t0.75` is not in the declared arm set. Treat it as **the strongest
+evidence we have about BDG at w = 1**, and as a full-scale rehearsal of the v3
+pipeline, not as the v3 result. The BDG-vs-plug ruling in
+[BDG_REVIEW.md](../methods/BDG_REVIEW.md) stands and is now supported paired.
+
+---
 
 **Latest BTVG decision (23 Sep, after both chemistry guards):** the registered
 full run is negative against LGD-MC; BTVG2 has no demonstrated incremental
@@ -496,7 +795,7 @@ The ones that changed behaviour:
 | **B2** | after the `(τ/s)²` normalisation, `btvg_mean` is **provably identical to `plug`** (verified to 1.4e-17) | 📝 not a bug: **BTVG's novelty is entirely in the variance term.** Say so in the paper |
 | **⚠️ osc** | labelled prior art in every doc, but **no citation for it exists anywhere in this repo** — and it is the **best arm on `alpha`** | ❌ **unresolved.** Find the citation or relabel it as ours |
 | **⚠️ bias claim** | "alpha/plug 13.99 δ, alpha/smg −5.69 δ" mixes **three different strengths in one sentence**. At a consistent w=1 it is plug **+13.99** vs smg **−15.06** — SMG is *more* biased than plug | ❌ **fix before the paper.** This sentence is SPBC's whole motivation |
-| **⚠️ citations** | `proj1_tex/citation.bib` has 28 entries and contains **none** of TFG, DPS, TMPD, ΠGDM, LGD, EEGSDE, OC-Flow, D-Flow or FlowGrad | ❌ every method we compare against is uncited |
+| **⚠️ citations** | `course/citation.bib` has 28 entries and contains **none** of TFG, DPS, TMPD, ΠGDM, LGD, EEGSDE, OC-Flow, D-Flow or FlowGrad | ❌ every method we compare against is uncited |
 | **⚠️ external baselines** | the assignment wants ≥3 relevant methods published within 5 years; we reproduce five **locally**, and whether that satisfies the requirement is argued nowhere | ❌ grading risk. `FlowGrad` is the cheapest to add |
 
 ### The audit's headline
@@ -1049,7 +1348,7 @@ reported, or its replacement run under the same protocol.
 **Decision (Henry, 23 Sep).** The compare set's third recent external method
 is now **TFG** (Ye et al., NeurIPS 2024), replacing dflow. The assignment asks
 for at least three recent external methods under the same protocol
-(`proj1_tex/Project1_Paper_Instructions.tex:321,394`): `tmpd`, `lgd_mc`,
+(`course/Project1_Paper_Instructions.tex:321,394`): `tmpd`, `lgd_mc`,
 `tfg`. `plug` is btvg's own mean term, an ablation rung, not one of the three.
 dflow's 42 compare cells stay on disk and are reported at n = 512.
 

@@ -1,0 +1,28 @@
+<section id="s2d2" style="background:#F7F6F2; color:#3A4553; font-family:'IBM Plex Sans', Arial, sans-serif; padding:80px 128px 116px; display:flex; flex-direction:column; gap:18px">
+<div style="display:flex; flex-direction:column; gap:4px">
+<p style="font-size:24px; font-weight:600; letter-spacing:2px; text-transform:uppercase; color:#1F5FA9">Part 2 · Evidence for Modality 1 · ablations 2 of 2</p>
+<h2 style="font-family:'Source Serif 4', Georgia, serif; font-size:56px; font-weight:600; line-height:1.1; color:#16202C">What the ablations establish</h2>
+</div>
+<table style="font-size:23px; color:#2B3440">
+<tr style="background:#ECEAE3"><th style="width:36%; text-align:left">If we observe (fixed in advance)</th><th style="width:30%; text-align:left">We conclude</th><th style="width:34%; text-align:left">Observed</th></tr>
+<tr><td style="text-align:left">η = 0 differs from plug-in</td><td style="text-align:left">an implementation fault</td><td style="text-align:left">No: identical on our FM; EquiFM within rerun noise</td></tr>
+<tr><td style="text-align:left">ΔIB &gt; 0 on all three seeds at comparable stability, and plug-in at w = 4 does not match it</td><td style="text-align:left">BDG raises coverage beyond strength tuning: the full claim</td><td style="text-align:left"><b>Not met.</b> Registered settings: 0 of 12 above plug-in, 3 below, 9 unresolved</td></tr>
+<tr style="background:#E9F0F8"><td style="text-align:left">R follows τ_m over three or more setpoints, but ΔIB ≈ 0</td><td style="text-align:left">BDG sets spread, not coverage: the narrower claim</td><td style="text-align:left"><b>Met.</b> R rises with τ_m over four setpoints; widening in 6 of 6</td></tr>
+<tr><td style="text-align:left">open-loop replay matches the closed loop</td><td style="text-align:left">a schedule, not feedback</td><td style="text-align:left">Not run</td></tr>
+<tr><td style="text-align:left">signed-strength plug-in matches BDG</td><td style="text-align:left">scalar reweighting suffices</td><td style="text-align:left">Not run</td></tr>
+</table>
+<p style="font-size:24px; line-height:1.35; color:#5F6A77">Why spread need not become coverage: a wider batch fills a fixed band less, and heterogeneous gradients, the cap and decoding break the algebra's promise.</p>
+<div style="display:flex; gap:24px">
+<div style="display:flex; flex-direction:column; gap:8px; background:#FBF1F0; border:3px solid #B3261E; border-radius:14px; padding:20px 28px; flex:1.25; padding:18px 26px">
+<h3 style="font-size:30px; font-weight:600; line-height:1.25; color:#B3261E">Our reading</h3>
+<p style="font-size:26px; line-height:1.35">The supported claim is the narrower one: the setpoint sets spread at fixed nominal strength, widening past unguided where every tested plug-in strength narrows. It does not raise coverage over plug-in at the registered bar, and without replay it does not isolate feedback.</p>
+</div>
+<div style="display:flex; flex-direction:column; gap:8px; background:#FDFCFA; border:1px solid #DDD9CF; border-radius:14px; padding:20px 28px; flex:1; padding:18px 26px">
+<h3 style="font-size:30px; font-weight:600; line-height:1.25; color:#16202C">Coverage per point of chemistry</h3>
+<p style="font-size:24px; line-height:1.35">In-band points gained per stability point lost, from η = 0 at w = 1. Our FM: dispersion (η = 8, τ_m = 0.5) 0.52–0.81 vs strength (w 1 → 4) 0.38–0.53. EquiFM: 0.06–0.39 vs 0.08–0.37. Descriptive ratios, not tests.</p>
+</div>
+</div>
+<p style="position:absolute; left:1616px; top:52px; width:176px; font-size:48px; font-weight:700; line-height:1.15; text-align:center; color:#F7F6F2; background:#1F5FA9; border-radius:14px; padding:8px 12px">2d</p>
+<p style="position:absolute; left:128px; bottom:40px; width:300px; font-size:18px; color:#5F6A77">CIS 6270 · Group 2 · 20 / 29</p>
+<p style="position:absolute; left:448px; bottom:40px; width:1344px; font-size:18px; line-height:1.3; text-align:right; color:#5F6A77">Original analysis plan and results (this work); ratios from results/v3 cells (PAPER_CONTROLLABILITY)</p>
+</section>

@@ -595,7 +595,7 @@ endpoint rules and comparison to prior formulas are in
 [SMG_PRIOR_WORK_AUDIT.md](SMG_PRIOR_WORK_AUDIT.md).
 
 Run at least the **plug-in/SMG × Euler/Heun** grid, plus unguided controls, at matched field
-evaluations and measured wall time; see [M-4](FEASIBILITY_TESTS_HOW_TO_RUN_AND_DECIDE.md#m-4-eulerheun--guidance-comparison--required-solver-control).
+evaluations and measured wall time; see [M-4](../../archive/FEASIBILITY_TESTS_HOW_TO_RUN_AND_DECIDE.md#m-4-eulerheun--guidance-comparison--required-solver-control).
 Keep the same target definition in every reference: the old toy's hard-band rejection target
 differs from its Gaussian guidance likelihood. Its historical results are retained, but they
 do not prove agreement with the exact distribution targeted by that likelihood.

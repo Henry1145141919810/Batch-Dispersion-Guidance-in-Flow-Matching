@@ -1,0 +1,199 @@
+{
+ "backend": "EquiFM",
+ "gen_md5": "89db17e7f793603866b3729b7bdd18d0",
+ "arms": [
+  "unguided",
+  "plug",
+  "tmpd",
+  "lgd_mc",
+  "tfg",
+  "btvg",
+  "btvg_var"
+ ],
+ "fr1_record_only": {
+  "q50": {
+   "beaten_on": 3,
+   "pass": false
+  },
+  "q90": {
+   "beaten_on": 3,
+   "pass": false
+  }
+ },
+ "frozen_w": {
+  "unguided": {
+   "mu": 1.0,
+   "alpha": 1.0,
+   "gap": 1.0
+  },
+  "plug": {
+   "mu": 0.1,
+   "alpha": 1.0,
+   "gap": 0.5
+  },
+  "tmpd": {
+   "mu": 2.0,
+   "alpha": 2.0,
+   "gap": 2.0
+  },
+  "lgd_mc": {
+   "mu": 16.0,
+   "alpha": 4.0,
+   "gap": 4.0
+  },
+  "tfg": {
+   "mu": 0.25,
+   "alpha": 0.05,
+   "gap": 0.01
+  },
+  "btvg": {
+   "mu": 0.25,
+   "alpha": 1.0,
+   "gap": 4.0
+  },
+  "btvg_var": {
+   "mu": 0.05,
+   "alpha": 0.15,
+   "gap": 4.0
+  }
+ },
+ "frozen_w_mae": {
+  "unguided": {
+   "mu": 1.0,
+   "alpha": 1.0,
+   "gap": 1.0
+  },
+  "plug": {
+   "mu": 4.0,
+   "alpha": 4.0,
+   "gap": 4.0
+  },
+  "tmpd": {
+   "mu": 4.0,
+   "alpha": 4.0,
+   "gap": 4.0
+  },
+  "lgd_mc": {
+   "mu": 64.0,
+   "alpha": 64.0,
+   "gap": 64.0
+  },
+  "tfg": {
+   "mu": 4.0,
+   "alpha": 4.0,
+   "gap": 4.0
+  },
+  "btvg": {
+   "mu": 4.0,
+   "alpha": 4.0,
+   "gap": 64.0
+  },
+  "btvg_var": {
+   "mu": 0.05,
+   "alpha": 0.15,
+   "gap": 4.0
+  }
+ },
+ "rule": "frozen_w = FR3a: best MAE among strengths with mol_stability >= 0.9 x unguided; frozen_w_mae = FR3 as registered",
+ "floor": {
+  "mu": 0.791015625,
+  "alpha": 0.791015625,
+  "gap": 0.791015625
+ },
+ "fell_back": [],
+ "source_stage": "compare",
+ "target": "q90",
+ "source_seed": 20260922,
+ "source_n": 512,
+ "source_batch": 128,
+ "source_dir": "/vast/projects/ajw/wharton/hyhuang/cgm/results/transfer_equifm/compare",
+ "grid": "native",
+ "tau_max_guide": 0.5,
+ "grid_strengths": [
+  0.01,
+  0.05,
+  0.1,
+  0.15,
+  0.25,
+  0.5,
+  1.0,
+  2.0,
+  4.0
+ ],
+ "extension": [
+  [
+   "mu",
+   "lgd_mc",
+   "q90",
+   16.0
+  ],
+  [
+   "mu",
+   "lgd_mc",
+   "q90",
+   64.0
+  ],
+  [
+   "alpha",
+   "lgd_mc",
+   "q90",
+   16.0
+  ],
+  [
+   "alpha",
+   "lgd_mc",
+   "q90",
+   64.0
+  ],
+  [
+   "gap",
+   "lgd_mc",
+   "q90",
+   16.0
+  ],
+  [
+   "gap",
+   "lgd_mc",
+   "q90",
+   64.0
+  ],
+  [
+   "gap",
+   "tfg",
+   "q90",
+   0.0025
+  ],
+  [
+   "gap",
+   "tfg",
+   "q90",
+   0.000625
+  ],
+  [
+   "gap",
+   "btvg",
+   "q90",
+   16.0
+  ],
+  [
+   "gap",
+   "btvg",
+   "q90",
+   64.0
+  ],
+  [
+   "gap",
+   "btvg_var",
+   "q90",
+   16.0
+  ],
+  [
+   "gap",
+   "btvg_var",
+   "q90",
+   64.0
+  ]
+ ],
+ "select_metric": "prop_mae_eval_dec",
+ "tfg_post_hoc": false
+}

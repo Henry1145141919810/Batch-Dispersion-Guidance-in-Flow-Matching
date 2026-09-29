@@ -16,9 +16,11 @@ Protocol: [FULL_RUN_V3_PROTOCOL.md](../protocol/FULL_RUN_V3_PROTOCOL.md).
 | guidance window | t >= 0.5 |
 | n, seeds | 2000 x 3 = 6000 molecules per arm |
 | delta | global rule: mu 0.17541, alpha 0.50618, gap 0.00748 |
+| delta spread across cells (relative) | mu 0.0e+00, alpha 0.0e+00, gap 0.0e+00 |
 | sampler | 100-step euler, batch 500 |
 | chemistry floor | **none** -- nothing is excluded; chemistry is reported |
 | non-finite | 0 across all cells |
+| measured cost | 4.9 GPU-h over 63 cells, on NVIDIA RTX A6000 |
 
 ### mu (delta 0.17541)
 

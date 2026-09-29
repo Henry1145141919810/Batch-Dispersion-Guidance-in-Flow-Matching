@@ -1,4 +1,4 @@
-# Full run v3: one strength, one target, three base models
+# Full run v3: one strength, one target, four base models
 
 **26 September 2026. Pre-registration. Nothing here has been run.** Henry's
 decisions of 26 Sep are folded in verbatim; where this document and an older
@@ -100,6 +100,72 @@ that is done it is a separate run and its numbers do not belong in a v3 table.
 > `evaluate_<p>` saw an unknown part of QM9, making its δ optimistically
 > tight. Every cell records `pair`, `guide` and `oracle`, and `v3_table.py`
 > refuses to pool cells whose `pair` disagrees.
+
+### 1.3 Amendment, 28 September 2026 — a fourth backend, `vp`
+
+**This section is an amendment, not a revision.** Section 1.2 above is the
+26 September pre-registration and is left exactly as it was written. Nothing
+here changes any arm, target, strength, seed or property of the three
+backends declared there, and no cell already on disk is affected.
+
+**What is added.** A fourth backend, `vp`: **our own** QM9 VP diffusion
+model, trained here. `edm` and `vp` are both diffusion and **only `vp` is
+ours** — `edm` is TFG's released EDMsecond, borrowed and frozen.
+
+| backend | generator | f_A / f_B | arms |
+|---|---|---|---|
+| `vp` | **QM9 diffusion, OURS** — `diff.pt` (the selected checkpoint) | **ours** — `weights/f_{A,B}_<p>.pt` | **`unguided`, `plug` only** |
+
+**Two arms only (Henry, 28 Sep).** `vp` mirrors `edm` exactly, which is what
+makes `vp`-vs-EDMsecond a legal head-to-head. The 7-arm set answers a
+different question — *does guidance work on VP?* — at 3.4× the cost
+(63 cells / ≈5 GPU-h against 18 / ≈1.5), and it still could not be compared
+to `edm`, which has no BDG arm. **`vp` sits out the ablation**, as `edm` does.
+
+**Why it is worth running.** `vp` and `fm` share the EGNNVelocity backbone,
+3,753,229 parameters, 1500 epochs, batch 256, EMA 0.9999, the `train_a`
+split and seed 20260918. `fm`-vs-`vp` therefore isolates the generator
+**family** and nothing else — the matched cell `tab:fmvd` had never had until
+28 Sep, and the one `main.tex:175` confessed was missing. `edm` cannot stand in
+for it at any n: it differs in data, architecture and budget at once.
+
+**The band.** `vp` scores with **our** pair, so it joins `fm` and `edm` on
+the wider band of the box above and is comparable to both. It is **not**
+comparable to `equifm` on `in_band`, for the same reason they are not.
+
+**Grid.** 2 arms × 3 properties × 3 seeds × w = 1 = **18 cells**, n = 2000 in
+4 batches of 500, q50, no chemistry floor — every other axis identical to
+§1.2's.
+
+**Cost ≈ 1.5 GPU-h, and it is an extrapolation, not a measurement.** It is
+`edm`'s measured per-molecule rates on a B200 MIG 2g.45gb (unguided 0.0788 s,
+plug 0.2130 s, from the 216 cells in `results/transfer/`) applied to 18,000
+molecules per arm: 5,252 s. Our VP is *smaller* than EDMsecond (3,753,229
+against 5.34 M parameters), so it should come in under. The longest single
+task is ≈10 min, against a 4-hour wall.
+
+**It therefore fits inside one window, and runs as nine standalone `sbatch`
+tasks — not through `submit_v3.sh`.** `vp` is registered in `V3_BACKENDS` but
+deliberately **not** in `V3_CHAIN_BACKENDS` or the job file's `BACKENDS`: the
+chain's preflight loops every listed backend and is its one `afterok` link, so
+listing a backend whose checkpoint is absent would stop `fm`, `equifm` and
+`edm` from running at all. **This is a standing design decision, not a waiting
+state**: `vp` runs as its own 9-task array via `submit_vp_bench.sh`, and the
+chain's headline array stays at 27 tasks (0-26).
+
+**Status, 28 September: DONE.** Trained by Bobo to epoch 1500, selected epoch
+1475, published as `weights/diff_ema.pt` (md5 `8a3390a6`). 18 cells, 0.81 GPU-h
+on a B200 MIG 2g.45gb, 0 non-finite, `v3_sanity` clean. **`fm` beats `vp`** on
+molecule stability (0.3970 vs 0.2883), validity (0.7562 vs 0.6617) and atom
+stability (0.9356 vs 0.9070), every gap 7-13x the seed sd -- the evidence the
+base-model choice previously lacked. Results:
+[V3_RESULTS_vp.md](../results/V3_RESULTS_vp.md).
+
+⚠️ One earlier attempt produced a **full set of 18 wrong cells**: the resolver
+picked up the epoch-75 remains of the crashed job 8590174 (md5 `93ab4f72`),
+which has the same family, split, width and depth, so every field check passed
+while atom stability came out at 0.763 instead of 0.905. `vp_bench.slurm` now
+pins the checkpoint md5. A field check is not an identity check.
 
 
 ## 2. The three choices that shape how v3 must be read
@@ -271,11 +337,16 @@ gate.
 |---|---|---|
 | `fm` | 7 | 7 × 3 × 3 = **63** |
 | `equifm` | 7 | **63** |
-| `edm` (QM9 diffusion) | 2 | 2 × 3 × 3 = **18** |
-| | | **144 headline cells** |
+| `edm` (QM9 diffusion, TFG's **borrowed** EDMsecond) | 2 | 2 × 3 × 3 = **18** |
+| `vp` (QM9 diffusion, **OURS**) | 2 | 2 × 3 × 3 = **18** |
+| | | **162 headline cells** |
+
+`vp` is not part of the chain's array (§1.3), so the chain still submits 27
+tasks for `fm`, `equifm` and `edm`; `vp`'s 18 cells come from its own 9-task
+array.
 
 The ablation adds 17 arms × **2 strengths** × 3 × 3 × 2 = **612** (`edm` sits
-it out), for **756** in all — it is much the larger stage, roughly 3× the
+it out, and so does `vp`), for **774** in all — it is much the larger stage, roughly 3× the
 headline's cost. The array is a uniform backend × property × seed grid — 27 tasks per
 stage — because a ragged one is how stride bugs happen; `edm`'s nine ablation
 tasks exit 0 immediately having planned nothing, and say so.
@@ -400,8 +471,8 @@ duplication is deliberate: it is what makes each stage's tree readable on its
 own, and it also gives a free consistency check, since the two copies should
 agree within seed noise.
 
-Union of the two arm sets: **22 arms.** Cells: **144** headline + **612**
-ablation = **756**. The ablation's factor of two over its arm count is the
+Union of the two arm sets: **22 arms.** Cells: **162** headline + **612**
+ablation = **774**. The ablation's factor of two over its arm count is the
 strength sweep, w ∈ {1, 4} — the headline has no strength axis
 ([ABLATION_V3_PROTOCOL.md §1.1](ABLATION_V3_PROTOCOL.md)).
 

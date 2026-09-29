@@ -1,0 +1,38 @@
+<section id="a2ii" style="background:#F7F6F2; color:#3A4553; font-family:'IBM Plex Sans', Arial, sans-serif; padding:80px 128px 116px; display:flex; flex-direction:column; gap:22px">
+<div style="display:flex; flex-direction:column; gap:4px">
+<p style="font-size:24px; font-weight:600; letter-spacing:2px; text-transform:uppercase; color:#1F5FA9">Appendix A2 · property predictors 2 of 2</p>
+<h2 style="font-family:'Source Serif 4', Georgia, serif; font-size:56px; font-weight:600; line-height:1.1; color:#16202C">Theirs are better; ours are disjoint</h2>
+</div>
+<div style="display:flex; gap:28px; align-items:start">
+<div style="flex:1; display:flex; flex-direction:column; gap:12px">
+<table style="font-size:26px; color:#2B3440">
+<tr style="background:#ECEAE3"><th style="width:31%; text-align:left">MAE</th><th style="width:21%; text-align:right">μ (D)</th><th style="width:25%; text-align:right">α (Bohr³)</th><th style="width:23%; text-align:right">gap (Ha)</th></tr>
+<tr><td>our f_A</td><td style="text-align:right">0.0872</td><td style="text-align:right">0.2325</td><td style="text-align:right">0.00402</td></tr>
+<tr><td>our f_B</td><td style="text-align:right">0.0877</td><td style="text-align:right">0.2531</td><td style="text-align:right">0.00374</td></tr>
+<tr><td>TFG guide</td><td style="text-align:right">0.0417</td><td style="text-align:right">0.0925</td><td style="text-align:right">0.00185</td></tr>
+<tr><td>TFG oracle</td><td style="text-align:right">0.0784</td><td style="text-align:right">0.0824</td><td style="text-align:right">0.00187</td></tr>
+</table>
+<p style="font-size:24px; line-height:1.35; color:#5F6A77">Same 3,000 calibration molecules. Ours are scored only on the half each did not train on; TFG's on the whole pool, which overlaps their training halves and flatters them.</p>
+<div style="background:#E4ECF6; border-left:8px solid #1F5FA9; border-radius:10px; padding:16px 24px">
+<p style="font-size:26px; line-height:1.35; color:#16202C"><b>The honest gap on μ.</b> On molecules neither TFG net trained on: guide 0.0659 D, oracle 0.0728 D, our f_B 0.0840 D. <b>~20% better, not 2×.</b></p>
+</div>
+</div>
+<div style="flex:1; display:flex; flex-direction:column; gap:18px">
+<div style="display:flex; flex-direction:column; gap:8px; background:#FDFCFA; border:1px solid #DDD9CF; border-radius:14px; padding:18px 26px">
+<h3 style="font-size:30px; font-weight:600; line-height:1.25; color:#16202C">Why theirs are more accurate</h3>
+<p style="font-size:26px; line-height:1.35"><b>Capacity:</b> 2–4× the parameters, 7 layers not 4.</p>
+<p style="font-size:26px; line-height:1.35"><b>Attention:</b> a learned weight per neighbour; ours sums neighbours equally.</p>
+<p style="font-size:26px; line-height:1.35"><b>Training:</b> the guide is an EMA at epoch 2,000 [15]; ours stop at 120.</p>
+<p style="font-size:26px; line-height:1.35"><b>Inputs:</b> the oracle also reads nuclear-charge features.</p>
+</div>
+<div style="display:flex; flex-direction:column; gap:8px; background:#FDFCFA; border:1px solid #DDD9CF; border-radius:14px; padding:18px 26px">
+<h3 style="font-size:30px; font-weight:600; line-height:1.25; color:#16202C">Why we keep ours on our FM</h3>
+<p style="font-size:26px; line-height:1.35">Ours is disjoint <b>by construction</b>; TFG's only <b>by inference</b> — its saved arguments are overwritten by its own training script, and the oracle's training IDs are unknown. The price is a wider band (ours / TFG δ: 1.12× μ, 3.07× α, 2.00× gap), which is exactly why in-band never crosses backends.</p>
+</div>
+</div>
+</div>
+<p style="font-size:24px; line-height:1.35; color:#5F6A77">Disjointness test (μ, 3,000 molecules): guide wins by &gt;2× on 30.9%, oracle on 40.9%, neither on 28.2% — against 37.4 / 37.4 / 25.3% predicted for disjoint halves. Replicated on α and gap.</p>
+<p style="position:absolute; left:1616px; top:52px; width:176px; font-size:48px; font-weight:700; line-height:1.15; text-align:center; color:#F7F6F2; background:#4A5A6E; border-radius:14px; padding:8px 12px">A2</p>
+<p style="position:absolute; left:128px; bottom:40px; width:300px; font-size:18px; color:#5F6A77">CIS 6270 · Group 2 · Appendix</p>
+<p style="position:absolute; left:448px; bottom:40px; width:1344px; font-size:18px; line-height:1.3; text-align:right; color:#5F6A77">[15] Ye et al. 2024 (TFG) · accuracy and disjointness measurements: this work (pair calibration; predictor audit)</p>
+</section>

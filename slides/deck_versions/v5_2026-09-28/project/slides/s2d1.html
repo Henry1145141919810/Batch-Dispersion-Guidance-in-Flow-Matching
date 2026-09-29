@@ -1,0 +1,24 @@
+<section id="s2d1" style="background:#F7F6F2; color:#3A4553; font-family:'IBM Plex Sans', Arial, sans-serif; padding:80px 128px 116px; display:flex; flex-direction:column; gap:20px">
+<div style="display:flex; flex-direction:column; gap:4px">
+<p style="font-size:24px; font-weight:600; letter-spacing:2px; text-transform:uppercase; color:#1F5FA9">Part 2 · Evidence for Modality 1 · ablations 1 of 2</p>
+<h2 style="font-family:'Source Serif 4', Georgia, serif; font-size:56px; font-weight:600; line-height:1.1; color:#16202C">Testing the innovation: the ablations</h2>
+</div>
+<div style="display:flex; flex-direction:column; gap:6px; background:#E4ECF6; border-left:8px solid #1F5FA9; border-radius:10px; padding:16px 28px; padding:16px 28px">
+<p style="font-size:28px; line-height:1.4; color:#16202C"><b>Registered grid.</b> η ∈ {1, 2, 4, 8} × τ_mult ∈ {0.5, 0.75, 1, 1.5}, plus η = 0, each at w = 1 and w = 4. Three seeds, batch 500, the headline run's n. Every row is paired against plug-in at the same w.</p>
+</div>
+<table style="font-size:26px; color:#2B3440">
+<tr style="background:#ECEAE3"><th style="width:26%; text-align:left">Control</th><th style="width:30%; text-align:left">What it isolates</th><th style="width:18%; text-align:right">ΔIB vs plug-in ↑</th><th style="width:12%; text-align:right">R</th><th style="width:14%; text-align:right">Mol. stab. ↑</th></tr>
+<tr><td>η = 0</td><td>identity: must equal plug-in</td><td style="text-align:right; color:#C62828">[TODO: v3 ablation]</td><td style="text-align:right; color:#C62828">[TODO]</td><td style="text-align:right; color:#C62828">[TODO]</td></tr>
+<tr><td>Gain × setpoint, w = 1 and 4</td><td>dispersion versus strength</td><td style="text-align:right; color:#C62828">[TODO: v3 ablation]</td><td style="text-align:right; color:#C62828">[TODO]</td><td style="text-align:right; color:#C62828">[TODO]</td></tr>
+<tr><td>One-sided, max(e, 0)</td><td>the negative-residual branch</td><td style="text-align:right; color:#C62828">[TODO: not yet run]</td><td style="text-align:right; color:#C62828">[TODO]</td><td style="text-align:right; color:#C62828">[TODO]</td></tr>
+<tr><td>Open-loop replay of e(t)</td><td>feedback versus a fixed schedule</td><td style="text-align:right; color:#C62828">[TODO: not yet run]</td><td style="text-align:right; color:#C62828">[TODO]</td><td style="text-align:right; color:#C62828">[TODO]</td></tr>
+<tr><td>Signed-strength plug-in</td><td>scalar reweighting alone</td><td style="text-align:right; color:#C62828">[TODO: not yet run]</td><td style="text-align:right; color:#C62828">[TODO]</td><td style="text-align:right; color:#C62828">[TODO]</td></tr>
+</table>
+<p style="font-size:24px; line-height:1.35; color:#5F6A77">ΔIB: paired change in band coverage from plug-in at the same w. R: decoded property s.d. ÷ unguided. Rows 1–2 belong to the registered grid; rows 3–5 are additional controls.</p>
+<div style="display:flex; flex-direction:column; gap:6px; background:#FBEFE3; border-left:8px solid #A35A12; border-radius:10px; padding:16px 28px; padding:16px 28px">
+<p style="font-size:26px; line-height:1.35; color:#2B3440"><b>Reported with every cell:</b> clip frequency and the realised w_eff. A change in coverage is attributed to dispersion only if the cap was not doing the work.</p>
+</div>
+<p style="position:absolute; left:1616px; top:52px; width:176px; font-size:48px; font-weight:700; line-height:1.15; text-align:center; color:#F7F6F2; background:#1F5FA9; border-radius:14px; padding:8px 12px">2d</p>
+<p style="position:absolute; left:128px; bottom:40px; width:300px; font-size:18px; color:#5F6A77">CIS 6270 · Group 2 · 19 / 29</p>
+<p style="position:absolute; left:448px; bottom:40px; width:1344px; font-size:18px; line-height:1.3; text-align:right; color:#5F6A77">Original design (this work)</p>
+</section>

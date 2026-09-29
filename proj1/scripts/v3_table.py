@@ -60,10 +60,30 @@ PROPS = ("mu", "alpha", "gap")
 # with transfer_sweep.V3_BACKENDS by a gate in test_v3.py -- this module must
 # not import torch (the cluster runs it on a login node), so it restates the
 # names rather than importing the registry at module scope.
-BACKENDS = ("fm", "equifm", "edm")
+BACKENDS = ("fm", "equifm", "edm", "vp")
+# WHICH BACKENDS `--both` WALKS -- the chain's, not the registry's. Mirrors
+# transfer_sweep.V3_CHAIN_BACKENDS. `load()` raises SystemExit on a backend
+# with planned arms and no directory, so listing `vp` here would turn every
+# table job red for a complete fm/equifm/edm run, purely because a backend
+# nobody submitted has no cells. `--backend vp` still works on its own.
+CHAIN_BACKENDS = ("fm", "equifm", "edm")
 BACKEND_LABEL = {"fm": "ours (flow-matching EGNN), our property pair",
                  "equifm": "EquiFM (borrowed), TFG's property pair",
-                 "edm": "QM9 diffusion (TFG/EDMsecond), our property pair"}
+                 "edm": "QM9 diffusion (TFG/EDMsecond, BORROWED), our property pair",
+                 "vp": "QM9 diffusion (OURS, VP trained here), our property pair"}
+# The heading is built from the pair the CELLS record, not from BACKEND_LABEL.
+# The 26-Sep Betty run scored `fm` with TFG's pair (it predates the per-backend
+# pair), and a heading asserting "our property pair" over those cells would
+# misstate the band every in_band number in the section was measured in.
+BACKEND_ARCH = {"fm": "ours (flow-matching EGNN)",
+                "equifm": "EquiFM (borrowed)",
+                "edm": "QM9 diffusion (TFG/EDMsecond, borrowed)",
+                "vp": "QM9 diffusion (OURS, VP trained here)"}
+# Without a `vp` entry the "these cells were scored with the wrong pair"
+# warning is silently disabled for vp -- `.get()` returns None and the check
+# is skipped, not failed. That warning is the only thing defending the band.
+DECLARED_PAIR = {"fm": "ours", "equifm": "tfg", "edm": "ours", "vp": "ours"}
+PAIR_LABEL = {"ours": "our property pair", "tfg": "TFG's property pair"}
 SIGMA = 3.0
 UNIQ_MIN = 0.95
 
@@ -114,7 +134,7 @@ def w_eff_nominal(arm):
     return 1.0 + eta * (1.0 / (tau * tau) - 1.0)
 
 
-def load(root, backend, n, seeds, stage="v3", w=None):
+def load(root, backend, n, seeds, stage="v3", w=None, layout="staged"):
     """{(prop, arm): [rows, one per seed]} plus problems.
 
     `stage` selects BOTH the directory level and the label a cell must carry.
@@ -127,10 +147,18 @@ def load(root, backend, n, seeds, stage="v3", w=None):
     strength against itself. Passing None is only valid when the tree holds one
     strength; otherwise the caller is told which values are there and must
     choose. The headline has one strength by construction.
+
+    `layout="flat"` reads `<root>/<backend>/n<N>/seed<S>/`, the tree cells were
+    written to before the stage directory existed (the 26-Sep Betty headline).
+    The label check below still applies, so a flat tree holding ablation cells
+    is refused rather than pooled.
     """
     got, problems = {}, []
     for seed in seeds:
-        d = os.path.join(root, backend, stage, "n%d" % n, "seed%s" % seed)
+        if layout == "flat":
+            d = os.path.join(root, backend, "n%d" % n, "seed%s" % seed)
+        else:
+            d = os.path.join(root, backend, stage, "n%d" % n, "seed%s" % seed)
         if not os.path.isdir(d):
             problems.append("%s: no directory for seed %s" % (backend, seed))
             continue
@@ -360,7 +388,7 @@ def order_arms(arms, measured=None):
     return base + bdg + sorted(rest)
 
 
-def emit(L, backend, cells, n, seeds):
+def emit(L, backend, cells, n, seeds, stage="v3"):
     P = {k: pooled(v) for k, v in cells.items()}
     # order BDG by the run's OWN mean w_eff (averaged over the properties that
     # have it), falling back to the nominal form only where it was not recorded
@@ -373,9 +401,21 @@ def emit(L, backend, cells, n, seeds):
     arms = order_arms({a for (_p, a) in cells}, measured=meas)
     any_row = next(iter(cells.values()))[0]
     prov = any_row.get("prov") or {}
-    L.append("## Base model: %s (`--backend %s`)"
-             % (BACKEND_LABEL.get(backend, backend), backend))
+    pair = any_row.get("pair")                 # check() has made it uniform
+    L.append("## Base model: %s, %s (`--backend %s`)"
+             % (BACKEND_ARCH.get(backend, backend),
+                PAIR_LABEL.get(pair, "pair %r" % pair), backend))
     L.append("")
+    if DECLARED_PAIR.get(backend) and pair != DECLARED_PAIR[backend]:
+        L.append("> **These cells were scored with %s; v3 now declares %s for "
+                 "`%s`.** They predate the per-backend pair (26 Sep). "
+                 "The band width is set by the pair (delta = 2 x MAE(f_B)), so "
+                 "in_band here is NOT comparable to a `%s` run under the declared "
+                 "pair. Within this section every arm shares one delta, so the arm "
+                 "comparison is unaffected."
+                 % (PAIR_LABEL.get(pair, pair),
+                    PAIR_LABEL.get(DECLARED_PAIR[backend]), backend, backend))
+        L.append("")
     L.append("| setting | value |")
     L.append("|---|---|")
     L.append("| generator | %s, md5 `%s` |" % (prov.get("gen", "?"),
@@ -397,10 +437,43 @@ def emit(L, backend, cells, n, seeds):
     L.append("| delta | %s rule: %s |"
              % (any_row.get("delta_mode") or "UNRECORDED",
                 ", ".join(any_delta(p) for p in PROPS)))
+
+    def delta_spread(p):
+        ds = [float(r["delta"]) for (pp, _a), rs in cells.items() if pp == p for r in rs]
+        return "%s %.1e" % (p, (max(ds) - min(ds)) / max(ds)) if ds else "%s --" % p
+    L.append("| delta spread across cells (relative) | %s |"
+             % ", ".join(delta_spread(p) for p in PROPS))
     L.append("| sampler | %d-step %s, batch %d |"
              % (any_row["steps"], any_row["solver"], any_row["batch"]))
     L.append("| chemistry floor | **none** -- nothing is excluded; chemistry is reported |")
     L.append("| non-finite | %d across all cells |" % sum(P[k]["nonfinite"] for k in P))
+    # Measured cost, from the cells' own `seconds`. The v3 budget borrowed
+    # EquiFM's per-cell cost from another backend (FULL_RUN_V3_PROTOCOL.md);
+    # printing what the run actually took is how that estimate gets replaced.
+    secs = sum(float(r.get("seconds") or 0.0)
+               for rs in cells.values() for r in rs)
+    devs = sorted({(r.get("prov") or {}).get("device") for rs in cells.values()
+                   for r in rs} - {None})
+    L.append("| measured cost | %.1f GPU-h over %d cells, on %s |"
+             % (secs / 3600.0, sum(len(rs) for rs in cells.values()),
+                ", ".join(devs) or "an unrecorded device"))
+    # An arm on disk that the CURRENT planner does not plan means the cells were
+    # written by an older arm set. That is not corruption -- every check above
+    # still passed -- but it changes what the section is, so it is stated rather
+    # than silently tabulated alongside the planned arms.
+    # PER STAGE. Computing `want` from the headline plan whatever the stage
+    # flagged 15 of the 17 ablation arms as off-plan on --stage v3abl.
+    planned = planned_arms(stage, backend)
+    if planned is not None:
+        extra = sorted({a for (_p, a) in cells} - set(planned))
+        if extra:
+            # State what is true -- the arm is not in this stage's plan. WHY it
+            # is there (an older arm set, a stray file, a hand-run cell) is not
+            # derivable from the cells, so it is not asserted.
+            L.append("| arms not planned at stage `%s` | %s -- present and "
+                     "tabulated, and they are counted in the selection "
+                     "correction below |" % (stage, ", ".join("`%s`" % a
+                                                              for a in extra)))
     L.append("")
     for p in PROPS:
         av = [a for a in arms if (p, a) in P]
@@ -598,10 +671,56 @@ def main():
                          "v3abl = the eta x tau_mult grid, which carries NO "
                          "comparison arm and is read against itself")
     ap.add_argument("--seeds", default="20261001,20261002,20261003")
+    ap.add_argument("--layout", default="staged", choices=["staged", "flat"],
+                    help="staged = <root>/<be>/<stage>/n<N>/ (current); flat = "
+                         "<root>/<be>/n<N>/, the pre-stage-split tree of the "
+                         "26-Sep Betty headline")
+    ap.add_argument("--backends", default="",
+                    help="comma list overriding --both's full set, for a run "
+                         "that did not include every backend (the Betty "
+                         "headline ran fm and equifm, no edm)")
     ap.add_argument("--md-out", default="")
     args = ap.parse_args()
     seeds = [s for s in args.seeds.split(",") if s]
-    backends = list(BACKENDS) if args.both else [args.backend]
+    if args.backends:
+        backends = [b for b in args.backends.split(",") if b]
+        bad = [b for b in backends if b not in BACKENDS]
+        if bad:
+            ap.error("unknown backend(s) %s; choose from %s" % (bad, BACKENDS))
+        args.both = len(backends) > 1
+    else:
+        # `--both` means "every backend that actually has cells for this
+        # stage/n/seed set". It started as the chain's three, because load()
+        # exits 1 on a registered-but-unsubmitted backend rather than skipping
+        # it -- but a fixed list then silently DROPS a backend once it does
+        # have cells, and v3_final_summary's consistency check catches that as
+        # a mismatch against this page. Probing the tree satisfies both: no
+        # red table job for a backend nobody ran, no missing page for one
+        # somebody did.
+        if args.both:
+            # Same staged layout and glob `load()` uses: <root>/<be>/<stage>/
+            # n<N>/seed<S>/tr__*.json. The stage IS the directory name.
+            #
+            # Two reasons to include a backend, and they are different:
+            #   * it HAS cells for this stage -- walk it and print its tables;
+            #   * it plans NO arms for this stage -- walk it so the loop below
+            #     records it in `sat_out` and the page says "not in this stage
+            #     ... by design, not a gap". Dropping these silently was worse
+            #     than the red table job: a reader cannot tell a deliberate
+            #     absence from a missing run.
+            # A backend that plans arms but wrote no cells is excluded, which
+            # is the case this probe exists for.
+            def _has_cells(b):
+                return all(glob.glob(os.path.join(
+                    args.root, b, args.stage, "n%d" % args.n,
+                    "seed%s" % s, "tr__*.json")) for s in seeds)
+            backends = [b for b in BACKENDS
+                        if _has_cells(b) or planned_arms(args.stage, b) == []]
+            if not backends:
+                ap.error("--both found no backend with cells under %s for n=%d seeds=%s"
+                         % (args.root, args.n, ",".join(seeds)))
+        else:
+            backends = [args.backend]
 
     loaded, problems, sat_out = {}, [], []
     for be in backends:
@@ -615,7 +734,8 @@ def main():
         if planned_arms(args.stage, be) == []:
             sat_out.append(be)
             continue
-        c, pr = load(args.root, be, args.n, seeds, stage=args.stage, w=args.w)
+        c, pr = load(args.root, be, args.n, seeds, stage=args.stage, w=args.w,
+                     layout=args.layout)
         problems += check(c, pr, stage=args.stage, backend=be)
         loaded[be] = c
     if not loaded and not problems:
@@ -661,7 +781,7 @@ def main():
         # whole --both ablation page down with it.
         if be not in loaded:
             continue
-        emit(L, be, loaded[be], args.n, seeds)
+        emit(L, be, loaded[be], args.n, seeds, stage=args.stage)
     out = NL.join(L) + NL
     print(out)
     if args.md_out:

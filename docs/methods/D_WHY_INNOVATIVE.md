@@ -353,8 +353,8 @@ alternatives, or an efficiency finding. **This document certifies priority for n
 ## 9. How it would be tested and decided
 
 Full protocol, metrics and decision tables in
-[FEASIBILITY_TESTS_HOW_TO_RUN_AND_DECIDE.md](FEASIBILITY_TESTS_HOW_TO_RUN_AND_DECIDE.md), sections S0–S2 and D-1
-to D-3; the schedule is in [PLAN_AND_TIMETABLE.md](PLAN_AND_TIMETABLE.md).
+[FEASIBILITY_TESTS_HOW_TO_RUN_AND_DECIDE.md](../../archive/FEASIBILITY_TESTS_HOW_TO_RUN_AND_DECIDE.md), sections S0–S2 and D-1
+to D-3; the schedule is in [PLAN_AND_TIMETABLE.md](../status/PLAN_AND_TIMETABLE.md).
 
 **D-1, the gate — does the controller do anything at all?** One batch, one condition. Log band
 activity, active constraints, slack, accepted nonzero edits and rejection rate.

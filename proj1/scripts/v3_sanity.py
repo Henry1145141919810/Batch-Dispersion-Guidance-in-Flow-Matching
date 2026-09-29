@@ -21,7 +21,11 @@ import os
 # The configuration v3 pre-registers. A cell that disagrees is not a v3 cell.
 PINNED = {"n": 2000, "batch": 500, "steps": 100, "t_min_guide": 0.5,
           "target_name": "q50", "clip": 1.0, "solver": "euler"}
-PAIR_BY_BACKEND = {"FM (ours)": "ours", "EquiFM": "tfg", "TFG/EDMsecond": "ours"}
+# Keyed by the LABEL a cell records (transfer_sweep.BACKENDS[flag]), not the
+# flag. An unlisted label makes `want` None and the check SKIPS rather than
+# fails, so a new backend is silently exempt until it is added here.
+PAIR_BY_BACKEND = {"FM (ours)": "ours", "EquiFM": "tfg", "TFG/EDMsecond": "ours",
+                   "VP diffusion (ours)": "ours"}
 
 # delta = 2 x f_B's calibration MAE, measured held-out (V3_PAIR_DELTA.md). Pinned
 # to 5 decimals because the whole cross-backend warning in the handoff rests on

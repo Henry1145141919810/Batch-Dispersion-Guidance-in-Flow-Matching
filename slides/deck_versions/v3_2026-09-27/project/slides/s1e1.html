@@ -1,0 +1,30 @@
+<section id="s1e1" style="background:#F7F6F2; color:#3A4553; font-family:'IBM Plex Sans', Arial, sans-serif; padding:80px 128px 116px; display:flex; flex-direction:column; gap:28px">
+<div style="display:flex; flex-direction:column; gap:4px">
+<p style="font-size:24px; font-weight:600; letter-spacing:2px; text-transform:uppercase; color:#1F5FA9">Part 1 · Set up the study · comparison plan 1 of 2</p>
+<h2 style="font-family:'Source Serif 4', Georgia, serif; font-size:56px; font-weight:600; line-height:1.1; color:#16202C">Metrics, and what each cannot tell us</h2>
+</div>
+<div style="display:grid; grid-template-columns:1fr 1fr; gap:24px">
+<div style="display:flex; flex-direction:column; gap:10px; background:#FDFCFA; border:1px solid #DDD9CF; border-radius:14px; padding:24px 28px">
+<h3 style="font-size:30px; font-weight:600; line-height:1.25; color:#16202C">Control: in-band</h3>
+<p style="font-size:26px; line-height:1.35">Fraction with |f_B(x) − y| ≤ δ, scored by the <b>held-out</b> evaluator. δ = 2 × f_B's calibration MAE, <b>pre-registered</b>, so it cannot be chosen after seeing results. Reported continuous and decoded.</p>
+</div>
+<div style="display:flex; flex-direction:column; gap:10px; background:#FDFCFA; border:1px solid #DDD9CF; border-radius:14px; padding:24px 28px">
+<h3 style="font-size:30px; font-weight:600; line-height:1.25; color:#16202C">Decomposition</h3>
+<p style="font-size:26px; line-height:1.35">RMSE² = bias² + spread², both in units of δ, plus spread relative to the unguided control. <b>Spread is what the innovation targets.</b></p>
+</div>
+<div style="display:flex; flex-direction:column; gap:10px; background:#FDFCFA; border:1px solid #DDD9CF; border-radius:14px; padding:24px 28px">
+<h3 style="font-size:30px; font-weight:600; line-height:1.25; color:#16202C">Quality and diversity</h3>
+<p style="font-size:26px; line-height:1.35">Atom and molecule stability, validity, uniqueness, novelty, pairwise diversity, under EDM conventions [2], with bond tables verified <b>entry-for-entry</b> against the reference implementation.</p>
+</div>
+<div style="display:flex; flex-direction:column; gap:10px; background:#FDFCFA; border:1px solid #DDD9CF; border-radius:14px; padding:24px 28px">
+<h3 style="font-size:30px; font-weight:600; line-height:1.25; color:#16202C">Sample counts</h3>
+<p style="font-size:26px; line-height:1.35">Base models 3 seeds × 10,000. Guidance cells n × 3 seeds, n = <span style="color:#C62828"><b>[TODO: v3 n]</b></span>. Screening cells n = 256–512, labelled wherever used.</p>
+</div>
+</div>
+<div style="background:#FBEFE3; border-left:8px solid #A35A12; border-radius:10px; padding:18px 28px">
+<p style="font-size:28px; line-height:1.4; color:#16202C"><b>Stated up front:</b> in-band rewards <i>any</i> arm that contracts the batch, including onto implausible structures. So every in-band number in this deck appears beside the chemistry it spent — <b>a method that wins coverage by destroying molecules has not won.</b></p>
+</div>
+<p style="position:absolute; left:1616px; top:52px; width:176px; font-size:48px; font-weight:700; line-height:1.15; text-align:center; color:#F7F6F2; background:#1F5FA9; border-radius:14px; padding:8px 12px">1e</p>
+<p style="position:absolute; left:128px; bottom:40px; width:300px; font-size:18px; color:#5F6A77">CIS 6270 · Group 2 · 9 / 29</p>
+<p style="position:absolute; left:448px; bottom:40px; width:1344px; font-size:18px; line-height:1.3; text-align:right; color:#5F6A77">[2] Hoogeboom et al. 2022 (EDM; stability and validity conventions)</p>
+</section>

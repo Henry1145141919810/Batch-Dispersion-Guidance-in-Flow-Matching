@@ -1,8 +1,14 @@
 # Plan and timetable — what we test, what runs when, and who is blocked on what
 
+> **Historical (18 Sep plan).** The innovation became BDG and the protocol became v3 on
+> 26 Sep; v3 finished on blade 27-28 Sep. Current state and results:
+> [SCOPE_FM_GUIDANCE_STATUS.md](SCOPE_FM_GUIDANCE_STATUS.md) and
+> [V3_FINAL_SUMMARY.md](../results/V3_FINAL_SUMMARY.md). Only the two stage rows
+> updated 28 Sep below are current.
+
 **18 September 2026.** Written for the team. Deadline **29 Sep 08:30**, defence **30 Sep** —
 11 days. This is the schedule and the shape of the work; the mathematics lives in
-[SMG_WHY_INNOVATIVE.md](SMG_WHY_INNOVATIVE.md) and [D_WHY_INNOVATIVE.md](D_WHY_INNOVATIVE.md),
+[SMG_WHY_INNOVATIVE.md](../methods/SMG_WHY_INNOVATIVE.md) and [D_WHY_INNOVATIVE.md](../methods/D_WHY_INNOVATIVE.md),
 and the live state of every run is in [STATUS_LIVE_RUN_LOG.md](STATUS_LIVE_RUN_LOG.md).
 
 ---
@@ -26,7 +32,7 @@ We are doing that with:
 | **Comparators** | plug-in guidance, ABMS Monte-Carlo marginalisation, matched-energy GGDOpt |
 
 **We run one primary and one safety net, not five ideas.** Everything else we considered — A, B,
-C, TRE, BPS, PCG — is catalogued in [INNOVATION_IDEAS_INDEX.md](INNOVATION_IDEAS_INDEX.md) with
+C, TRE, BPS, PCG — is catalogued in [INNOVATION_IDEAS_INDEX.md](../methods/INNOVATION_IDEAS_INDEX.md) with
 its novelty assessment, and deliberately not being run. There is not enough time to do three
 things properly, and two things done properly is the whole deliverable.
 
@@ -44,13 +50,13 @@ and coded, and the project still has an innovation to ablate rather than a hole.
 | # | Stage | State |
 |---|---|---|
 | 1 | Data, property predictors, symmetry checks | **done** |
-| 2 | Two base models | FM **done**; diffusion **queued** |
+| 2 | Two base models | **DONE 28 Sep.** FM and our own VP diffusion both run under v3, matched on backbone, parameters, epochs, batch, EMA, split and seed. FM wins on all three chemistry metrics (mol stab 0.3970 vs 0.2883, validity 0.7562 vs 0.6617, atom stab 0.9356 vs 0.9070). v3 has **two** diffusion backends: `vp` (ours) and `edm` (TFG's borrowed EDMsecond) |
 | 3 | Evaluation harness (S2) | **written and calibrated**, one run queued |
 | 4 | SMG gates (M-0, M-1) | code ready, runs after S2 |
 | 5 | SMG arms + 3 comparators | ablations coded; comparators to write |
 | 6 | Euler/Heun solver control (M-4) | code ready |
 | 7 | D (D-1 … D-3) | proved and specified; controller to wire in |
-| 8 | Modality 2 + write-up | base model **done** (trained, validated, tracked); guidance sweep built but **not run**; write-up not started. See [MODALITY2_V3_PLAN.md](../protocol/MODALITY2_V3_PLAN.md) |
+| 8 | Modality 2 + write-up | base model **done**; guidance sweep **run on blade 27-28 Sep** under [MODALITY2_V3_PROTOCOL.md](../protocol/MODALITY2_V3_PROTOCOL.md), results in [M2_V3_RESULTS.md](../results/M2_V3_RESULTS.md); write-up is paper v4 |
 
 **Done and checkable now:** 133,885 QM9 molecules processed with a four-way split; guide $f_A$ and
 evaluator $f_B$ trained on **disjoint halves** at 0.0897 and 0.0840 D validation MAE against a
@@ -161,7 +167,7 @@ paper but an entirely defensible one. That is why both gates are on the 19th and
    to hear it now than on the 28th.
 2. **Is D's delta real?** The band **is** the optimum set of a dead-zone loss when reachable, so
    the distinction rests entirely on the baseline-relative envelope $A=\max(\tau,\lvert e\rvert)$
-   when the guide is outside tolerance. Section 7.3 of [D_WHY_INNOVATIVE.md](D_WHY_INNOVATIVE.md)
+   when the guide is outside tolerance. Section 7.3 of [D_WHY_INNOVATIVE.md](../methods/D_WHY_INNOVATIVE.md)
    is the argument; it is the part most likely to be wrong.
 3. **Is Modality 2 scoped too small or too large?** Current plan is one small simplex model, SMG
    transferred, one ablation. Not a second full study.

@@ -1,0 +1,31 @@
+<section id="s2b1" style="display:flex; flex-direction:column; gap:24px; padding:80px 128px 116px; background:#f7f6f2">
+  <div style="display:flex; flex-direction:column; gap:4px">
+    <p style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:24px; font-weight:600; letter-spacing:2px; text-transform:uppercase; color:#1f5fa9">Part 2 · Evidence for Modality 1 · guidance 1 of 2</p>
+    <h2 style="font-family:'Source Serif 4', Georgia, serif; font-size:56px; font-weight:600; line-height:1.1; color:#16202c">Guidance strategy</h2>
+  </div>
+  <div style="display:flex; flex-direction:column; gap:12px; padding:22px 28px; background:#fdfcfa; border:1px solid #ddd9cf; border-radius:14px">
+    <h3 style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:30px; font-weight:600; line-height:1.25; color:#16202c">Rule and target</h3>
+    <img src="/_blob/f88fe2800e7a28f3306b1cf72d899c81" alt="G_i = (num_i / s²) J_iᵀ g_i, num_i^plug = y − F_i, F_i = f_A(m_i), g_i = ∇_m f_A(m_i)" style="width:1248px; height:79px; object-fit:contain">
+    <p style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:26px; line-height:1.35; color:#3a4553">The frozen guide f_A is differentiated at the endpoint estimate mᵢ, and the gradient is pulled back to the sampling variable. The target y is each property's <b>q50</b>. This is a DPS-style plug-in Gaussian-energy field [12].</p>
+  </div>
+  <div style="display:flex; flex-direction:row; gap:24px">
+    <div style="display:flex; flex-direction:column; gap:8px; flex:1; padding:22px 28px; background:#fdfcfa; border:1px solid #ddd9cf; border-radius:14px">
+      <h3 style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:30px; font-weight:600; line-height:1.25; color:#16202c">Nothing is trained at guidance time</h3>
+      <p style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:26px; line-height:1.35; color:#3a4553"><b>Generator vθ</b> — ours, frozen at sampling.</p>
+      <p style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:26px; line-height:1.35; color:#3a4553"><b>Guide f_A</b> — ours on train_a; frozen, gradients disabled.</p>
+      <p style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:26px; line-height:1.35; color:#3a4553"><b>Evaluator f_B</b> — train_b; frozen, and never inside the sampler.</p>
+    </div>
+    <div style="display:flex; flex-direction:column; gap:8px; flex:1.1; padding:22px 28px; background:#fdfcfa; border:1px solid #ddd9cf; border-radius:14px">
+      <h3 style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:30px; font-weight:600; line-height:1.25; color:#16202c">Strength, normalisation, safety cap</h3>
+      <p style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:26px; line-height:1.35; color:#3a4553"><b>Strength:</b> the correction is scaled by w·(1 − t)/t [12, 14]; <b>normalisation:</b> by s², the guide's property standard deviation.</p>
+      <p style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:26px; line-height:1.35; color:#3a4553"><b>Safety cap (trust region):</b> each correction is shrunk until it is no longer than the model's own velocity, ‖Gᵢ‖ ≤ ‖vᵢ‖ — prior practice [13], identical for every arm.</p>
+      <p style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:26px; line-height:1.35; color:#3a4553"><b>Window:</b> guidance is on for t ≥ 0.5 only.</p>
+    </div>
+  </div>
+  <div style="display:flex; flex-direction:column; padding:18px 28px; background:#e4ecf6; border-left:8px solid #1f5fa9; border-radius:10px">
+    <p style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:28px; line-height:1.35; color:#16202c"><b>The cap is doing real work.</b> Uncapped, one correction can overwhelm the velocity, the trajectory diverges and the coordinates overflow to NaN: the same diagnostic run gave <b>222 broken molecules</b> without the cap and <b>zero</b> with it.</p>
+  </div>
+  <p style="position:absolute; top:52px; left:1616px; width:176px; padding:8px 12px; font-family:'IBM Plex Sans', Arial, sans-serif; font-size:48px; font-weight:700; line-height:1.15; text-align:center; color:#f7f6f2; background:#1f5fa9; border-radius:14px">2b</p>
+  <p style="position:absolute; bottom:40px; left:128px; width:300px; font-family:'IBM Plex Sans', Arial, sans-serif; font-size:18px; color:#5f6a77">CIS 6270 · Group 2 · 13 / 29</p>
+  <p style="position:absolute; bottom:40px; left:448px; width:1344px; font-family:'IBM Plex Sans', Arial, sans-serif; font-size:18px; line-height:1.3; text-align:right; color:#5f6a77">[12] Chung et al. 2023 (DPS) · [13] velocity-relative trust region, adopted practice (see bibliography) · [14] Ho &amp; Salimans 2022 (CFG)</p>
+</section>

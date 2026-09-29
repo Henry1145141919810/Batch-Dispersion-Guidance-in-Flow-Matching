@@ -1,5 +1,14 @@
 # How BDG raises in-band on M2, and how that differs from M1
 
+> **Correction, 28 Sep.** The M2 half of this page checks out against the cells
+> (+0.985 is unguided's bias/delta on gc; +1.277 is `bdg_e8t0.5` at w = 4, a rung
+> that clips 19.2 % of guided steps). The M1 contrast does **not** hold on our own
+> base: in the v3 headline, `bdg_e4t0.5` makes |bias|/delta **worse** than unguided on
+> fm/alpha (-1.085 -> +1.495, an overshoot) and fm/gap (-0.893 -> -1.242), and on
+> fm/mu plug alone does almost all the debiasing (+2.095 -> +0.496; BDG +0.439)
+> ([V3_RESULTS_fm.md](V3_RESULTS_fm.md)). So "on M1 BDG does both" is true of fm/mu
+> only. The text below is Bobo's original.
+
 in-band is a single number that two different things can move: shifting the
 mean toward the target, or contracting the spread around it. Reporting the
 gain without saying which would let a reader assume the property was steered to

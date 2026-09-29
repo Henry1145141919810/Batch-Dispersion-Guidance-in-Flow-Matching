@@ -65,9 +65,9 @@ given what this deck claims:
    quantified (72 paired tests, max |z| = 3.07, Šidák p = 0.14).
 4. *Which model did you actually carry forward and why?* Flow matching, for the
    closed-form endpoint estimate, not for a fidelity win. Do not overclaim here.
-5. *Is your diffusion baseline yours?* Say plainly: our own VP diffusion is
-   implemented and gated; the full run is pending; the measured comparator today is a
-   borrowed released checkpoint and slide 2a labels it.
+5. *Is your diffusion baseline yours?* Say plainly: **yes, and there are two.** `vp`
+   is ours (trained here, 18 v3 cells, 28 Sep); `edm` is TFG's borrowed EDMsecond, which
+   2a labels. Flow matching beats our own VP at matched everything (mol stab 0.3970 vs 0.2883, validity 0.7562 vs 0.6617, atom stab 0.9356 vs 0.9070; every gap 7-14x the sd of the difference).
 
 ---
 

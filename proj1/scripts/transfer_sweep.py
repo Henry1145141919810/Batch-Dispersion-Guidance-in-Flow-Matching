@@ -157,7 +157,8 @@ ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
 sys.path.insert(0, os.path.join(ROOT, "proj1", "src"))
 
 from evaluation import choose_delta, evaluate_samples        # noqa: E402
-from checkpoint_paths import default_generator, require_predictor  # noqa: E402
+from checkpoint_paths import (default_generator, default_vp_generator,  # noqa: E402
+                              require_predictor)
 from m1_signed_bias import PhysicalProperty  # noqa: E402
 from external.tfg_assets import (Calibrated, EDMGenerator, PROP_INDEX,  # noqa: E402
                                  PROP_UNITS, QM9_MAD, TFGGuide, TFGOracle,
@@ -193,10 +194,17 @@ BACKEND = "TFG/EDMsecond"
 # f_A, f_B, delta, targets, sampler, window and clip identical across the two
 # generators, and `guidance_sweep.py` cannot do that because it hardcodes our
 # own predictors. Running our base HERE is what makes the two bases comparable.
-BACKENDS = {"equifm": "EquiFM", "edm": "TFG/EDMsecond", "fm": "FM (ours)"}
+BACKENDS = {"equifm": "EquiFM", "edm": "TFG/EDMsecond", "fm": "FM (ours)",
+            "vp": "VP diffusion (ours)"}
 OUT_ROOTS = {"equifm": os.path.join(ROOT, "results", "transfer_equifm"),
              "edm": OUT,
-             "fm": os.path.join(ROOT, "results", "transfer_fm")}
+             "fm": os.path.join(ROOT, "results", "transfer_fm"),
+             # `vp` is a v3-ONLY backend and main() refuses it on every other
+             # stage, so this entry should be unreachable. It is here because
+             # this map is indexed EAGERLY for any non-v3 stage: if that
+             # refusal is ever moved or relaxed, the failure without a key is
+             # a bare KeyError naming an internal symbol, not a message.
+             "vp": os.path.join(ROOT, "results", "transfer_vp")}
 # OUR GENERATOR, resolved rather than hardcoded.
 #
 # It used to be the literal proj1/checkpoints/fm_last.pt, which is the file on
@@ -213,6 +221,12 @@ OUT_ROOTS = {"equifm": os.path.join(ROOT, "results", "transfer_equifm"),
 # which is exactly the right order: identical weights either way, and the
 # cluster keeps using the file it already has.
 FM_CKPT = default_generator()
+
+# OUR VP diffusion generator. Same resolution order, same two names
+# (diff_last.pt on the cluster, vp_ema.pt published). Distinct from
+# weights/EDMsecond, which is TFG's borrowed checkpoint behind --edm-dir:
+# `vp` and `edm` are BOTH diffusion, and only one of them is ours.
+VP_CKPT = default_vp_generator()
 
 # --------------------------------------------------------------------------
 # BASECMP: the base-model comparison (Henry, 25 Sep)
@@ -436,7 +450,28 @@ V3_BACKENDS = {
     # more than the question is worth.
     "edm":    {"pair": "ours", "arms": ("unguided", "plug"),
                "label": "QM9 diffusion (TFG/EDMsecond)"},
+    # OUR OWN QM9 diffusion. The matched cell tab:fmvd has never had: same
+    # EGNNVelocity backbone, same 3,753,229 parameters, same 1500 epochs, same
+    # batch 256, same EMA 0.9999, same train_a split and same seed 20260918 as
+    # `fm` -- so fm-vs-vp isolates the generator FAMILY and nothing else.
+    # TWO ARMS ONLY, unguided + plug (Henry, 28 Sep): it mirrors `edm` exactly,
+    # which is what makes vp-vs-EDMsecond a legal head-to-head. The 7-arm set
+    # answers a different question ("does guidance work on VP?") at 3.4x the
+    # cost and still could not be compared to `edm`, which has no BDG arm.
+    "vp":     {"pair": "ours", "arms": ("unguided", "plug"),
+               "label": "QM9 diffusion (ours, VP)"},
 }
+
+# WHICH BACKENDS THE CHAIN SUBMITS -- a SUBSET of the registry, and not the
+# same thing as it. `submit_v3.sh` makes the preflight its one `afterok` link,
+# so a backend whose checkpoint is absent does not merely skip: it fails the
+# preflight and NOTHING downstream runs. `vp` is registered (so `--backend vp`
+# and `v3_table --backend vp` work) but is NOT in the chain, because its
+# checkpoint does not exist yet and listing it would stop `fm`, `equifm` and
+# `edm` from running at all. It is an 18-cell, ~1.5 GPU-h job that fits in one
+# 4-hour window, so it runs as nine standalone tasks -- see BETTY_RUNBOOK.md.
+# ADD `vp` HERE once the checkpoint exists and is pinned.
+V3_CHAIN_BACKENDS = ("fm", "equifm", "edm")
 # Modality 2 is NOT here, and cannot simply be added. Its state is a [B, L, 4]
 # simplex rather than coords+feats+mask over an EGNN, its properties are
 # analytic (gc/cpg) rather than learned nets, and it has its own driver in
@@ -1673,13 +1708,18 @@ def main():
     ap.add_argument("--backend", default="equifm", choices=sorted(BACKENDS),
                     help="which generator: equifm (the borrowed FM base, "
                          "scored with TFG's pair), fm (OURS, scored with OUR "
-                         "pair), or edm (TFG's EDMsecond as the QM9 diffusion "
-                         "base, our pair, unguided+plug only). See "
-                         "V3_BACKENDS.")
+                         "pair), edm (TFG's BORROWED EDMsecond as the QM9 "
+                         "diffusion base, our pair, unguided+plug only), or "
+                         "vp (OUR OWN trained VP diffusion, our pair, "
+                         "unguided+plug only). edm and vp are both diffusion "
+                         "and only vp is ours. See V3_BACKENDS.")
     ap.add_argument("--edm-dir", default=os.path.join(ROOT, "weights", "EDMsecond"),
                     help="--backend edm: directory holding generative_model_ema.npy + args.pickle")
     ap.add_argument("--fm-ckpt", default=FM_CKPT,
                     help="--backend fm: our generator checkpoint")
+    ap.add_argument("--vp-ckpt", default=VP_CKPT,
+                    help="--backend vp: OUR VP diffusion checkpoint "
+                         "(diff_last.pt / vp_ema.pt). Not weights/EDMsecond.")
     ap.add_argument("--t-starts", default="",
                     help="--stage basecmp: comma list of flow-time instants at "
                          "which guidance switches on (default %s). On a VP or "
@@ -1767,6 +1807,19 @@ def main():
                     help="one throwaway cell per arm at minimum cost, writes "
                          "nothing, exits nonzero if any arm raises")
     args = ap.parse_args()
+
+    # `vp` is a v3-ONLY backend, and this must be the FIRST thing checked.
+    # The older stages predate it and key several dicts by backend --
+    # NOT_PORTED (reached one line below, before any other validation),
+    # OUT_ROOTS, the frozen-plan loaders -- so without this the failure is a
+    # bare KeyError naming an internal symbol instead of saying what is wrong.
+    if args.backend == "vp" and args.stage not in ("v3", "v3abl"):
+        raise SystemExit(
+            "--backend vp runs only --stage v3 (and v3abl, where it plans "
+            "nothing). It was added on 28 Sep, after the compare/extend/"
+            "freeze/full/eq*/basecmp* stages were run and frozen; those "
+            "stages have no vp cells and pooling one in would mix protocols.\n"
+            "Got --stage %s." % args.stage)
 
     props = [p for p in args.props.split(",") if p]
     arms = [a for a in args.arms.split(",") if a] or backend_arms(args.backend)
@@ -2152,6 +2205,78 @@ def main():
                 "gen_args": os.path.abspath(args.fm_ckpt),
                 "epoch": ck.get("epoch"),
                 "path": "linear flow path, independent Gaussian noise"}
+    elif args.backend == "vp":
+        if not os.path.exists(args.vp_ckpt):
+            raise SystemExit(
+                "--backend vp needs OUR VP diffusion generator at %s\n"
+                "That is not weights/EDMsecond (TFG's borrowed checkpoint, "
+                "reached by --edm-dir). Train it with:\n"
+                "  sbatch proj1/cluster/train_diffusion.slurm   (x5, --resume)"
+                % args.vp_ckpt)
+        # Same loader as `fm`: our VP eps-network IS an EGNNVelocity, and
+        # train_diffusion.py writes the same two checkpoint layouts
+        # (state_dict/ema_state_dict, or model/ema for a _last.pt resume state).
+        net, ck = load_fm(args.vp_ckpt, len(types), dev)
+        cargs = ck.get("args", {})
+        family = ck.get("family") or cargs.get("family")
+        # THE ACCEPTANCE GUARD. There is no pinned md5 for this checkpoint the
+        # way FM_MD5 pins ours, so these fields are the only thing standing
+        # between a stale file and a table of wrong numbers. They are FATAL,
+        # not warnings: every one of them makes the cell incomparable to `fm`,
+        # and none of them would raise on its own -- samples still come out.
+        if family != "vp_diffusion":
+            raise SystemExit(
+                "%s has family %r, not 'vp_diffusion' -- refusing to guess.\n"
+                "A flow checkpoint driven through VPSampler is not a weaker "
+                "model, it is a different one, and it fails silently."
+                % (os.path.basename(args.vp_ckpt), family))
+        if cargs.get("split") != "train_a":
+            raise SystemExit(
+                "%s was trained on split %r, not 'train_a'.\n"
+                "The generator would have seen f_B's training data, so its "
+                "in_band is not comparable to any other cell. See "
+                "docs/protocol/SPLIT_PROTOCOL.md."
+                % (os.path.basename(args.vp_ckpt), cargs.get("split")))
+        for _k, _want in (("hidden", 256), ("layers", 8)):
+            if int(cargs.get(_k, -1)) != _want:
+                raise SystemExit(
+                    "%s has %s=%r, but `fm` is %s=%d. fm-vs-vp is a MATCHED "
+                    "comparison -- it isolates the generator family only if "
+                    "the backbone is identical."
+                    % (os.path.basename(args.vp_ckpt), _k, cargs.get(_k),
+                       _k, _want))
+        # TODO(human): the completeness rule -- what to do about `epoch`.
+        #
+        # The protocol pre-registers 1500 epochs, and `ck["epoch"]` is here.
+        # But the trainer does not simply stop at 1500: it SELECTS on highest
+        # validation atom stability at NFE 100 (train_diffusion.py:17-19), so
+        # the deliverable `diff.pt` can legitimately carry an earlier epoch.
+        # Refusing on `epoch != 1500` would reject a correctly-selected
+        # checkpoint; accepting any epoch lets the abandoned runs through --
+        # job 8590174 died at epoch 80 and its state would load and sample.
+        #
+        # Decide the rule and make it fail loudly. `ck` also carries `seed`
+        # (protocol 20260918), `ema` (0.9999), `batch` (256) and `tau_min`
+        # (must match args.tau_min, both 1e-3 today) if you want them in.
+        #
+        # OUR sampler works in RAW one-hot, exactly as `fm` does -- the type
+        # divisor is 1 and build_pair_ours derives the guide/oracle multipliers
+        # from that. EDM's 1/4 normalisation applies to `edm`, never here.
+        norm_values = (1.0, 1.0, 1.0)
+        nf, n_layers = int(cargs["hidden"]), int(cargs["layers"])
+        prov = {"gen": "our VP diffusion EGNN (this project), EMA",
+                "gen_md5": file_md5(args.vp_ckpt),
+                "gen_args": os.path.abspath(args.vp_ckpt),
+                "epoch": ck.get("epoch"),
+                "family": family,
+                "split": cargs.get("split"),
+                "train_seed": cargs.get("seed"),
+                # VPSampler's DEFAULT schedule is diffusion.py's linear-beta,
+                # which is the one this checkpoint was trained under. Recorded
+                # because `edm` records its own and the two must never be
+                # confused when a table puts them on one page.
+                "noise_schedule": "linear-beta (diffusion.py, BETA 0.1-20.0)",
+                "path": "VP diffusion, eps-prediction"}
     else:
         net, prov = load_backend(args.edm_dir, dev)
         prov["gen_md5"] = prov["edm_md5"]
@@ -2337,6 +2462,18 @@ def main():
             elif args.backend == "fm":
                 c0, f0 = initial_noise(m, len(types), gen)
                 smp = FlowSampler(net, m, t_min_guide=t_start, **skw)
+            elif args.backend == "vp":
+                c0, f0 = initial_noise(m, len(types), gen)
+                # noise_schedule=None IS the choice, not an omission:
+                # VPSampler's default is diffusion.py's linear-beta schedule,
+                # which is what OUR generator was trained under. Passing
+                # EDM's polynomial_2 here would not give a weaker model, it
+                # would give a DIFFERENT one, and silently -- samples still
+                # come out, they are just not draws from the trained
+                # distribution. See VPSampler's docstring.
+                smp = VPSampler(
+                    net, m, tau_min=args.tau_min, noise_schedule=None,
+                    tau_max_guide=1.0 - t_start, grid=args.grid, **skw)
             else:
                 c0, f0 = initial_noise(m, len(types), gen)
                 smp = VPSampler(

@@ -199,9 +199,11 @@ identical rule.
 budget is **NFE 101** against the flow model's 100. We report that asymmetry rather
 than hiding it.
 
-**Status, stated plainly.** Our own VP diffusion is implemented, gated and
-smoke-tested; the full-scale run is `[TODO: v3 Job A]`. The only *measured* diffusion
-comparator today is a borrowed released checkpoint, and 2a labels it as borrowed.
+**Status, stated plainly.** Our own VP diffusion is **trained and benchmarked** (28
+Sep): epoch 1500, selected 1475, `weights/diff_ema.pt` md5 `8a3390a6`, 18 v3 cells.
+There are now **two** measured diffusion comparators -- `vp` (ours) and `edm` (TFG's
+borrowed EDMsecond, labelled as borrowed on 2a). Flow matching beats our own VP at
+matched everything (mol stab 0.3970 vs 0.2883, validity 0.7562 vs 0.6617, atom stab 0.9356 vs 0.9070; every gap 7-14x the sd of the difference).
 
 **Takeaway line.** We will not claim a family winner from a borrowed checkpoint. 2a
 states what the evidence does and does not support.

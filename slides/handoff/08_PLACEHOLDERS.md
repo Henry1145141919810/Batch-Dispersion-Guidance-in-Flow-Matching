@@ -8,9 +8,9 @@ changed after seeing results.
 
 | Run | What it is | Produces |
 |---|---|---|
-| **v3 headline** | 7 arms, q50, w = 1, 3 seeds, 3 backends | slides 2a, 2b-ii, 2e-i |
+| **v3 headline** | 7 arms, q50, w = 1, 3 seeds, **4 backends** (`fm`, `equifm`, `edm`, `vp`) | slides 2a, 2b-ii, 2e-i |
 | **v3 ablation** | η × τ_mult grid at w ∈ {1,4}, 3 seeds | slide 2d-i |
-| **v3 Job A** | our own VP diffusion on QM9, unguided + plug-in | slides 1d-ii, 1e-ii, 2a |
+| ~~**v3 Job A**~~ **DONE 28 Sep** | our own VP diffusion on QM9, unguided + plug-in. 18 cells, `weights/diff_ema.pt` md5 `8a3390a6`, epoch 1475. **Numbers below are available now** -- unguided atom stab **0.9070**, mol stab **0.2883**, validity **0.6617**, uniqueness **0.9995**; NFE 101. `fm` beats it on all three. Source: [V3_RESULTS_vp.md](../../docs/results/V3_RESULTS_vp.md), [DATA_INDEX.md](../../docs/results/DATA_INDEX.md) section 3 | slides 1d-ii, 1e-ii, 2a |
 | **v3 Job B** | Modality 2 sweep on the simplex | slides 3a, 3b |
 
 ---

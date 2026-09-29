@@ -5,13 +5,18 @@ find the slide content.
 
 ## Read it
 
-`paper/main.pdf` is the current build. Ten pages: five of main text, then
-references, then the appendix. The five-page limit covers the main text only.
+`paper/main.pdf` is the current **v7** build, revised on 28 September 2026.
+The main text is five pages; references and the expanded appendix follow.
+The five-page limit covers the main text only. See
+`versions/v7_revision_notes.md` for the changes, factual corrections and grading map.
 
 ## Edit it
 
-**Edit `main.tex`. Nothing else.** The whole manuscript lives there as of v3, under
-the lab single-source rule: prose, all tables, the algorithm, and the appendix.
+**Edit manuscript prose in `main.tex`.** All prose, tables, the overview,
+algorithm and appendix remain in this one source. Sixteen table blocks are
+regenerated between `% BEGIN DATA` / `% END DATA` markers by
+`tools/build_results.py`; edit that builder when changing those table layouts.
+Figures and numerical tables read the same final result cells.
 
 `body.tex` is a two-line pointer that says so. It is not the paper any more. If you
 open it expecting prose, that is why it is empty.
@@ -26,6 +31,13 @@ pdflatex -interaction=nonstopmode main.tex
 
 Run it twice after bibtex or cross-references come out as `??`.
 
+Before compiling, from the repository root, regenerate the measured figures and
+tables with `python paper/tools/build_results.py` (NumPy and Matplotlib required).
+Then run `python paper/tools/build_results.py --check` for a read-only check of
+all sixteen table blocks, the key numerical claims, and all 973 source hashes.
+The builder reads only the final `n2000` trees and keeps strengths, backends,
+stages, seed identities and the early-window diagnostic separate.
+
 ## Check it before you share it
 
 ```
@@ -33,7 +45,8 @@ Run it twice after bibtex or cross-references come out as `??`.
 ../.venv/Scripts/python.exe tools/check.py       # rubric structure, scope, house style
 ```
 
-`check.py` must say `all checks pass`. It enforces things that are easy to break by
+`check.py` must say `all checks pass`. It enforces the 200-250-word abstract,
+exactly three introduction paragraphs, and things that are easy to break by
 accident: that all fourteen required sections exist, that the contribution list has
 four or five bullets, that every table and figure is referenced from the text, that
 no q90 number appears (this paper reports q50 only), and that no phrase our own
@@ -45,11 +58,33 @@ smoothly, because LaTeX float placement absorbs small edits. Do not try to fit
 something by shrinking type or spacing; the writing guide forbids it and a reviewer
 will notice.
 
-## Pending numbers
+## Evidence status
 
-The full run has not landed. Cells waiting on it carry a defined marker rather than
-a zero, so nobody mistakes a placeholder for a measurement. `check.py` counts them.
-When a number arrives, replace the marker; that is roughly length-neutral and safe.
+The local final run has landed: 774 molecular and 199 sequence result files.
+Our own VP diffusion benchmark is included in Table 1 and Table S6. Its selected
+epoch-1475 EMA checkpoint matches the result-cell fingerprint. FM has higher
+stability and validity, supporting the choice to carry FM forward. VP was sampled
+on B200 MIG; the other molecular models used RTX A6000, so runtime is not matched.
+Both models specify a 1500-epoch budget; their evaluated checkpoint selection differs.
+Borrowed EquiFM (flow matching) and EDMsecond (diffusion) remain separate references.
+
+The completed DNA comparisons are ports of DPS, TMPD, LGD-MC and restricted
+TFG-MC. DPS/TMPD/LGD-MC have identical decoded coverage on both GC and CpG
+in the measured late window; TFG-MC differs. Dirichlet FM, Fisher Flow and MOG-DFM are
+background references, not evaluated generators. Joint molecular useful yield
+and batch-aware intervals require sample-level files on the source machine.
+The correct plug-in ablation is **eta = 0**, with positive tau. Tau = 0 is undefined.
+All 612 molecular ablation cells are represented in numeric Tables S8-S13.
+
+## Current graphics
+
+- Figure 1: the overview drawn directly in `main.tex`.
+- Figure 2: `figs/results_v7.pdf`, final-run molecular spread and DNA coverage gains.
+- Supplement: `figs/ablation_fm_v7.pdf` and `figs/ablation_equifm_v7.pdf`, all 12 grids.
+- `results_manifest_v7.json`: source hashes, seed contrasts, target-error and DNA identity audits.
+
+`figs/mechanism.pdf` and its older builder use pilot data and are historical;
+they are not included in v7. Earlier standalone overview files are also historical.
 
 ## Files
 
@@ -62,21 +97,21 @@ paper/
   refs_extra.bib     references we added; every entry verified against arXiv
   neurips_2026.sty   template style file, unmodified
   figs/
-    overview.tex     Figure 1, the study overview, a standalone TikZ document
-    overview.pdf     its build, included by main.tex
-    make_mechanism.py  builds the controller figure from measured data
-    mechanism.pdf    its output
+    results_v7.pdf   Figure 2, generated from final cells
+    ablation_*_v7.pdf  complete molecular ablation heatmaps
+    overview.*      historical standalone versions; live overview is in main.tex
+    mechanism.*     historical pilot-based figure, not used
   tools/
     pagecheck.py     page limit and layout
     check.py         rubric, scope and style gate
     prosecount.py    word budget per section
   versions/
     CHANGELOG.md     WHAT CHANGED AND WHY, per version. Read this first.
-    v3_main.tex      the numbered v3 release
-    v3_main.pdf
-    v3_2026-09-27/   rebuildable v3 snapshot with SHA256SUMS.txt
-    v3_revision_notes.md   the rubric map: which item rests on which evidence
-    v2_*, v1_*       earlier releases, kept
+    v7_main.tex      the numbered v7 release
+    v7_main.pdf
+    v7_2026-09-28/   rebuildable v7 snapshot with SHA256SUMS.txt
+    v7_revision_notes.md   corrections, data audit and rubric map
+    v6_*, v5_*, ...  earlier releases, kept
     v2_pre_v3_2026-09-27/  the exact source as it stood before the v3 revision
 ```
 

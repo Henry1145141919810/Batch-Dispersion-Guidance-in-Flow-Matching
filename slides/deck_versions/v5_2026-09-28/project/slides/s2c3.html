@@ -1,0 +1,36 @@
+<section id="s2c3" style="background:#F7F6F2; color:#3A4553; font-family:'IBM Plex Sans', Arial, sans-serif; padding:80px 128px 116px; display:flex; flex-direction:column; gap:20px">
+<div style="display:flex; flex-direction:column; gap:4px">
+<p style="font-size:24px; font-weight:600; letter-spacing:2px; text-transform:uppercase; color:#1F5FA9">Part 2 · Evidence for Modality 1 · innovation 3 of 4</p>
+<h2 style="font-family:'Source Serif 4', Georgia, serif; font-size:56px; font-weight:600; line-height:1.1; color:#16202C">BDG: the reduction and its limits</h2>
+</div>
+<div style="display:flex; gap:24px; align-items:stretch">
+<div style="display:flex; flex-direction:column; gap:8px; background:#FDFCFA; border:1px solid #DDD9CF; border-radius:14px; padding:20px 28px; flex:1.15">
+<h3 style="font-size:30px; font-weight:600; line-height:1.25; color:#16202C">Exact reduction</h3>
+<img src="/_blob/8430edc108492f5938c76ccdd3fd528d" alt="n_i = (y − F_i) − η e (F_i − F̄) = (y − F̄) − w_eff (F_i − F̄) = w_eff (y_eff − F_i),  y_eff = (y + η e F̄)/w_eff  (w_eff ≠ 0)" style="width:794px; height:153px; object-fit:contain">
+<p style="font-size:26px; line-height:1.35">At any instant BDG is the plug-in direction with a batch-dependent gain w_eff and target y_eff. It adds no new direction.</p>
+</div>
+<div style="flex:1; display:flex; flex-direction:column; gap:18px">
+<div style="display:flex; flex-direction:column; gap:8px; background:#FDFCFA; border:1px solid #DDD9CF; border-radius:14px; padding:20px 28px">
+<h3 style="font-size:30px; font-weight:600; line-height:1.25; color:#16202C">When it contracts, and when it expands</h3>
+<p style="font-size:26px; line-height:1.35">e &gt; 0 strengthens contraction; e &lt; 0 only weakens it. Net expansion needs a negative gain:</p>
+<img src="/_blob/0ae030d7cb9cde366bc355771076b7a2" alt="w_eff &lt; 0  ⇔  η &gt; 1 and V_b &lt; τ² (1 − 1/η)" style="width:652px; height:49px; object-fit:contain">
+</div>
+<div style="display:flex; flex-direction:column; gap:8px; background:#FDFCFA; border:1px solid #DDD9CF; border-radius:14px; padding:20px 28px">
+<h3 style="font-size:30px; font-weight:600; line-height:1.25; color:#16202C">A bound for any batch</h3>
+<img src="/_blob/27df7caa58c09c9250635ec7f39c675a" alt="V_b ≥ 0 ⇒ e ≥ −1 ⇒ w_eff ≥ 1 − η" style="width:605px; height:46px; object-fit:contain">
+<p style="font-size:26px; line-height:1.35">So BDG runs two-sided with no clamp.</p>
+</div>
+</div>
+</div>
+<div style="display:flex; flex-direction:column; gap:8px; background:#FDFCFA; border:1px solid #DDD9CF; border-radius:14px; padding:20px 28px">
+<h3 style="font-size:30px; font-weight:600; line-height:1.25; color:#16202C">An idealised picture, not a guarantee</h3>
+<img src="/_blob/6277c5b5ba15206fde955dc0af0695c9" alt="dF_i/dt = (y − F̄) − w_eff (F_i − F̄) ⇒ dV_b/dt = −2 w_eff V_b ⇒ V* = τ² (1 − 1/η) (η &gt; 1)" style="width:1150px; height:49px; object-fit:contain">
+<p style="font-size:26px; line-height:1.35">Assumes unit response, continuous time and no drift, cap or projection. The stationary variance sits below the setpoint, and nothing guarantees the sampler reaches it.</p>
+</div>
+<div style="display:flex; flex-direction:column; gap:6px; background:#FBEFE3; border-left:8px solid #A35A12; border-radius:10px; padding:16px 28px">
+<p style="font-size:26px; line-height:1.35; color:#2B3440"><b>What we do not claim:</b> independent control of the realised mean and variance. The Jacobian and the cap act on both terms.</p>
+</div>
+<p style="position:absolute; left:1616px; top:52px; width:176px; font-size:48px; font-weight:700; line-height:1.15; text-align:center; color:#F7F6F2; background:#1F5FA9; border-radius:14px; padding:8px 12px">2c</p>
+<p style="position:absolute; left:128px; bottom:40px; width:300px; font-size:18px; color:#5F6A77">CIS 6270 · Group 2 · 17 / 29</p>
+<p style="position:absolute; left:448px; bottom:40px; width:1344px; font-size:18px; line-height:1.3; text-align:right; color:#5F6A77">Original formulation (this work)</p>
+</section>

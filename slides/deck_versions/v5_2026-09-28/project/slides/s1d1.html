@@ -1,0 +1,42 @@
+<section id="s1d1" style="background:#F7F6F2; color:#3A4553; font-family:'IBM Plex Sans', Arial, sans-serif; padding:80px 128px 116px; display:flex; flex-direction:column; gap:16px">
+<div style="display:flex; flex-direction:column; gap:4px">
+<p style="font-size:24px; font-weight:600; letter-spacing:2px; text-transform:uppercase; color:#1F5FA9">Part 1 · Set up the study · diffusion 1 of 2</p>
+<h2 style="font-family:'Source Serif 4', Georgia, serif; font-size:56px; font-weight:600; line-height:1.1; color:#16202C">Diffusion baseline: the formulation</h2>
+</div>
+<p style="font-size:28px; line-height:1.4">Variance-preserving (VP) diffusion in continuous time [2, 10, 11]. Noising time u runs from 0 (data) to 1 (noise); the network εφ predicts the added noise.</p>
+<div style="display:flex; flex-direction:column; background:#FDFCFA; border:1px solid #DDD9CF; border-radius:14px; padding:2px 32px">
+<div style="display:flex; gap:32px; align-items:center; padding:16px 0px; border-bottom:1px solid #E4E1D8; padding:13px 0px">
+<div style="flex:none; width:300px"><h3 style="font-size:30px; font-weight:600; line-height:1.25; color:#16202C">Noise schedule</h3></div>
+<img src="/_blob/bbd4451027df0afa1fb9f380b904f753" alt="β(u) = β_min + u (β_max − β_min) = 0.1 + 19.9 u" style="width:717px; height:50px; object-fit:contain">
+</div>
+<div style="display:flex; gap:32px; align-items:center; padding:16px 0px; border-bottom:1px solid #E4E1D8; padding:13px 0px">
+<div style="flex:none; width:300px"><h3 style="font-size:30px; font-weight:600; line-height:1.25; color:#16202C">Forward process</h3></div>
+<img src="/_blob/414d4ec2444628d38499cabec36acb54" alt="x_u = a(u) x_1 + σ(u) ε,  a(u) = exp(−½(0.1u + 9.95u²)),  σ² = 1 − a²" style="width:1089px; height:63px; object-fit:contain">
+</div>
+<div style="display:flex; gap:32px; align-items:center; padding:16px 0px; border-bottom:1px solid #E4E1D8; padding:13px 0px">
+<div style="flex:none; width:300px"><h3 style="font-size:30px; font-weight:600; line-height:1.25; color:#16202C">Loss</h3></div>
+<div style="flex:1; display:flex; flex-direction:column; gap:6px">
+<img src="/_blob/37f2e1d5fc6f2b763c01e241e5f987d1" alt="L_VP(φ) = E || ε_φ(x_u, u) − ε ||²_M" style="width:492px; height:66px; object-fit:contain">
+<p style="font-size:26px; line-height:1.35">The same masked norm as flow matching; ε projected to zero centre of mass; u ~ U(10⁻³, 1) keeps σ away from zero.</p>
+</div>
+</div>
+<div style="display:flex; gap:32px; align-items:center; padding:16px 0px; border-bottom:1px solid #E4E1D8; padding:13px 0px">
+<div style="flex:none; width:300px"><h3 style="font-size:30px; font-weight:600; line-height:1.25; color:#16202C">Sampler</h3></div>
+<div style="flex:1; display:flex; flex-direction:column; gap:6px">
+<img src="/_blob/713663b2e2a6cbee28fb8b30b762fe23" alt="dx/du = −½ β(u) (x + s_φ(x, u)),  s_φ = −ε_φ / σ" style="width:742px; height:88px; object-fit:contain">
+<p style="font-size:26px; line-height:1.35">Integrated from u = 1 to 0 on a decreasing 100-step grid, then one denoising step to x̂₁: <b>NFE 101</b>.</p>
+</div>
+</div>
+<div style="display:flex; gap:32px; align-items:center; padding:16px 0px; padding:13px 0px">
+<div style="flex:none; width:300px"><h3 style="font-size:30px; font-weight:600; line-height:1.25; color:#16202C">Endpoint estimate</h3></div>
+<div style="flex:1; display:flex; flex-direction:column; gap:6px">
+<img src="/_blob/f7aacd7d7da0acf217591bd25dc9e98a" alt="x̂_1 = (x_u − σ(u) ε_φ(x_u, u)) / a(u)" style="width:528px; height:57px; object-fit:contain">
+<p style="font-size:26px; line-height:1.35">Tweedie's posterior mean: the diffusion counterpart of x_t + (1 − t)vθ, and what guidance differentiates.</p>
+</div>
+</div>
+</div>
+<p style="font-size:24px; line-height:1.35; color:#5F6A77">Checked: a² + σ² = 1 to 6 decimals, a(0) = 1, a(1) = 0.0066.</p>
+<p style="position:absolute; left:1616px; top:52px; width:176px; font-size:48px; font-weight:700; line-height:1.15; text-align:center; color:#F7F6F2; background:#1F5FA9; border-radius:14px; padding:8px 12px">1d</p>
+<p style="position:absolute; left:128px; bottom:40px; width:300px; font-size:18px; color:#5F6A77">CIS 6270 · Group 2 · 7 / 29</p>
+<p style="position:absolute; left:448px; bottom:40px; width:1344px; font-size:18px; line-height:1.3; text-align:right; color:#5F6A77">[2] Hoogeboom et al. 2022 (EDM, molecules) · [10] Song et al. 2021 (Score SDE) · [11] Karras et al. 2022 (EDM design space)</p>
+</section>

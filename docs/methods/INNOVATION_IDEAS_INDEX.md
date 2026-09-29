@@ -2,7 +2,7 @@
 
 **Proposed training-time branch (18 Sep):** [Innovation v8](INNOVATION_V8_TRAINING_TIME_GUIDANCE.md)
 develops a coherent posterior guidance operator and guidance-aware partition learning, with
-proofs, a prior-work audit, and [separate feasibility gates](TRAINING_GUIDANCE_FEASIBILITY.md).
+proofs, a prior-work audit, and [separate feasibility gates](../../archive/TRAINING_GUIDANCE_FEASIBILITY.md).
 These are provisional candidates, not novelty-cleared replacements for the current plan.
 
 **v2.1 · updated 18 Sep 2026.** Every innovation idea currently live in the project, named, with its proof or logic, and a novelty verdict against four criteria with citations.
@@ -261,7 +261,7 @@ residual parameterisation is inert.
 *VGG-Flow* ([Liu et al., NeurIPS 2025](https://arxiv.org/abs/2512.05116), Eq. 16, same
 $\hat x_1=x_t+(1-t)v$); [Reward Score Matching (2026)](https://arxiv.org/abs/2604.17415)
 App. G.1 finds those residuals "effectively negligible". Ablation row only. Gates RC-0/RC-1 in
-[Feasibility tests](FEASIBILITY_TESTS_HOW_TO_RUN_AND_DECIDE.md#rch--residual-calibration-head-from-haimo-v1--comparator-for-smg-not-a-claim).
+[Feasibility tests](../../archive/FEASIBILITY_TESTS_HOW_TO_RUN_AND_DECIDE.md#rch--residual-calibration-head-from-haimo-v1--comparator-for-smg-not-a-claim).
 
 ---
 

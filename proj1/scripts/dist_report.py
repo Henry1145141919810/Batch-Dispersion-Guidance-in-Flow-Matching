@@ -84,10 +84,24 @@ BACKENDS = ("ours", "tfg", "equifm")
 CELL_BACKEND = {"ours": None, "tfg": "TFG/EDMsecond", "equifm": "EquiFM"}
 # both borrowed backends are scored by TFG's evaluate_<p>; only the
 # generator's one-hot divisor (which cancels in the ladder) differs
+# How delta is set for the borrowed backends. "global" = k x MAE(f_B) over the
+# calibration molecules: the rule every tfg/EquiFM cell on disk was written
+# with, and the rule the "ours" branch of build_ladder uses.
+DELTA_MODE_DEFAULT = "global"
 
 
-def _tfg_pair(d, prop, dev, backend="tfg"):
-    """TFG's oracle and delta, built exactly as transfer_sweep.py builds them."""
+def _tfg_pair(d, prop, dev, backend="tfg", delta_mode=DELTA_MODE_DEFAULT):
+    """TFG's oracle and delta, built exactly as transfer_sweep.py builds them.
+
+    `delta_mode` must be passed EXPLICITLY. `build_pair`'s own default is
+    "local", which was added later for the base-model comparison, and every
+    tfg/EquiFM cell on disk was written under the GLOBAL rule
+    (delta = k x MAE(f_B) over the calibration molecules) -- the same rule the
+    "ours" branch of build_ladder uses. Taking build_pair's default here put
+    the ladder on a delta ~1.6x the cells' (mu: 0.2519 vs 0.1568), which the
+    delta gate in main() then refused as "wrong --backend?". Override with
+    --delta-mode only for cells that actually recorded delta_mode="local".
+    """
     import transfer_sweep as ts
     if backend == "equifm":
         from external.equifm_backend import EQUIFM_ARGS
@@ -96,7 +110,7 @@ def _tfg_pair(d, prop, dev, backend="tfg"):
     else:
         scale = ts.generator_feat_scale(os.path.join(ROOT, "weights", "EDMsecond"))
     _, f_B, delta, rep = ts.build_pair(prop, d, ts.calibration_indices(d), dev,
-                                       2.0, scale)
+                                       2.0, scale, delta_mode=delta_mode)
     return f_B, delta, rep
 
 
@@ -130,7 +144,8 @@ def fB_on_real_test(d, prop, dev, cache_dir, backend="ours"):
     return pred
 
 
-def build_ladder(d, prop, n, dev, cache_dir, backend="ours"):
+def build_ladder(d, prop, n, dev, cache_dir, backend="ours",
+                 delta_mode=DELTA_MODE_DEFAULT):
     pi = d["props"].index(prop)
     te, tra = d["split"]["test"], d["split"]["train_a"]
     y_te = d["y"][te, pi].float().numpy()
@@ -139,7 +154,7 @@ def build_ladder(d, prop, n, dev, cache_dir, backend="ours"):
     m_tr = d["mask"][tra].sum(1).round().int().numpy()
     fB = fB_on_real_test(d, prop, dev, cache_dir, backend).numpy()
     if backend in ("tfg", "equifm"):
-        delta = _tfg_pair(d, prop, dev, backend)[1]
+        delta = _tfg_pair(d, prop, dev, backend, delta_mode)[1]
     else:
         mae_b = float(torch.load(os.path.join(CKPT, "f_B_%s.pt" % prop),
                                  map_location="cpu", weights_only=False)["val_mae"])
@@ -238,6 +253,14 @@ def main():
                     help="ours = the main sweep's cells, scored by our f_B; "
                          "tfg = transfer_sweep.py's cells, scored by TFG's "
                          "evaluate_<p> oracle with its own delta")
+    ap.add_argument("--delta-mode", default=DELTA_MODE_DEFAULT,
+                    choices=("global", "local"),
+                    help="how the BORROWED backends' delta is built (ignored "
+                         "for --backend ours, which is always global). Default "
+                         "global = k x MAE(f_B) over the calibration "
+                         "molecules, the rule every tfg/EquiFM cell on disk "
+                         "carries. Pass local only for cells whose "
+                         "calibration block records delta_mode='local'.")
     ap.add_argument("--out", default="")
     args = ap.parse_args()
     if not args.out:
@@ -264,7 +287,7 @@ def main():
                                            .get(prop, float("nan")))) < 1e-12]
         n = args.n or (cells[0][0]["n"] if cells else 512)
         lad, (y_tr, m_tr), delta = build_ladder(d, prop, n, dev, cache,
-                                                args.backend)
+                                                args.backend, args.delta_mode)
         # the ladder and the cells must share one delta, or in_band means two
         # different things in one table. Relative 1e-5, not exact: the TFG
         # calibration is re-fitted on the GPU every run and CUDA reductions

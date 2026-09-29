@@ -1,0 +1,20 @@
+<section id="a2i" style="background:#F7F6F2; color:#3A4553; font-family:'IBM Plex Sans', Arial, sans-serif; padding:80px 128px 116px; display:flex; flex-direction:column; gap:24px">
+<div style="display:flex; flex-direction:column; gap:4px">
+<p style="font-size:24px; font-weight:600; letter-spacing:2px; text-transform:uppercase; color:#1F5FA9">Appendix A2 · property predictors 1 of 2</p>
+<h2 style="font-family:'Source Serif 4', Georgia, serif; font-size:56px; font-weight:600; line-height:1.1; color:#16202C">Property predictors: our pair and TFG's</h2>
+</div>
+<p style="font-size:26px; line-height:1.35">Ours score the <b>fm</b> and <b>EDMsecond</b> backends; TFG's score <b>EquiFM</b>. f_A's <b>gradient</b> steers sampling; f_B only <b>scores</b>.</p>
+<table style="font-size:26px; color:#2B3440">
+<tr style="background:#ECEAE3"><th style="width:16%; text-align:left"></th><th style="width:30%; text-align:left">Ours — f_A and f_B</th><th style="width:27%; text-align:left">TFG guide (tf_predict)</th><th style="width:27%; text-align:left">TFG oracle (evaluate)</th></tr>
+<tr><td>Network</td><td>invariant EGNN on squared distances, mean-pool, linear head [9]</td><td>EDM dynamics EGNN with an energy head [2, 15]</td><td>EDM property-classifier EGNN [2]</td></tr>
+<tr><td>Width × layers</td><td>128 × 4</td><td>192 × 7</td><td>128 × 7</td></tr>
+<tr><td>Edge attention</td><td>no — equal-weight sum</td><td>yes</td><td>yes</td></tr>
+<tr><td>Parameters (μ)</td><td>429,825 each</td><td>1,671,566</td><td>743,944</td></tr>
+<tr><td>Inputs</td><td>coordinates + unscaled one-hot</td><td>+ one-hot ÷ 8; time fixed at 0</td><td>+ nuclear-charge powers</td></tr>
+<tr><td>Training data</td><td>f_A: train_a · f_B: train_b (51,527 each)</td><td>QM9 second half (~50K)</td><td>QM9 first half (~50K)</td></tr>
+<tr><td>Recipe</td><td>clean molecules, MSE on a standardised target; Adam 3e-4 cosine, batch 128, 120 epochs (~23 min); best validation MAE</td><td>clean molecules; EMA at epoch 2,000</td><td>best-validation checkpoint</td></tr>
+</table>
+<p style="position:absolute; left:1616px; top:52px; width:176px; font-size:48px; font-weight:700; line-height:1.15; text-align:center; color:#F7F6F2; background:#4A5A6E; border-radius:14px; padding:8px 12px">A2</p>
+<p style="position:absolute; left:128px; bottom:40px; width:300px; font-size:18px; color:#5F6A77">CIS 6270 · Group 2 · Appendix</p>
+<p style="position:absolute; left:448px; bottom:40px; width:1344px; font-size:18px; line-height:1.3; text-align:right; color:#5F6A77">[9] Satorras et al. 2021 (EGNN) · [2] Hoogeboom et al. 2022 (EDM) · [15] Ye et al. 2024 (TFG); TFG checkpoints inspected in this work</p>
+</section>

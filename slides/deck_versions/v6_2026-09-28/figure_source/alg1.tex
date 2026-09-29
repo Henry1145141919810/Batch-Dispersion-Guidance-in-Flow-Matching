@@ -1,0 +1,28 @@
+\documentclass[border=6pt]{standalone}
+\usepackage{amsmath,amssymb,xcolor}
+\usepackage{algpseudocode}
+\definecolor{ink}{HTML}{16202C}\definecolor{innov}{HTML}{B3261E}\definecolor{mut}{HTML}{5F6A77}
+\newcommand{\Fbar}{\bar F}
+\newcommand{\weff}{w_{\mathrm{eff}}}
+\newcommand{\sg}{\operatorname{stopgrad}}
+\begin{document}\color{ink}
+\begin{minipage}{13.2cm}
+\textbf{Algorithm 1}\; One BDG-guided Euler step \hfill{\color{innov}\small red: BDG's only change to plug-in}\\[-4pt]
+\rule{\linewidth}{0.6pt}
+\begin{algorithmic}[1]
+\Require batch $x_t$ of size $B$; frozen $v_\theta$ and $f_A$; target $y$; scale $s$; gain $\eta\ge0$; setpoint $\tau>0$; strength $w$; step $h$; start $t_{\min}$
+\State $v\gets v_\theta(x_t,t)$
+\State \textbf{if} $t<t_{\min}$ \textbf{return} $\Pi(x_t+h\,v)$ \Comment{guide only for $t\ge t_{\min}$}
+\State $m\gets x_t+(1-t)\,v$, with gradients enabled
+\State $F_i\gets f_A(m_i)$;\quad {\color{innov}$\Fbar\gets B^{-1}\textstyle\sum_iF_i$}
+\State {\color{innov}$V_b\gets (B-1)^{-1}\textstyle\sum_i(F_i-\Fbar)^2$}
+\State {\color{innov}$e\gets(V_b-\tau^2)/\tau^2$} \Comment{one-sided: $e\gets\max(e,0)$}
+\State $a_i\gets\sg\big\{[(y-F_i){\color{innov}\;-\;\eta\,e\,(F_i-\Fbar)}]/s^2\big\}$ \Comment{coefficients held fixed}
+\State $G\gets\mathrm{VJP}_{x_t}(F,a)$ \Comment{one backward pass, as plug-in}
+\State $C_i\gets w\,(1-t)/t\;G_i$
+\State $C_i\gets C_i\,\min\!\big(1,\ \|v_i\|/\|C_i\|\big)$ \Comment{velocity-relative cap}
+\State \Return $\Pi\{x_t+h\,(v+C)\}$ \Comment{$\Pi$: centring and masks}
+\end{algorithmic}
+\rule{\linewidth}{0.6pt}
+\end{minipage}
+\end{document}

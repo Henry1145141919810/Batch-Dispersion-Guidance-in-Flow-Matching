@@ -1,0 +1,69 @@
+<section id="s1f" style="background:#F7F6F2; color:#3A4553; font-family:'IBM Plex Sans', Arial, sans-serif; padding:80px 128px 116px; display:flex; flex-direction:column; gap:20px">
+<div style="display:flex; flex-direction:column; gap:4px">
+<p style="font-size:24px; font-weight:600; letter-spacing:2px; text-transform:uppercase; color:#1F5FA9">Part 1 · Set up the study</p>
+<h2 style="font-family:'Source Serif 4', Georgia, serif; font-size:56px; font-weight:600; line-height:1.1; color:#16202C">Study overview: one guidance rule, two state spaces</h2>
+</div>
+<div style="position:absolute; left:128px; top:252px; width:1664px; height:288px; background:#EFEDE6; border-radius:18px"></div>
+<div style="position:absolute; left:128px; top:612px; width:1664px; height:272px; background:#EFEDE6; border-radius:18px"></div>
+<p style="position:absolute; left:320px; top:210px; width:332px; font-size:24px; font-weight:600; letter-spacing:1px; text-transform:uppercase; text-align:center; color:#1F5FA9">1 · Data</p>
+<p style="position:absolute; left:700px; top:210px; width:332px; font-size:24px; font-weight:600; letter-spacing:1px; text-transform:uppercase; text-align:center; color:#1F5FA9">2 · Base model</p>
+<p style="position:absolute; left:1080px; top:210px; width:332px; font-size:24px; font-weight:600; letter-spacing:1px; text-transform:uppercase; text-align:center; color:#1F5FA9">3 · Guided sampling</p>
+<p style="position:absolute; left:1460px; top:210px; width:332px; font-size:24px; font-weight:600; letter-spacing:1px; text-transform:uppercase; text-align:center; color:#1F5FA9">4 · Evaluation</p>
+<p style="position:absolute; left:148px; top:352px; width:156px; font-size:24px; font-weight:600; letter-spacing:1px; text-transform:uppercase; color:#1F5FA9">Modality 1</p>
+<p style="position:absolute; left:148px; top:388px; width:156px; font-size:30px; font-weight:700; line-height:1.15; color:#16202C">QM9 molecules</p>
+<p style="position:absolute; left:148px; top:704px; width:156px; font-size:24px; font-weight:600; letter-spacing:1px; text-transform:uppercase; color:#1F5FA9">Modality 2</p>
+<p style="position:absolute; left:148px; top:740px; width:156px; font-size:30px; font-weight:700; line-height:1.15; color:#16202C">DNA enhancers</p>
+<div style="position:absolute; left:320px; top:268px; width:332px; height:256px; display:flex; flex-direction:column; gap:6px; background:#FDFCFA; border:1px solid #CFCABD; border-radius:14px; padding:14px 20px">
+<p style="font-size:24px; font-weight:600; line-height:1.3; color:#1F5FA9">1a · 1b</p>
+<p style="font-size:28px; font-weight:700; line-height:1.2; color:#16202C">QM9 molecules</p>
+<p style="font-size:24px; line-height:1.3; color:#2B3440">Coordinates plus atom types. f_A trains on train_a, f_B on train_b.</p>
+</div>
+<div style="position:absolute; left:700px; top:268px; width:332px; height:256px; display:flex; flex-direction:column; gap:6px; background:#E9F0F8; border:2px solid #1F5FA9; border-radius:14px; padding:14px 20px">
+<p style="font-size:24px; font-weight:600; line-height:1.3; color:#1F5FA9">1c – 1e · 2a</p>
+<p style="font-size:28px; font-weight:700; line-height:1.2; color:#16202C">Pick the family</p>
+<p style="font-size:24px; line-height:1.3; color:#2B3440">Flow matching vs VP diffusion, matched; the winner is frozen.</p>
+</div>
+<div style="position:absolute; left:1080px; top:268px; width:332px; height:256px; display:flex; flex-direction:column; gap:6px; background:#FBF1F0; border:3px solid #B3261E; border-radius:14px; padding:14px 20px">
+<p style="font-size:24px; font-weight:600; line-height:1.3; color:#B3261E">2b – 2d</p>
+<p style="font-size:28px; font-weight:700; line-height:1.2; color:#16202C">Plug-in, then BDG</p>
+<p style="font-size:24px; line-height:1.3; color:#2B3440">Frozen f_A steers each sample; BDG servoes the deviation gain.</p>
+</div>
+<div style="position:absolute; left:1460px; top:268px; width:332px; height:256px; display:flex; flex-direction:column; gap:6px; background:#FDFCFA; border:1px solid #CFCABD; border-radius:14px; padding:14px 20px">
+<p style="font-size:24px; font-weight:600; line-height:1.3; color:#1F5FA9">2e</p>
+<p style="font-size:28px; font-weight:700; line-height:1.2; color:#16202C">Held-out scoring</p>
+<p style="font-size:24px; line-height:1.3; color:#2B3440">f_B scores band coverage beside stability; four recent methods compared.</p>
+</div>
+<div style="position:absolute; left:320px; top:628px; width:332px; height:240px; display:flex; flex-direction:column; gap:6px; background:#FDFCFA; border:1px solid #CFCABD; border-radius:14px; padding:14px 20px">
+<p style="font-size:24px; font-weight:600; line-height:1.3; color:#1F5FA9">1a · 1b</p>
+<p style="font-size:28px; font-weight:700; line-height:1.2; color:#16202C">DeepFlyBrain DNA</p>
+<p style="font-size:24px; line-height:1.3; color:#2B3440">500-bp enhancers, one simplex per position.</p>
+</div>
+<div style="position:absolute; left:700px; top:628px; width:332px; height:240px; display:flex; flex-direction:column; gap:6px; background:#E9F0F8; border:2px solid #1F5FA9; border-radius:14px; padding:14px 20px">
+<p style="font-size:24px; font-weight:600; line-height:1.3; color:#1F5FA9">3a</p>
+<p style="font-size:28px; font-weight:700; line-height:1.2; color:#16202C">Simplex flow matching</p>
+<p style="font-size:24px; line-height:1.3; color:#2B3440">Linear path from a Dirichlet source; one model, frozen.</p>
+</div>
+<div style="position:absolute; left:1080px; top:628px; width:332px; height:240px; display:flex; flex-direction:column; gap:6px; background:#FBF1F0; border:3px solid #B3261E; border-radius:14px; padding:14px 20px">
+<p style="font-size:24px; font-weight:600; line-height:1.3; color:#B3261E">3a</p>
+<p style="font-size:28px; font-weight:700; line-height:1.2; color:#16202C">Plug-in, then BDG</p>
+<p style="font-size:24px; line-height:1.3; color:#2B3440">Exact GC or CpG steers; each step is projected onto the simplex.</p>
+</div>
+<div style="position:absolute; left:1460px; top:628px; width:332px; height:240px; display:flex; flex-direction:column; gap:6px; background:#FDFCFA; border:1px solid #CFCABD; border-radius:14px; padding:14px 20px">
+<p style="font-size:24px; font-weight:600; line-height:1.3; color:#1F5FA9">3b · 3c</p>
+<p style="font-size:28px; font-weight:700; line-height:1.2; color:#16202C">Exact counts</p>
+<p style="font-size:24px; line-height:1.3; color:#2B3440">Argmax decoding; exact-count coverage and 3-mer fidelity; four guidance adaptations compared.</p>
+</div>
+<x-connector x1="652" y1="396" x2="700" y2="396" style="color:#5F6A77; border-width:3px"></x-connector>
+<x-connector x1="652" y1="748" x2="700" y2="748" style="color:#5F6A77; border-width:3px"></x-connector>
+<x-connector x1="1032" y1="396" x2="1080" y2="396" style="color:#5F6A77; border-width:3px"></x-connector>
+<x-connector x1="1032" y1="748" x2="1080" y2="748" style="color:#5F6A77; border-width:3px"></x-connector>
+<x-connector x1="1412" y1="396" x2="1460" y2="396" style="color:#5F6A77; border-width:3px"></x-connector>
+<x-connector x1="1412" y1="748" x2="1460" y2="748" style="color:#5F6A77; border-width:3px"></x-connector>
+<x-connector x1="1246" y1="524" x2="1246" y2="628" head="both" style="color:#B3261E; border-width:3px; border-style:dashed"></x-connector>
+<p style="position:absolute; left:1264px; top:560px; width:420px; font-size:24px; font-weight:700; color:#B3261E">the same BDG rule, same code</p>
+<p style="position:absolute; left:128px; top:906px; width:820px; font-size:24px; line-height:1.3; color:#2B3440"><span style="color:#1F5FA9"><b>■</b></span> trained by us &#160;&#160; <span style="color:#B3261E"><b>■</b></span> our change &#160;&#160; <span style="color:#8A8F96"><b>■</b></span> data and scoring</p>
+<p style="position:absolute; left:980px; top:906px; width:812px; font-size:24px; line-height:1.3; text-align:right; color:#5F6A77">Borrowed checkpoints (EquiFM, TFG's predictor pair) are separate comparisons, never pooled with ours.</p>
+<p style="position:absolute; left:1616px; top:52px; width:176px; font-size:48px; font-weight:700; line-height:1.15; text-align:center; color:#F7F6F2; background:#1F5FA9; border-radius:14px; padding:8px 12px">1f</p>
+<p style="position:absolute; left:128px; bottom:40px; width:300px; font-size:18px; color:#5F6A77">CIS 6270 · Group 2 · 11 / 29</p>
+<p style="position:absolute; left:448px; bottom:40px; width:1344px; font-size:18px; line-height:1.3; text-align:right; color:#5F6A77">Original figure (this work)</p>
+</section>

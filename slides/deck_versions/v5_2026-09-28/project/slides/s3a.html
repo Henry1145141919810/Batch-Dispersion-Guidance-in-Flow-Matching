@@ -1,0 +1,38 @@
+<section id="s3a" style="background:#F7F6F2; color:#3A4553; font-family:'IBM Plex Sans', Arial, sans-serif; padding:80px 128px 116px; display:flex; flex-direction:column; gap:18px">
+<div style="display:flex; flex-direction:column; gap:4px">
+<p style="font-size:24px; font-weight:600; letter-spacing:2px; text-transform:uppercase; color:#1F5FA9">Part 3 · Test transfer and close the story</p>
+<h2 style="font-family:'Source Serif 4', Georgia, serif; font-size:56px; font-weight:600; line-height:1.1; color:#16202C">The transferred method</h2>
+</div>
+<div style="display:flex; flex-direction:column; gap:8px; background:#FBF1F0; border:3px solid #B3261E; border-radius:14px; padding:20px 28px; padding:16px 28px">
+<p style="font-size:28px; line-height:1.4; color:#2B3440"><b style="color:#B3261E">Unchanged: the rule.</b> nᵢ, F̄, V_b, e, τ = τ_mult·s, η and w_eff = 1 + ηe carry over as written: one scalar per sample times the plug-in step, so no covariance matrix or inverse is needed (the simplex covariance diag(p) − ppᵀ is singular).</p>
+</div>
+<div style="display:flex; gap:24px; align-items:start">
+<div style="flex:1.45; display:flex; flex-direction:column">
+<table style="font-size:25px; color:#2B3440">
+<tr style="background:#ECEAE3"><th style="width:21%; text-align:left">What changes</th><th style="width:32%; text-align:left">Modality 1 · QM9</th><th style="width:47%; text-align:left">Modality 2 · DeepFlyBrain</th></tr>
+<tr><td>State</td><td>ℝᴺˣ³ plus a type simplex</td><td>(Δ³)⁵⁰⁰</td></tr>
+<tr><td>Generator</td><td>EGNN flow matching, 3.75M</td><td>dilated 1-D CNN, 128 × 10 layers, ≈1.02M; linear path from a Dirichlet(1, 1, 1, 1) source [4]</td></tr>
+<tr><td>Guide</td><td>learned f_A</td><td>soft GC fraction or CpG frequency (analytic)</td></tr>
+<tr><td>Evaluator</td><td>learned f_B</td><td>exact GC or CpG count after argmax</td></tr>
+<tr><td>Feasibility</td><td>centring and atom masks</td><td>clamp at zero, renormalise each position</td></tr>
+</table>
+</div>
+<div style="flex:1; display:flex; flex-direction:column; gap:16px">
+<div style="display:flex; flex-direction:column; gap:8px; background:#FDFCFA; border:1px solid #DDD9CF; border-radius:14px; padding:20px 28px; padding:16px 24px">
+<h3 style="font-size:30px; font-weight:600; line-height:1.25; color:#16202C">Training</h3>
+<p style="font-size:26px; line-height:1.35">83,722 sequences; 1,500 epochs (492k steps), batch 256, learning rate 2 × 10⁻³ with cosine decay; best validation loss 0.0634.</p>
+</div>
+<div style="display:flex; flex-direction:column; gap:8px; background:#FDFCFA; border:1px solid #DDD9CF; border-radius:14px; padding:20px 28px; padding:16px 24px">
+<h3 style="font-size:30px; font-weight:600; line-height:1.25; color:#16202C">Sampling</h3>
+<p style="font-size:26px; line-height:1.35">Euler with a projection after every step, then argmax. Window, batch, n and seeds declared before the run <span style="color:#C62828"><b>[TODO: v3 Job B]</b></span>.</p>
+</div>
+</div>
+</div>
+<div style="display:flex; flex-direction:row; align-items:center; gap:32px; background:#FDFCFA; border:1px solid #DDD9CF; border-radius:14px; padding:14px 28px">
+<img src="/_blob/fae4e19dfd7fbeda4246b0d2d6ef1209" alt="F_GC(p) = (1/L) Σ_j (p_j,C + p_j,G);  F_CpG(p) = (1/(L − 1)) Σ_j p_j,C p_j+1,G" style="width:900px; height:110px; object-fit:contain">
+<p style="flex:1; font-size:26px; line-height:1.35">GC is affine in p and CpG is quadratic, so the pair tests whether BDG depends on the property's curvature. <b>Known gap:</b> the guide reads an endpoint that can leave the simplex; the evaluator counts decoded bases.</p>
+</div>
+<p style="position:absolute; left:1616px; top:52px; width:176px; font-size:48px; font-weight:700; line-height:1.15; text-align:center; color:#F7F6F2; background:#1F5FA9; border-radius:14px; padding:8px 12px">3a</p>
+<p style="position:absolute; left:128px; bottom:40px; width:300px; font-size:18px; color:#5F6A77">CIS 6270 · Group 2 · 23 / 29</p>
+<p style="position:absolute; left:448px; bottom:40px; width:1344px; font-size:18px; line-height:1.3; text-align:right; color:#5F6A77">[4] Stark et al. 2024 (Dirichlet FM; DeepFlyBrain data)</p>
+</section>

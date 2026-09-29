@@ -1,0 +1,37 @@
+<section id="s2e2" style="background:#F7F6F2; color:#3A4553; font-family:'IBM Plex Sans', Arial, sans-serif; padding:80px 128px 116px; display:flex; flex-direction:column; gap:24px">
+<div style="display:flex; flex-direction:column; gap:4px">
+<p style="font-size:24px; font-weight:600; letter-spacing:2px; text-transform:uppercase; color:#1F5FA9">Part 2 · Evidence for Modality 1 · recent work 2 of 2</p>
+<h2 style="font-family:'Source Serif 4', Georgia, serif; font-size:56px; font-weight:600; line-height:1.1; color:#16202C">Fair study, and fair discussion</h2>
+</div>
+<div style="display:flex; gap:28px">
+<div style="flex:1.15; display:flex; flex-direction:column; gap:20px">
+<div style="display:flex; flex-direction:column; gap:8px; background:#FDFCFA; border:1px solid #DDD9CF; border-radius:14px; padding:20px 28px">
+<h3 style="font-size:30px; font-weight:600; line-height:1.25; color:#16202C">Reproduced, not quoted</h3>
+<p style="font-size:26px; line-height:1.35">Every 2e row is <b>run by us</b> on one frozen generator, guide, evaluator and target, with 3 × 2,000 samples per cell. No published score is pooled with ours. EquiFM's rows use TFG's predictor pair, so they are never ranked against our FM's.</p>
+</div>
+<div style="display:flex; flex-direction:column; gap:8px; background:#FDFCFA; border:1px solid #DDD9CF; border-radius:14px; padding:20px 28px">
+<h3 style="font-size:30px; font-weight:600; line-height:1.25; color:#16202C">Three port caveats</h3>
+<p style="font-size:26px; line-height:1.35"><b>Plug-in</b> is a DPS-<i>style</i> Gaussian-energy field; the original differentiates the residual L2 norm [12].</p>
+<p style="font-size:26px; line-height:1.35"><b>TMPD</b> is the local-linear scalar limit: a related-work comparison, not a faithful nonlinear port [22].</p>
+<p style="font-size:26px; line-height:1.35"><b>TFG</b> runs at its published QM9 hyperparameters, but through our deterministic ODE sampler, and our unscaled one-hot features move ~16× less relative to coordinates than the released checkpoint's. <b>Never read these against TFG's published table</b> [15].</p>
+</div>
+</div>
+<div style="flex:1; display:flex; flex-direction:column; gap:18px">
+<div style="display:flex; flex-direction:column; gap:8px; background:#E6F1EA; border-left:8px solid #2F6B4F; border-radius:10px; padding:18px 26px">
+<h3 style="font-size:30px; font-weight:600; line-height:1.25; color:#16202C">Better, measured</h3>
+<p style="font-size:26px; line-height:1.35; color:#2B3440"><b>Cost.</b> Plug-in's calls and time (0.119 s per sample): a fifth of LGD-MC's and TFG's guide passes, about half of TMPD's and LGD-MC's time.</p>
+</div>
+<div style="display:flex; flex-direction:column; gap:8px; background:#EEF0F3; border-left:8px solid #5F6A77; border-radius:10px; padding:18px 26px">
+<h3 style="font-size:30px; font-weight:600; line-height:1.25; color:#16202C">Comparable, measured</h3>
+<p style="font-size:26px; line-height:1.35; color:#2B3440"><b>Coverage vs plug-in.</b> τ_m = 0.5 is positive on all six tasks but unresolved (+0.45 to +1.52 points, z ≤ 2.44), with 0.5–3.6 points less stability on our FM.</p>
+</div>
+<div style="display:flex; flex-direction:column; gap:6px; background:#FBEFE3; border-left:8px solid #A35A12; border-radius:10px; padding:16px 28px; gap:8px; padding:18px 26px">
+<h3 style="font-size:30px; font-weight:600; line-height:1.25; color:#16202C">Worse, measured</h3>
+<p style="font-size:26px; line-height:1.35; color:#2B3440">τ_m = 1 falls below plug-in in 3 of 6 tasks (−1.68 to −2.07 points). TFG gains far more coverage (above plug-in in 5 of 6) but costs 8–27 stability points.</p>
+</div>
+</div>
+</div>
+<p style="position:absolute; left:1616px; top:52px; width:176px; font-size:48px; font-weight:700; line-height:1.15; text-align:center; color:#F7F6F2; background:#1F5FA9; border-radius:14px; padding:8px 12px">2e</p>
+<p style="position:absolute; left:128px; bottom:40px; width:300px; font-size:18px; color:#5F6A77">CIS 6270 · Group 2 · 22 / 29</p>
+<p style="position:absolute; left:448px; bottom:40px; width:1344px; font-size:18px; line-height:1.3; text-align:right; color:#5F6A77">[12] Chung et al. 2023 (DPS) · [22] Boys et al. 2024 (TMPD) · [15] Ye et al. 2024 (TFG) · contrasts over our FM and EquiFM, 3 × 2,000 per cell (this work)</p>
+</section>

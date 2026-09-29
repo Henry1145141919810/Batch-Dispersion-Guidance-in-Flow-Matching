@@ -18,8 +18,8 @@ atom types and the padding mask. Nothing in the v2 tables, the paired z, the
 bias/residual-sd decomposition or the V5 buckets uses them -- those read scores
 and flags. Any future analysis that DOES need geometry (bond-length
 distributions, conformer work, re-decoding under different rules) must go back
-to the untouched originals, which live in the pull tarball `v2_cells.tgz` at
-the repo root (gitignored) and on the cluster at
+to the untouched originals, which live in the pull tarball `bundles/results/v2_cells.tgz` in
+the laptop checkout (gitignored) and on the cluster at
 `/vast/projects/ajw/wharton/hyhuang/cgm/results/`. Re-extracting the tarball
 over the tree restores them.
 

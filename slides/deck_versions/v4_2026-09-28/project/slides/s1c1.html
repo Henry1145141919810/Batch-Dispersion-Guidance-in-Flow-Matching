@@ -1,0 +1,43 @@
+<section id="s1c1" style="background:#F7F6F2; color:#3A4553; font-family:'IBM Plex Sans', Arial, sans-serif; padding:80px 128px 116px; display:flex; flex-direction:column; gap:24px">
+<div style="display:flex; flex-direction:column; gap:4px">
+<p style="font-size:24px; font-weight:600; letter-spacing:2px; text-transform:uppercase; color:#1F5FA9">Part 1 · Set up the study · flow matching 1 of 2</p>
+<h2 style="font-family:'Source Serif 4', Georgia, serif; font-size:56px; font-weight:600; line-height:1.1; color:#16202C">Flow-matching baseline: the formulation</h2>
+</div>
+<p style="font-size:26px; line-height:1.35">Data x₁, source x₀; t runs 0 (noise) → 1 (data).</p>
+<div style="display:flex; flex-direction:column; background:#FDFCFA; border:1px solid #DDD9CF; border-radius:14px; padding:4px 32px">
+<div style="display:flex; gap:32px; align-items:center; padding:18px 0px; border-bottom:1px solid #E4E1D8">
+<div style="flex:none; width:340px">
+<h3 style="font-size:30px; font-weight:600; line-height:1.25; color:#16202C">Probability path</h3>
+<p style="font-size:24px; line-height:1.35; color:#5F6A77">linear interpolant [6, 7, 8]</p>
+</div>
+<img src="/_blob/817a3ef188ad4d8a0d19461971233e96" alt="x_t = t x_1 + (1 − t) x_0;  u_t(x_t | x_0, x_1) = x_1 − x_0" style="width:861px; height:50px; object-fit:contain">
+</div>
+<div style="display:flex; gap:32px; align-items:center; padding:18px 0px; border-bottom:1px solid #E4E1D8">
+<div style="flex:none; width:340px"><h3 style="font-size:30px; font-weight:600; line-height:1.25; color:#16202C">Source, not isotropic</h3></div>
+<p style="flex:1; font-size:26px; line-height:1.35">Coordinates x₀ᶜ = Π₀ε, with Π₀ the projection onto the zero-centre-of-mass subspace, dimension 3(N − 1). Type channels: a masked Gaussian.</p>
+</div>
+<div style="display:flex; gap:32px; align-items:center; padding:18px 0px; border-bottom:1px solid #E4E1D8">
+<div style="flex:none; width:340px">
+<h3 style="font-size:30px; font-weight:600; line-height:1.25; color:#16202C">Loss, as implemented</h3>
+<p style="font-size:24px; line-height:1.35; color:#5F6A77">masked mean, two heads normalised separately, λ = 1</p>
+</div>
+<div style="flex:1; display:flex; flex-direction:column; gap:10px">
+<img src="/_blob/d4eeb22002c7dc8a134a14026c298e04" alt="L_FM(θ) = E[ 1/(3ΣM) ||M ⊙ (v^c_θ − u^c)||² + λ 1/(KΣM) ||M ⊙ (v^f_θ − u^f)||² ]" style="width:1156px; height:95px; object-fit:contain">
+<p style="font-size:26px; line-height:1.35"><b>New symbols:</b> M the atom mask, K the type channels, vθ the learned velocity. Separate normalisation stops padding diluting the loss.</p>
+</div>
+</div>
+<div style="display:flex; gap:32px; align-items:center; padding:18px 0px">
+<div style="flex:none; width:340px">
+<h3 style="font-size:30px; font-weight:600; line-height:1.25; color:#16202C">Endpoint estimate</h3>
+<p style="font-size:24px; line-height:1.35; color:#5F6A77">closed form at every t</p>
+</div>
+<div style="flex:1; display:flex; flex-direction:column; gap:10px">
+<img src="/_blob/7bd4e7d3d3c7fe745906b907025dda40" alt="x̂_1 = x_t + (1 − t) v_θ(x_t, t)" style="width:408px; height:50px; object-fit:contain">
+<p style="font-size:26px; line-height:1.35">The object every guidance arm differentiates.</p>
+</div>
+</div>
+</div>
+<p style="position:absolute; left:1616px; top:52px; width:176px; font-size:48px; font-weight:700; line-height:1.15; text-align:center; color:#F7F6F2; background:#1F5FA9; border-radius:14px; padding:8px 12px">1c</p>
+<p style="position:absolute; left:128px; bottom:40px; width:300px; font-size:18px; color:#5F6A77">CIS 6270 · Group 2 · 5 / 29</p>
+<p style="position:absolute; left:448px; bottom:40px; width:1344px; font-size:18px; line-height:1.3; text-align:right; color:#5F6A77">[6] Lipman et al. 2022 (Flow Matching) · [7] Liu et al. 2022 (Rectified Flow) · [8] Albergo et al. 2025 (Stochastic Interpolants)</p>
+</section>

@@ -2,7 +2,7 @@
 
 **18 September 2026 · research proposal, not an adopted replacement for S + D + SMG.**
 
-Companion: [training-time feasibility gates](TRAINING_GUIDANCE_FEASIBILITY.md).
+Companion: [training-time feasibility gates](../../archive/TRAINING_GUIDANCE_FEASIBILITY.md).
 Previous method: [SMG mathematics](SMG_FULL_MATH_AND_PROOFS.md).
 
 Status convention: `[PROVED]` derivation under explicit assumptions; `[CHECKED]` executed
@@ -419,8 +419,8 @@ no claim is made that all preprints or conference submissions were examined.
 
 ## 8. What has actually been checked
 
-Executed [audit/training_guidance_checks.py](audit/training_guidance_checks.py), using only
-the Python standard library on CPU. Results: [training_guidance_results.json](audit/training_guidance_results.json).
+Executed [audit/training_guidance_checks.py](../../audit/training_guidance_checks.py), using only
+the Python standard library on CPU. Results: [training_guidance_results.json](../../audit/training_guidance_results.json).
 
 | Check over 100 finite-support posterior cases | Maximum discrepancy |
 |---|---:|

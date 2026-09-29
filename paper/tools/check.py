@@ -12,8 +12,7 @@ import sys
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 MAIN = (ROOT / "main.tex").read_text(encoding="utf-8")
 BODY = MAIN.split("% MAIN_TEXT_START", 1)[1].split("% MAIN_TEXT_END", 1)[0]
-# Labels and references live in both files: the main text in body.tex, the
-# appendix in main.tex, and each may point at the other.
+# The main text, tables and appendix all live in main.tex.
 BOTH = MAIN
 
 # Style checks run on rendered text only. A LaTeX comment cannot render an em
@@ -37,6 +36,17 @@ STYLE = ["rather than", "instead,", "not only", "delve", "leverage", "robust",
 
 def main() -> int:
     fail = 0
+
+    abstract = re.search(r'\\begin\{abstract\}(.*?)\\end\{abstract\}', BODY, re.S).group(1)
+    abstract_words = len(abstract.split())
+    print(f'abstract words     : {abstract_words} (200-250 required)')
+    if not 200 <= abstract_words <= 250:
+        fail = 1
+    intro = BODY.split(r'\section{Introduction}', 1)[1].split(r'\begin{itemize}', 1)[0]
+    paragraphs = [p for p in re.split(r'\n\s*\n', intro.strip()) if p.strip()]
+    print(f'introduction paras : {len(paragraphs)} (3 required)')
+    if len(paragraphs) != 3:
+        fail = 1
 
     cites = sorted(set(re.findall(r"\\citep\{([^}]*)\}", BODY)))
     keys = sorted({k.strip() for group in cites for k in group.split(",")})

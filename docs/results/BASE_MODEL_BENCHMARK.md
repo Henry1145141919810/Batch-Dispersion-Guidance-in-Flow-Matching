@@ -88,7 +88,7 @@ same `score_samples()` re-scores saved samples with `--rescore`) and
 - **Training settings deviate from the pre-registration.** `PROJECT_GUIDE.md` Section 4.5
   fixes Adam lr 1e-4, batch 128, EMA 0.999, checks every ~5 epochs on 1,000 samples. The run
   used lr 2e-4, batch 256, EMA 0.9999 (a deliberate 19 Sep fix, documented in
-  `_ship/WHAT_CHANGED.md`), checks every 25 epochs on 512 samples. The pre-registered
+  `archive/ship_packages_2026-09-19/WHAT_CHANGED.md`, local-only), checks every 25 epochs on 512 samples. The pre-registered
   *checkpoint rule* (highest validation atom stability at NFE 100) was followed. The
   deviations were not written down until this audit.
 - **Architecture.** Ours is a plain dense EGNN, 256 wide, 8 layers, no attention. EDM's

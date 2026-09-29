@@ -21,14 +21,29 @@ ODE, our evaluator under EDM conventions.
 | EDM, unscaled one-hot [2] | quoted | 0.9570 | 0.4690 | — | — | 1000 | — |
 | Real QM9 (ceiling) | measured | 0.994 | 0.956 | 0.982 | — | — | — |
 
+> ⚠️ **The VP row's numbers are available (28 Sep) but are NOT pasted here,
+> because this table's FM row does not match the canonical run.** From
+> `results/v3/fm/v3/n2000/` the unguided pooled values are atom **0.9356**,
+> mol **0.3970**, validity **0.7562**; this table says 0.9366 / 0.3993 / 0.7625.
+> Reconcile the FM row first — otherwise a VP row from the canonical cells would
+> sit beside an FM row from somewhere else and the comparison would be invalid.
+>
+> The canonical VP values, for when that is settled: atom **0.9070** ±.0013,
+> mol **0.2883** ±.0134, validity **0.6617** ±.0070, uniqueness **0.9995**,
+> NFE 101, 3.75 M params. Source:
+> [V3_RESULTS_vp.md](../../docs/results/V3_RESULTS_vp.md) and
+> [DATA_INDEX.md](../../docs/results/DATA_INDEX.md) §3.
+
 *Our flow row is three seeds of 10,000 samples. `EDMsecond` is a single-seed gate run
 at n = 2,000, so it is not directly comparable.*
 
-**Which model is carried forward, and why.** **Flow matching**, and the reason is
-**not** a fidelity win. The matched own-diffusion row is `[TODO: v3 Job A]`, and the
-only measured diffusion comparator is a borrowed checkpoint differing in architecture,
-training half and feature scaling, so it cannot decide the question. We carry flow
-matching because its linear path gives a **closed-form endpoint estimate at every t**,
+**Which model is carried forward, and why.** **Flow matching** -- and as of 28 Sep
+the reason includes a **measured fidelity win over the matched diffusion model**. Our
+own VP diffusion ran under the identical protocol and lost on all three chemistry
+metrics (mol stab 0.3970 vs 0.2883, validity 0.7562 vs 0.6617, atom stab 0.9356 vs 0.9070; every gap 7-14x the sd of the difference). The borrowed `edm` checkpoint still cannot decide the question (it differs
+in architecture, training half and feature scaling); `vp` can, and does. We also carry
+flow matching because its linear path gives a **closed-form endpoint estimate at every
+t**,
 which is the object every guidance rule differentiates, at NFE 100 against a 1000-step
 published protocol.
 

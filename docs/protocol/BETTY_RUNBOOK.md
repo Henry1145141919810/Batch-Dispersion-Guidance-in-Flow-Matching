@@ -39,9 +39,19 @@ Nothing on Betty updates itself. Any code change means a new tarball.
 
 ```
 cd "C:/Users/mooooonesy/Downloads/pennstuff/cis 6270/Project 1"
-tar --exclude='__pycache__' -czf code_vN.tgz proj1/scripts proj1/src proj1/tests proj1/cluster
-scp code_vN.tgz betty:/vast/projects/ajw/wharton/hyhuang/cgm/
+tar --exclude='__pycache__' -czf bundles/code/code_vN.tgz proj1/scripts proj1/src proj1/tests proj1/cluster
+scp bundles/code/code_vN.tgz betty:/vast/projects/ajw/wharton/hyhuang/cgm/
 ```
+
+**On the laptop, every tarball lives in `bundles/`** (since 27 Sep 2026; they
+used to pile up in the project root). Only the laptop path changed: `scp` still
+drops the file straight into `$PROJ` on Betty, so every Betty-side command below
+is unchanged. The highest number used so far is **`code_v19`**, so the next
+one is `code_v20`; `ls bundles/code/` shows every name that is taken. The
+historical campaign sections further down predate this and still use root
+paths. On the laptop, read their `code_vNN.tgz` as `bundles/code/code_vNN.tgz`,
+`fm_transfer_assets_v1.tgz` as `bundles/assets/fm_transfer_assets_v1.tgz`, and
+their `scp betty:... "…/Project 1/"` pulls as landing in `…/Project 1/bundles/results/`.
 
 Then on Betty, **extract from `$PROJ`, never from inside `proj1/`** — otherwise
 you get `proj1/proj1/...` and the jobs silently run the old code:
@@ -252,15 +262,19 @@ To pull results back to the laptop for analysis:
 tar -czf cells.tgz results/sweep results/sweep_v2_seed2
 ```
 ```
-scp betty:/vast/projects/ajw/wharton/hyhuang/cgm/cells.tgz "C:/Users/mooooonesy/Downloads/pennstuff/cis 6270/Project 1/"
+scp betty:/vast/projects/ajw/wharton/hyhuang/cgm/cells.tgz "C:/Users/mooooonesy/Downloads/pennstuff/cis 6270/Project 1/bundles/results/"
 ```
+
+Pulled tarballs land in `bundles/results/`, not the project root. Extract them
+**from the project root**, e.g. `tar xzf bundles/results/cells.tgz ...`, so
+their `results/...` paths land in the tree.
 
 For the full run: `ls results/full/n5000/seed*/*__full.json | wc -l` (want 64),
 then `python proj1/scripts/full_run_table.py`. It refuses to print a partial or
 inconsistent run and says what is missing. To pull it back:
 `tar -czf full.tgz results/full`.
 
-On the laptop, `tar xzf cells.tgz --skip-old-files` keeps any file that
+On the laptop, `tar xzf bundles/results/cells.tgz --skip-old-files` keeps any file that
 already exists locally — the **local** copy wins, not Betty's. That is only
 safe if the overlapping cells are identical. Cells are deterministic (the
 compare stage reproduced 75 earlier cells exactly), and on 23 Sep all 690
@@ -327,9 +341,15 @@ headline's table. Do not set `V3_ABL_N=2000`.
 shipping code never disturbs the weights already on Betty.
 
 ```
-tar --exclude='__pycache__' -czf code_v17.tgz proj1/scripts proj1/src proj1/tests proj1/cluster results/v3_batch_memory.json
-scp code_v17.tgz betty:/vast/projects/ajw/wharton/hyhuang/cgm/
+cd "C:/Users/mooooonesy/Downloads/pennstuff/cis 6270/Project 1"
+tar --exclude='__pycache__' -czf bundles/code/code_v20.tgz proj1/scripts proj1/src proj1/tests proj1/cluster results/v3_batch_memory.json
+scp bundles/code/code_v20.tgz betty:/vast/projects/ajw/wharton/hyhuang/cgm/
 ```
+
+This stage first shipped as `code_v17`; v17, v18 and v19 are all taken, so the
+commands above and in Step 2 say `code_v20`, the next free name as of 27 Sep.
+**If `bundles/code/code_v20.tgz` already exists, bump the number in all four
+lines**; never rebuild a name that has shipped.
 
 `results/v3_batch_memory.json` travels with the code on purpose: it is the
 measurement that chose `--batch`, and `test_v3.py` gates the job's batch against
@@ -342,8 +362,8 @@ cd /vast/projects/ajw/wharton/hyhuang/cgm
 source .venv/bin/activate
 export SLURM_CONF=/cm/shared/apps/slurm/etc/slurm/slurm.conf
 
-md5sum code_v17.tgz
-tar xzf code_v17.tgz
+md5sum code_v20.tgz
+tar xzf code_v20.tgz
 md5sum proj1/checkpoints/fm_last.pt
 python proj1/tests/test_v3.py
 python proj1/tests/test_bdg.py
@@ -449,6 +469,189 @@ sbatch --export=ALL,V3_N=5000,V3_BATCH=500,STAGE=table proj1/cluster/v3_run.slur
 
 ---
 
+## QM9 diffusion, OURS (`--backend vp`) — the same five steps
+
+**Not `edm`.** `edm` is TFG's borrowed EDMsecond; `vp` is the model we trained.
+Both are diffusion and only `vp` is ours. Protocol:
+[FULL_RUN_V3_PROTOCOL.md §1.3](FULL_RUN_V3_PROTOCOL.md) (the 28 Sep amendment).
+
+| | |
+|---|---|
+| grid | 2 arms (`unguided`, `plug`) × 3 properties × 3 seeds × w = 1 = **18 cells** |
+| per cell | n = **2000** in 4 batches of 500, q50, t ≥ 0.5 |
+| ablation | **none** — `vp` sits it out, as `edm` does |
+| cost | ≈ **1.5 GPU-h** total; longest task ≈ 10 min against the 4 h wall |
+| tree | `results/v3/vp/v3/n2000/seed<S>/` |
+
+**It fits in one window, so do NOT use `submit_v3.sh`** — that chain re-plans
+`fm`, `equifm` and `edm` too. Nine independent tasks is the whole run.
+
+### Prerequisite — the checkpoint EXISTS. Skip to Step 1.
+
+**Done 28 Sep**: `weights/diff_ema.pt`, md5 `8a3390a6`, selected epoch 1475 of
+1500, trained by Bobo. The training recipe in the rest of this subsection is
+**archival** — keep it for a retrain, do not run it now.
+
+*History, for the record.* Job 8590174 — the first run with both the right split
+and the right architecture — died at epoch ≈80 of 1500 (`logs/diff-8590174.err`:
+`CANCELLED … DUE TO NODE FAILURE`, 2026-09-21T16:58:59) and was never restarted.
+Its epoch-75 remains later got picked up by the resolver and produced a full set
+of 18 **wrong** cells at atom stability 0.763 instead of 0.905; the gate now pins
+the checkpoint md5 (`vp_bench.slurm`). A field check is not an identity check.
+
+**Clear the stale `train_ab` checkpoints first. There are TWO guards, not one,
+and the `--resume` guard on `diff_last.pt` fires *before* the selection guard
+on `diff.pt`.** `--fresh` does not help: `train_diffusion.slurm` hardcodes
+`--resume`, and the resume guard is checked at `train_diffusion.py:293`, before
+`--fresh` is consulted at `:340`. With `afterany`, skipping this does not fail
+one link — **all five run and all five die in under a minute, and the night
+yields nothing.** The audited recipe
+([QUEUE_CHECK.md](../../results/bench/audit4/QUEUE_CHECK.md) §B):
+
+```
+cd /vast/projects/ajw/wharton/hyhuang/cgm
+mkdir -p proj1/checkpoints/old_train_ab
+mv proj1/checkpoints/diff* proj1/checkpoints/old_train_ab/ 2>/dev/null
+ls proj1/checkpoints/diff* 2>/dev/null && echo "STILL THERE - DO NOT SUBMIT" || echo "clear"
+```
+
+The `diff*` glob is deliberate — `diff_last_prev.pt`, `diff_ep*.pt` and
+`diff_history.json` are all clobbered or misread otherwise. Nothing `fm*` is
+touched by `train_diffusion.py`.
+
+**Then chain the links link-to-link, never all-to-link-1** — five jobs that
+all depend on the first would run concurrently, and five `atomic_save`s of
+`diff_last.pt` would interleave and destroy the run:
+
+```
+source .venv/bin/activate
+J=$(sbatch --parsable proj1/cluster/train_diffusion.slurm)
+for i in 2 3 4 5; do
+    J=$(sbatch --parsable --dependency=afterany:$J proj1/cluster/train_diffusion.slurm)
+done
+squeue -u $USER -o "%.10i %.10P %.12j %.8T %.20E"   # every link but the first must show a Dependency
+```
+
+`afterany`, not `afterok`: a node failure should not stall the tail.
+
+**Cost: ≈12 GPU-h.** 28.5 s/epoch measured on job 8590174 itself
+(`logs/diff-8590174.out`, ep 25 → 80: (2332−765)/55), which agrees to 0.7 %
+with QUEUE_CHECK's independent 28.69 s/epoch projection. **Four links are
+needed and the fifth is a spare** — links 1–3 are full 470-epoch/3 h 45 m
+links, link 4 is ep 1413–1500 (≈42 min), link 5 exits in ≈20 s. The same shape
+as FM's measured 11 h 23 m.
+
+### Step 1 — ship the code (laptop)
+
+```
+cd "C:/Users/mooooonesy/Downloads/pennstuff/cis 6270/Project 1"
+tar --exclude='__pycache__' -czf bundles/code/code_v20.tgz proj1/scripts proj1/src proj1/tests proj1/cluster results/v3_batch_memory.json
+scp bundles/code/code_v20.tgz betty:/vast/projects/ajw/wharton/hyhuang/cgm/
+```
+
+`code_v19` was the last shipped, so **`code_v20` is the next free name**
+(bundles/README.md keeps that count). Never rebuild a name that has shipped. The tarball excludes `proj1/checkpoints/` on purpose, so
+shipping code cannot disturb the weights already on Betty.
+
+### Step 2 — verify (Betty)
+
+```
+cd /vast/projects/ajw/wharton/hyhuang/cgm
+source .venv/bin/activate
+export SLURM_CONF=/cm/shared/apps/slurm/etc/slurm/slurm.conf
+
+md5sum code_v20.tgz
+tar xzf code_v20.tgz
+
+md5sum proj1/checkpoints/diff_last.pt
+python -c "import torch;st=torch.load('proj1/checkpoints/diff_last.pt',map_location='cpu',weights_only=False);print(st.get('family'),st.get('epoch'),st['args'])"
+
+python proj1/tests/test_v3.py
+python proj1/tests/test_bdg.py
+```
+
+Want `family=vp_diffusion`, `epoch=1500`, and `args` showing `hidden 256,
+layers 8, split train_a, seed 20260918`. Then `ALL PASS (106 gates)` and
+`25/25`. **Record that md5** — it lands in every cell's provenance as
+`gen_md5`, and it is how a reader tells a `vp` cell from an `edm` one.
+
+Then the GPU smoke, **not on the login node**:
+
+```
+srun --partition=b200-mig45 --gpus=1 --cpus-per-task=6 --mem=48G --time=00:20:00 \
+  python proj1/scripts/transfer_sweep.py --stage v3 --backend vp \
+    --props mu --arms unguided,plug --n 2000 --batch 500 --seed 20261001 --preflight
+```
+
+### Step 3 — submit (nine independent tasks)
+
+```
+for P in mu alpha gap; do
+  for S in 20261001 20261002 20261003; do
+    sbatch --partition=b200-mig45 --gpus=1 --cpus-per-task=6 --mem=48G --time=04:00:00 \
+      --job-name=vp-$P-$S --output=logs/vp-%j.out \
+      --wrap="cd /vast/projects/ajw/wharton/hyhuang/cgm && source .venv/bin/activate && \
+        python -u proj1/scripts/transfer_sweep.py --stage v3 --backend vp \
+          --props $P --arms unguided,plug --n 2000 --batch 500 --seed $S --per-mol"
+  done
+done
+```
+
+Everything else is argparse default, and that is what the cells record:
+`--steps 100`, `--solver euler`, `--grid uniform`, `--tau-max-guide 0.5`,
+`--clip 1.0`, `--k-delta 2.0`.
+
+> ⚠️ **Do not pass `--grid gamma` on `vp`.** The gamma grid needs a noise
+> schedule object to invert, and `vp` passes `noise_schedule=None` — which
+> *is* the linear-beta schedule our generator was trained under, not an
+> omission. It does **not** fail fast: `VPSampler.__init__` raises a plain
+> `ValueError`, `run_cell` catches it per cell, writes a `.failed` marker and
+> continues, so the task burns its whole wall and *then* returns 1. Leave
+> `--grid` at its default.
+
+### Step 4 — check
+
+```
+squeue -u $USER -o "%.18i %.14j %.9T %.10M %.28E"
+grep -h '\[timing\]' logs/vp-*.out | tail -20
+ls results/v3/vp/v3/n2000/seed20261001/*.json | wc -l   # 6 (2 arms x 3 props)
+```
+
+### Step 5 — collect
+
+**Not** the chain's table job — `v3_run.slurm`'s `BACKENDS` excludes `vp` by
+design, so `STAGE=table` will never produce a vp page. Call the table directly:
+
+```
+python proj1/scripts/v3_sanity.py                       # takes no arguments
+python proj1/scripts/v3_table.py --backend vp --stage v3 --n 2000 \
+    --seeds 20261001,20261002,20261003 \
+    --md-out docs/results/V3_RESULTS_vp.md
+```
+
+`--n` is **required** and has no default (v3 pre-registers no cell size), and
+without `--md-out` the table goes to stdout only and no file is written. Use
+`--backend vp` writes only the vp page. `--both` now probes the tree and walks
+every backend that has cells for the stage, so it includes `vp` as well.
+It **refuses** rather than warns if a cell is missing, and names it.
+
+### Reading `vp` — what it does and does not settle
+
+1. **`fm` vs `vp` is the matched comparison** — same backbone, parameters,
+   epochs, batch, EMA, split and seed. It isolates the generator family and
+   nothing else. This is the cell `tab:fmvd` had never had until 28 Sep.
+   **Result: `fm` wins on all three** — mol stab 0.3970 vs 0.2883, validity
+   0.7562 vs 0.6617, atom stab 0.9356 vs 0.9070.
+2. **`vp` vs `edm` is ours-against-borrowed, on one sampler and one pair.** Both
+   run through *our* 100-step probability-flow ODE, not EDM's native 1000-step
+   ancestral SDE, so neither row is EDM's published unconditional number and
+   neither may be quoted as one.
+3. **`vp` is not comparable to `equifm` on `in_band`.** Different pair, different
+   band width. `v3_table.py` refuses to pool them; do not do by hand what it
+   refuses to do for you.
+
+---
+
 ## The transfer (borrowed FM model: EquiFM) — the same five steps
 
 Its own job file, `proj1/cluster/transfer_run.slurm`, and its own results tree,
@@ -470,7 +673,7 @@ tar --exclude='__pycache__' -czf code_v13.tgz proj1/scripts proj1/src proj1/test
 scp code_v13.tgz fm_transfer_assets_v1.tgz betty:/vast/projects/ajw/wharton/hyhuang/cgm/
 ```
 
-`fm_transfer_assets_v1.tgz` is already built in the project root (55 MB, 42
+`fm_transfer_assets_v1.tgz` is already built, in `bundles/assets/` since 27 Sep (55 MB, 42
 files, md5 `7eb4ab32…`).
 `code_v11` and `code_v12` are already taken (v12 shipped the TFG arm). Next
 code change: `code_v14.tgz`, never `v13` again.

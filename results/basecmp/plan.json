@@ -1,0 +1,122 @@
+{
+ "study": "basecmp",
+ "date": "2026-09-25",
+ "n_screen": 750,
+ "n_full": 1000,
+ "full_backend": "equifm",
+ "budget_gpuh": 130.0,
+ "margin": 1.25,
+ "est_gpuh": {
+  "screen": 82.42556395836068,
+  "refine": 12.07768149545862,
+  "full": 28.65620147302324,
+  "total": 123.15944692684255
+ },
+ "worst_task": {
+  "which": "screen equifm lgd_mc+tfg t=0.05",
+  "minutes": 106.55563776449732,
+  "guard_minutes": 225
+ },
+ "cost_model": "seconds per molecule = a + b x (1 - t_start), fitted per (backend, arm) over the probe's three start-times",
+ "cells": {
+  "screen": {
+   "fm": 363,
+   "equifm": 363
+  },
+  "refine_assumed": {
+   "fm": 36,
+   "equifm": 36
+  },
+  "full": 117
+ },
+ "sec_per_molecule": {
+  "fm": {
+   "btvg": [
+    0.06163725704078075,
+    0.7722991768468093
+   ],
+   "btvg_var": [
+    0.061129190650651255,
+    0.6760888031702368
+   ],
+   "lgd_mc": [
+    0.06029671402833118,
+    0.5817984000144416
+   ],
+   "plug": [
+    0.058808127411992726,
+    0.20392743488218615
+   ],
+   "tfg": [
+    0.059051067130455236,
+    0.3729711924463706
+   ],
+   "tmpd": [
+    0.06658370453025508,
+    0.35766005294015113
+   ],
+   "unguided": [
+    0.05928168259561062,
+    0.0
+   ]
+  },
+  "equifm": {
+   "btvg": [
+    0.04504148692928833,
+    1.2513805695790916
+   ],
+   "btvg_var": [
+    0.051311991091152066,
+    1.0670280107451187
+   ],
+   "lgd_mc": [
+    0.04830654106713513,
+    0.8418788297706286
+   ],
+   "plug": [
+    0.10311507623617999,
+    0.24334646261833778
+   ],
+   "tfg": [
+    0.06755158459360651,
+    0.4718622625712919
+   ],
+   "tmpd": [
+    0.11857382993257026,
+    0.45271626383756924
+   ],
+   "unguided": [
+    0.07857989333570004,
+    0.0
+   ]
+  }
+ },
+ "screen_ladder": [
+  1000,
+  750,
+  500,
+  250
+ ],
+ "full_ladder": [
+  5000,
+  2000,
+  1000,
+  500
+ ],
+ "full_min_useful": 1000,
+ "strength_grid": [
+  0.05,
+  0.25,
+  1.0,
+  4.0,
+  16.0
+ ],
+ "t_start_grid": [
+  0.05,
+  0.25,
+  0.5,
+  0.75
+ ],
+ "rule": "the largest (n_screen, n_full) on the fixed ladders whose estimated cost fits --budget-gpuh, screen size preferred first",
+ "note": "cell time is modelled as proportional to n at fixed batch; diversity_logdet is quadratic in n but seconds against minutes of sampling, and --margin covers it"
+}

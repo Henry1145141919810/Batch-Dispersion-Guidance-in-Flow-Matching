@@ -1,0 +1,35 @@
+<section id="s1b1" style="background:#F7F6F2; color:#3A4553; font-family:'IBM Plex Sans', Arial, sans-serif; padding:80px 128px 116px; display:flex; flex-direction:column; gap:28px">
+<div style="display:flex; flex-direction:column; gap:4px">
+<p style="font-size:24px; font-weight:600; letter-spacing:2px; text-transform:uppercase; color:#1F5FA9">Part 1 · Set up the study · data 1 of 2</p>
+<h2 style="font-family:'Source Serif 4', Georgia, serif; font-size:56px; font-weight:600; line-height:1.1; color:#16202C">Datasets, splits, and leakage</h2>
+</div>
+<div style="display:flex; gap:32px">
+<div style="flex:1.3; display:flex; flex-direction:column; gap:16px; background:#FDFCFA; border:1px solid #DDD9CF; border-radius:14px; padding:24px 28px">
+<p style="font-size:24px; font-weight:600; letter-spacing:1px; text-transform:uppercase; color:#1F5FA9">Modality 1 · QM9 [1]</p>
+<h3 style="font-size:30px; font-weight:600; line-height:1.25; color:#16202C">133,885 molecules, explicit hydrogens, pinned by SHA-256</h3>
+<table style="font-size:26px; color:#2B3440">
+<tr style="background:#ECEAE3"><th style="width:22%; text-align:left">Split</th><th style="width:56%; text-align:left">Trains</th><th style="width:22%; text-align:right">n</th></tr>
+<tr><td>train_a</td><td>generator <b>and</b> guide f_A</td><td style="text-align:right">51,527</td></tr>
+<tr><td>train_b</td><td>evaluator f_B alone</td><td style="text-align:right">51,527</td></tr>
+<tr><td>val</td><td>checkpoints, atom counts</td><td style="text-align:right">17,748</td></tr>
+<tr><td>test</td><td>held out</td><td style="text-align:right">13,083</td></tr>
+</table>
+<p style="font-size:26px; line-height:1.35"><b>No leakage:</b> the network that scores us never saw the data that trained the network that steers us. Normalisation comes from train_a alone; δ's calibration set supplies neither targets nor atom counts.</p>
+</div>
+<div style="flex:1; display:flex; flex-direction:column; gap:24px">
+<div style="display:flex; flex-direction:column; gap:12px; background:#FDFCFA; border:1px solid #DDD9CF; border-radius:14px; padding:24px 28px">
+<p style="font-size:24px; font-weight:600; letter-spacing:1px; text-transform:uppercase; color:#1F5FA9">Modality 2 · enhancers [3]</p>
+<h3 style="font-size:30px; font-weight:600; line-height:1.25; color:#16202C">6,126 Kenyon-cell <i>Drosophila</i> sequences</h3>
+<p style="font-size:26px; line-height:1.35">The evaluator is an <b>exact count</b>, so no split is needed and leakage is impossible.</p>
+<p style="font-size:26px; line-height:1.35"><b>We keep the two species apart.</b> Their GC distributions differ, so steering spread on the mixture would partly steer the mixing proportion — the quantity under study.</p>
+</div>
+<div style="display:flex; flex-direction:column; gap:12px; background:#FDFCFA; border:1px solid #DDD9CF; border-radius:14px; padding:24px 28px">
+<h3 style="font-size:30px; font-weight:600; line-height:1.25; color:#16202C">Preprocessing (M1)</h3>
+<p style="font-size:26px; line-height:1.35">Coordinates zero-centred per molecule, in Å; dense [B, 29, ·] padding with a validity mask; properties in D / Bohr³ / Ha.</p>
+</div>
+</div>
+</div>
+<p style="position:absolute; left:1616px; top:52px; width:176px; font-size:48px; font-weight:700; line-height:1.15; text-align:center; color:#F7F6F2; background:#1F5FA9; border-radius:14px; padding:8px 12px">1b</p>
+<p style="position:absolute; left:128px; bottom:40px; width:300px; font-size:18px; color:#5F6A77">CIS 6270 · Group 2 · 3 / 29</p>
+<p style="position:absolute; left:448px; bottom:40px; width:1344px; font-size:18px; line-height:1.3; text-align:right; color:#5F6A77">[1] Ramakrishnan et al. 2014 (QM9) · [3] Chen et al. 2025 (MOG-DFM; enhancer data)</p>
+</section>

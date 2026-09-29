@@ -66,9 +66,10 @@ implementation details, and the Modality 2 transfer.
 4. **"Which model did you carry forward, and why?"** Flow matching, for the closed-form
    endpoint estimate, **not** for a fidelity win. Do not overclaim here.
 
-5. **"Is your diffusion baseline actually yours?"** Say it plainly: our own VP diffusion
-   is implemented and gated; the full-scale run is pending; the measured comparator
-   today is a borrowed released checkpoint, and slide 2a labels it as borrowed.
+5. **"Is your diffusion baseline actually yours?"** Say it plainly: **yes, and there
+   are two.** `vp` is ours -- trained here to epoch 1500, selected 1475, 18 v3 cells.
+   `edm` is TFG's released EDMsecond, borrowed and labelled as such on 2a. Against our
+   own VP at matched everything, flow matching wins (mol stab 0.3970 vs 0.2883, validity 0.7562 vs 0.6617, atom stab 0.9356 vs 0.9070; every gap 7-14x the sd of the difference).
 
 6. **"Why should in-band be the metric rather than MAE?"** Because a design campaign
    accepts anything inside the tolerance band, and MAE rewards an arm that is close on

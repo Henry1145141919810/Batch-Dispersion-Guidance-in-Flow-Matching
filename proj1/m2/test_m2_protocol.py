@@ -26,7 +26,7 @@ import m2_table as T           # noqa: E402
 PROTOCOL = os.path.join(ROOT, "docs", "protocol", "MODALITY2_V3_PROTOCOL.md")
 RESULTS, FAILED = [], 0
 
-_src = open(os.path.join(HERE, "m2_sweep.py")).read()
+_src = open(os.path.join(HERE, "m2_sweep.py"), encoding="utf-8").read()
 
 
 
@@ -66,7 +66,7 @@ def _argparse_default(mod_src, flag):
     return m.group(1) if m else None
 
 
-_drv_src = open(os.path.join(HERE, "run_sweep.py")).read()
+_drv_src = open(os.path.join(HERE, "run_sweep.py"), encoding="utf-8").read()
 def _run_driver(argv):
     """Actually invoke run_sweep.main() with a patched argv."""
     old = sys.argv
@@ -136,7 +136,7 @@ gate("default_ckpt_is_the_500bp_base",
      M.DEFAULT_CKPT)
 gate("default_ckpt_agrees_with_driver",
      os.path.basename(M.DEFAULT_CKPT) in open(
-         os.path.join(HERE, "run_sweep.py")).read(),
+         os.path.join(HERE, "run_sweep.py"), encoding="utf-8").read(),
      "m2_sweep and run_sweep must not default to different models")
 
 # ------------------------------------------------------ per-property quantum
@@ -197,19 +197,19 @@ gate("table_pins_the_configuration",
      str(T.PINNED))
 gate("table_refuses_to_pool_ablation_strengths",
      "REFUSING to pool the ablation's strengths" in open(
-         os.path.join(HERE, "m2_table.py")).read(),
+         os.path.join(HERE, "m2_table.py"), encoding="utf-8").read(),
      "--w is required when the tree holds more than one")
 gate("table_reports_fidelity_beside_in_band",
      set(T.FIDELITY) == {"kmer_js", "decode_conf", "diversity"},
      str(T.FIDELITY))
 gate("table_computes_no_verdict",
      "best without losing fidelity" in open(
-         os.path.join(HERE, "m2_table.py")).read(),
+         os.path.join(HERE, "m2_table.py"), encoding="utf-8").read(),
      "names the clean best arm instead of ranking on in_band")
 
 # ------------------------------------------------------------- the protocol
 if os.path.exists(PROTOCOL):
-    _p = open(PROTOCOL).read()
+    _p = open(PROTOCOL, encoding="utf-8").read()
     gate("protocol_records_the_tmpd_defect",
          "_const_grad" in _p and "batch-constant" in _p,
          "section 1.2(a) -- v_f was batch-constant, so tmpd had no per-sample "

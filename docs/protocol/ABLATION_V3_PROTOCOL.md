@@ -36,7 +36,7 @@ is wrong.
 | window | t ≥ 0.5 | the same |
 | property pair | per backend, inherited (`fm` ours, `equifm` TFG's) | the same |
 | chemistry floor | none | none |
-| **cells** | **612** = 17 arms × **2 strengths** × 3 props × 3 seeds × 2 backends | 144 |
+| **cells** | **612** = 17 arms × **2 strengths** × 3 props × 3 seeds × 2 backends | 162 |
 | tree | `results/v3/<backend>/v3abl/n<N>/seed<S>/` | `…/v3/n<N>/…` |
 
 **This stage is much the LARGER of the two** — 17 arms at two strengths

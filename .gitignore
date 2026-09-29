@@ -48,19 +48,44 @@ audit/fa_fb_search/TFG/*.html
 # that produced them.
 !audit/bdg_review/
 
+# The 20 Sep exploration that produced TOP6_GUIDANCE_RECOMMENDATIONS.md (eight
+# small experiments + their JSON). Tracked since 21 Sep as "top guidance new/"
+# at the root; moved here on 27 Sep 2026 beside its sibling studies.
+!audit/top_guidance_2026/
+
 # ---------------------------------------------------------------- scratch
 tmp/
 scratch_schnet/
 output/
-_ship/
-transfer/
 code_*.tgz
+
+# Transfer-experiment cells pulled from Betty (12 MB, mostly *.permol.pt).
+# Ignored until 27 Sep only by accident, through a bare `transfer/` pattern
+# meant for the old root scratch folder; stated explicitly now that the
+# folder is gone, so the behaviour does not change. Tracking the JSONs is a
+# separate decision.
+results/transfer/
+
+# ---------------------------------------------------------------- tarballs
+# Everything shipped to or pulled from Betty, and the packages built for
+# teammates. Grouped here on 27 Sep 2026 (they used to pile up in the root);
+# bundles/README.md says what each subfolder holds and which code_vN is next.
+bundles/*
+!bundles/README.md
+
+# ---------------------------------------------------------------- Claude worktrees
+# Workflow agents check out temporary worktrees here. One was committed as a
+# gitlink by accident on 26 Sep; never track them.
+.claude/worktrees/
 
 # ---------------------------------------------------------------- local-only docs
 # Brainstorms, dropped ideas, superseded reviews and the cluster guide (which
-# contains absolute /vast paths). Kept on disk for reference -- every one of
-# them is cited from docs/methods/GUIDANCE_METHODS_INDEX.md so nothing is lost
-# to a reader, and section 3 of that index records why each was dropped.
+# contains absolute /vast paths). Kept on disk for reference. Six of the eight
+# are cited from tracked docs (three from docs/methods/GUIDANCE_METHODS_INDEX.md
+# section 3, with the reason each was dropped); FM_BASE_MODEL_DIAGNOSIS_PLAN and
+# INFERENCE_TIME_GUIDANCE_AGENT_HANDOFF are cited from none. archive/INDEX.md
+# has the full map. Since 27 Sep it also holds the old root scratch folders (_ship, transfer,
+# output, tmp) and the extracted EDM/EEGSDE paper text; archive/INDEX.md lists them.
 archive/
 
 # ---------------------------------------------------------------- large binaries
@@ -111,6 +136,8 @@ weights/EDMsecond/
 # Full text dumps of EDM and EEGSDE, produced while verifying the dist
 # protocol's citations. Third-party copyrighted text; the quotes we rely on are
 # reproduced with their section numbers in docs/protocol/DIST_PROTOCOL.md.
+# They now sit in archive/paper_text/; the patterns stay in case they are
+# regenerated anywhere else.
 edm_full.txt
 eegsde_full.txt
 
@@ -131,6 +158,8 @@ proj1/m2/*.bak_*
 proj1/m2/blade_bundle.tgz
 
 # a build artefact: 35 MB of weights already tracked under audit/ and weights/
+# (now in bundles/packages/, with the two Sep 20 training packages that were
+# tracked at the root by mistake)
 bobo_v3_benchmark.zip
 *.zip
 

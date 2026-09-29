@@ -1,0 +1,44 @@
+<section id="s1b1" style="background:#F7F6F2; color:#3A4553; font-family:'IBM Plex Sans', Arial, sans-serif; padding:80px 128px 116px; display:flex; flex-direction:column; gap:20px">
+<div style="display:flex; flex-direction:column; gap:4px">
+<p style="font-size:24px; font-weight:600; letter-spacing:2px; text-transform:uppercase; color:#1F5FA9">Part 1 · Set up the study · data 1 of 2</p>
+<h2 style="font-family:'Source Serif 4', Georgia, serif; font-size:56px; font-weight:600; line-height:1.1; color:#16202C">Datasets, splits and leakage</h2>
+</div>
+<div style="display:flex; gap:32px; align-items:start">
+<div style="flex:1; display:flex; flex-direction:column; gap:14px">
+<p style="font-size:24px; font-weight:600; letter-spacing:1px; text-transform:uppercase; color:#1F5FA9">Modality 1 · QM9 [1]</p>
+<h3 style="font-size:30px; font-weight:600; line-height:1.25; color:#16202C">133,885 molecules, explicit hydrogens</h3>
+<p style="font-size:24px; line-height:1.35; color:#5F6A77">MoleculeNet release, pinned by SHA-256. We keep the 3,054 molecules that EDM's preprocessing drops [2].</p>
+<table style="font-size:26px; color:#2B3440">
+<tr style="background:#ECEAE3"><th style="width:22%; text-align:left">Split</th><th style="width:56%; text-align:left">Used for</th><th style="width:22%; text-align:right">n</th></tr>
+<tr><td>train_a</td><td>generator and guide f_A</td><td style="text-align:right">51,527</td></tr>
+<tr><td>train_b</td><td>evaluator f_B only</td><td style="text-align:right">51,527</td></tr>
+<tr><td>val</td><td>checkpoint selection; molecule sizes</td><td style="text-align:right">17,748</td></tr>
+<tr><td>test</td><td>held out</td><td style="text-align:right">13,083</td></tr>
+</table>
+<div style="display:flex; flex-direction:column; gap:6px; background:#E4ECF6; border-left:8px solid #1F5FA9; border-radius:10px; padding:16px 28px">
+<p style="font-size:26px; line-height:1.35; color:#16202C"><b>No leakage.</b> f_B, which scores every sample, never saw a molecule that trained the generator or the guide. Normalisation uses train_a alone.</p>
+</div>
+</div>
+<div style="flex:1; display:flex; flex-direction:column; gap:14px">
+<p style="font-size:24px; font-weight:600; letter-spacing:1px; text-transform:uppercase; color:#1F5FA9">Modality 2 · DeepFlyBrain [4]</p>
+<h3 style="font-size:30px; font-weight:600; line-height:1.25; color:#16202C"><i>Drosophila</i> enhancers, 500 bp</h3>
+<p style="font-size:24px; line-height:1.35; color:#5F6A77">One-hot A, C, G, T; four ambiguous training sequences removed.</p>
+<table style="font-size:26px; color:#2B3440">
+<tr style="background:#ECEAE3"><th style="width:22%; text-align:left">Split</th><th style="width:56%; text-align:left">Used for</th><th style="width:22%; text-align:right">n</th></tr>
+<tr><td>train</td><td>generator</td><td style="text-align:right">83,722</td></tr>
+<tr><td>val</td><td>checkpoint selection</td><td style="text-align:right">10,505</td></tr>
+<tr><td>test</td><td>held out</td><td style="text-align:right">10,434</td></tr>
+</table>
+<div style="display:flex; flex-direction:column; gap:6px; background:#E4ECF6; border-left:8px solid #1F5FA9; border-radius:10px; padding:16px 28px">
+<p style="font-size:26px; line-height:1.35; color:#16202C"><b>No learned evaluator.</b> GC and CpG are counted exactly on the decoded sequence, so there is nothing for guidance to exploit and nothing to leak.</p>
+</div>
+<p style="font-size:24px; line-height:1.35; color:#5F6A77">Cell-type labels are not given to the generator. A random split says nothing about unseen sequence families.</p>
+</div>
+</div>
+<div style="display:flex; flex-direction:row; gap:16px; background:#FDFCFA; border:1px solid #DDD9CF; border-radius:14px; padding:16px 28px">
+<p style="font-size:26px; line-height:1.35"><b>Preprocessing.</b> QM9: coordinates centred per molecule (Å), padded to 29 atoms with a mask; properties in D, Bohr³ and Ha. DNA: one-hot on the simplex, decoded by per-position argmax.</p>
+</div>
+<p style="position:absolute; left:1616px; top:52px; width:176px; font-size:48px; font-weight:700; line-height:1.15; text-align:center; color:#F7F6F2; background:#1F5FA9; border-radius:14px; padding:8px 12px">1b</p>
+<p style="position:absolute; left:128px; bottom:40px; width:300px; font-size:18px; color:#5F6A77">CIS 6270 · Group 2 · 3 / 29</p>
+<p style="position:absolute; left:448px; bottom:40px; width:1344px; font-size:18px; line-height:1.3; text-align:right; color:#5F6A77">[1] Ramakrishnan et al. 2014 (QM9) · [2] Hoogeboom et al. 2022 (EDM) · [4] Stark et al. 2024 (Dirichlet FM; DeepFlyBrain data)</p>
+</section>

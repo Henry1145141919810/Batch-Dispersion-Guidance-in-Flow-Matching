@@ -46,7 +46,7 @@ FR3a strengths, not an equal-strength comparison:
 
 BTVG ties unguided on the registered coverage test. Its alpha MAE signal at
 strength 4 is a secondary, one-seed observation with a marginal chemistry pass;
-it does not overturn the primary result. See [full table](../../full_run_table.md)
+it does not overturn the primary result. See [full table](../results/FULL_RUN_TABLE.md)
 and the latest sections of [the living status](../status/SCOPE_FM_GUIDANCE_STATUS.md).
 
 The BTVG2 pilot already compares against locally rerun LGD-MC using the same

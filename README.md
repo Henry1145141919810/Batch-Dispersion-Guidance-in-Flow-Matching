@@ -40,6 +40,19 @@ tensors are ~300 MB and stay on blade, gitignored, and regenerate exactly.
 - **M2/cpg is our strongest transfer number**: bdg_e4t0.5 **+18.30 pp**
   (t = +21) against plug's +1.47 at w = 4.
 
+> **Cross-check, 28 Sep** (recomputed twice, independently, from the committed
+> cells; [V3_BLADE_READOUT.md](docs/results/V3_BLADE_READOUT.md)). The +0.95 pp
+> is `bdg_e4t0.5` − `plug` on continuous in-band, pooled over 18 cells. At the
+> protocol's pre-registered per-cell bar (unpaired z = 2.99, FULL_RUN_V3_PROTOCOL.md
+> §6.1) it is **0 above / 0 below / 6 ties**, on continuous, decoded and
+> second-oracle in-band alike. The other headline BDG arm, `bdg_e4t1`, pooled the
+> same way is **−1.21 pp (t = −5.97)**, with 3 of 6 cells significantly below plug.
+> Plug's like-for-like chemistry is **−3.96 pp** over the same 6 (base, property)
+> cells; the −4.49 includes edm, which has no BDG arm. In the M1 ablation, the
+> τ = 1.5 losses hold in 12 of 12 grids, while the τ = 0.5 row rises with η in
+> 5 of 12, all of them at w = 1. The paired, useful-yield reading that the Betty run
+> got still has to be run on blade (readout §5).
+
 ### Five findings that change what the paper may say
 
 1. **On M2 the guidance WINDOW is worth ~10× the guidance METHOD.** Guiding
@@ -64,6 +77,21 @@ tensors are ~300 MB and stay on blade, gitignored, and regenerate exactly.
 5. **EquiFM is not bit-reproducible** (same arm, same seed differs by 1.5e-3
    in-band); fm and edm are bit-exact. EquiFM's error bars are therefore not
    purely seed-to-seed, and its η = 0 control needs a tolerance.
+
+> **Cross-check, 28 Sep, of the five findings.** Findings 2 and 5 hold. Finding 1: the
+> +22.8 pp and the clip figure hold, but the best result inside v3's window is
+> **+4.23 pp** (`bdg_e8t0.5`, w = 4, [M2_ABLATION_GRID.md](docs/results/M2_ABLATION_GRID.md)),
+> not +2.5, so **on gc** the window is worth about 5× the method, not 10×. Both terms
+> are gc-only: cpg has no t = 0 cell, and its in-window gain reaches +18.30 pp, so no
+> ratio holds for M2 as a whole. At t = 0, against plug, `bdg_e4t0.5` is a tie
+> (−2.33 pp, z −2.67), while `bdg_e4t1` is a clear loss (−20.80 pp, z −26.58).
+> Finding 3 holds for M2, but "on M1 it
+> does both" fails on our own base: |bias| worsens on fm/alpha and fm/gap
+> ([V3_RESULTS_fm.md](docs/results/V3_RESULTS_fm.md)). Finding 4 applies to M2's
+> tmpd only. Below, the DeepFlyBrain "verified identical to Keras" figures are in
+> no committed file, and `deepflybrain.py` says the port was validated *without* TF.
+> Details and the open items are in
+> [SCOPE_FM_GUIDANCE_STATUS.md](docs/status/SCOPE_FM_GUIDANCE_STATUS.md).
 
 ### M2 now has a functional evaluation, and the base model is the weak link
 
@@ -129,18 +157,30 @@ proj1/src/          models, guidance, samplers, evaluation
 proj1/scripts/      training, sweeps, selection, benchmarking
 proj1/tests/        43 closed-form gates (run them; they are fast)
 proj1/cluster/      SLURM job scripts for PARCC Betty
+blade_runs/         the blade GPU box's lanes and queues (no scheduler there)
+proj1/m2/           Modality 2: DNA sequences on the simplex
 weights/            inference-ready checkpoints (24 MB) -- see weights/README.md
-results/sweep/      one JSON per experiment cell -- THE experimental record
+results/            one JSON per experiment cell -- THE experimental record
+                    (results/v3/<be>/v3|v3abl/n2000/ is the blade run;
+                    results/v3/<be>/n5000/ is the earlier Betty run)
 docs/status/        living status + plan
 docs/methods/       guidance methods and their proofs
 docs/results/       benchmarks and verified findings
-docs/protocol/      split, predictor decisions, experiment plan
+docs/protocol/      split, predictor decisions, experiment plan, Betty runbook
+docs/reference/     outside reading: Haimo's v1 study, the writing guide
+paper/              the manuscript (see "The paper and the slides" below)
+slides/             the defense deck; slides/handoff/ is its content spec
+course/             course-supplied: assignment, paper template, citation.bib
+audit/              prior-art audit; bdg_review/ and top_guidance_2026/ tracked
 ```
 
 Not in the repo, by design: `data/` (430 MB, rebuild with
-`prepare_qm9.py`), `betty_pull/` (cluster sync), most of `audit/` (vendored
-reference repos), `archive/` (brainstorms and dropped ideas — every one is
-cited from the methods index, with the reason it was dropped).
+`prepare_qm9.py`), `betty_pull/` (cluster sync), `logs/` (cluster job logs),
+`bundles/` (every tarball shipped to or pulled from Betty; its README says
+which `code_vN` is next), most of `audit/` (vendored reference repos),
+`archive/` (brainstorms, dropped ideas and the superseded root scratch
+folders; six of its eight docs are cited from `docs/`, and `archive/INDEX.md`
+maps each one).
 
 **Two exceptions under `audit/` are tracked**: `fa_fb_search/TFG/` and
 `fa_fb_search/OC-Flow/` (28 MB). `proj1/src/external/tfg_assets.py` loads model
@@ -215,66 +255,49 @@ actually exercising them.
 
 ## The paper and the slides
 
-```
-paper/main.tex        the manuscript; body.tex holds the main text, so the
-                      5-page limit can be measured independently of the appendix
-paper/body.tex        abstract, sections 1-5, the five result tables
-paper/refs_extra.bib  references beyond the course-supplied citation.bib
-paper/figs/           overview.tex (Figure 1) and make_mechanism.py (Figure 2)
-slides/defense.tex    the 29-slide defense deck, labelled 1a-3e
-slides/README_SLIDES.md  speaker split, timing, and what must not be said
-```
+The current paper is **manuscript v4**, dated 28 September 2026. BDG is the
+selected innovation. Final comparative results are pending and appear as `P`
+(the `\pend` macro). The v4 draft predates the blade run, so its `P` cells can
+now be filled from `docs/results/V3_RESULTS*.md` and `docs/results/M2_*` —
+read the blade-run section above first.
+The main text occupies five pages; references and appendix follow.
 
-Build both, from the repository root:
+- `paper/main.tex`: the complete editable manuscript, including the overview,
+  tables, algorithm, and appendix.
+- `paper/main.pdf`: current compiled paper.
+- `paper/versions/v4_main.pdf`: numbered release for tracking.
+- `paper/versions/v4_2026-09-28/`: rebuildable snapshot with bibliographies and style.
+- `paper/versions/v3_revision_notes.pdf`: reasons for the v3 revision and rubric map.
+- `paper/versions/CHANGELOG.md`: version history; v1 to v3 remain preserved.
+- `paper/body.tex`: compatibility notice directing edits to main.tex.
+- `paper/figs/`: earlier figures retained for historical versions.
+- `slides/defense.tex`: existing defense deck, maintained separately.
+
+Build the paper from `paper/`:
 
 ```bash
-cd paper/figs && pdflatex overview.tex && cd ../..    # Figure 1
-./.venv/Scripts/python.exe paper/figs/make_mechanism.py   # Figure 2
-
-cd paper  && pdflatex main && bibtex main && pdflatex main && pdflatex main
-          && ../.venv/Scripts/python.exe tools/pagecheck.py   # enforces 5 pages
-cd ../slides && pdflatex defense && pdflatex defense
+pdflatex main
+bibtex main
+pdflatex main
+pdflatex main
+python tools/check.py
+python tools/pagecheck.py
 ```
 
-`paper/tools/pagecheck.py` reports the main-text page count against the 5-page
-limit and counts the unresolved `\TODO` markers; `paper/tools/prosecount.py`
-reports the prose budget per section. `paper/tools/check.py` is the one to run
-before sharing a build: it verifies the rubric's structural elements, that every
-table and figure is referenced from the text, that the q50-only scope holds, and
-that no phrase our own adversarial review refuted has crept back in. All three are
-advisory and produce no result.
+The page check requires `pypdf` and includes every main-text float before the
+references. The integrity check validates section labels, citations to floats,
+and selected style/scope constraints; it does not certify empirical completion.
+`tools/prosecount.py` reads the marked main-text region of main.tex. All checks
+must be rerun after final results replace `P` values, because longer tables can
+change pagination. Pending cells stay visible until actual results replace them.
 
-The main text sits at **exactly 5.00 pages with no slack**, so adding a sentence
-needs a sentence cut to pay for it. Page count is quantized by float placement, so
-small trims often move nothing; see `paper/versions/CHANGELOG.md`.
+The implementation/protocol map is in Appendix A.7 and the separate revision
+notes. Historical pilot tables must not be substituted for the final molecular
+protocol or the unfinished sequence comparisons. No experiment was run during
+the v3 paper revision.
 
-Pending numbers are marked three ways, all rendered red while `\DRAFTtrue` is set
-in `paper/main.tex`: `\pend` is one missing value in a table cell, `\phfig` is a
-figure reserved at its final height, and `\TODO` is an inline note. Setting
-`\DRAFTfalse` hides all three for a clean build.
-
-### Which script produced which table or figure
-
-| Paper item | Produced by | Reads |
-|---|---|---|
-| Table 1, base models (§4.2) | `proj1/scripts/benchmark_base.py` | `weights/fm_ema.pt`, `results/bench/rescored/*.json` |
-| Table 2, guidance (§4.3) | `proj1/scripts/onegen_full_metrics.py` | `results/bdg_local/*.json` |
-| Table 3, BDG ablations (§4.4) | `proj1/scripts/bdg_full_metrics.py` | `results/bdg_port/cells/*.json` |
-| Table 4, recent methods (§4.5) | `proj1/scripts/transfer_sweep.py` → `v3_table.py` | `results/v3/` (pending) |
-| Table 5, Modality 2 (§4.6) | `proj1/m2/m2_sweep.py` → `make_vf_table.py` | `results/m2/` (pending) |
-| Figure 1, overview (§3.7) | `paper/figs/overview.tex` | nothing; it is a diagram |
-| Table 8, the full ladder (App. A.3) | `proj1/scripts/bdg_table.py` | `results/bdg_port/table.txt` |
-| Figure 2, the controller (App. A.3) | `paper/figs/make_mechanism.py` | `results/bdg_port/table.txt` |
-| The innovation itself | `proj1/src/guidance.py`, the `mode == "bdg"` block | — |
-| Its gates | `proj1/tests/test_bdg.py` (25 checks) | — |
-
-Appendix Table 11 carries this same map inside the paper, so a reader never has to
-leave it to find what produced a number.
-
-The v3 headline and ablation stages are pre-registered in
-[docs/protocol/FULL_RUN_V3_PROTOCOL.md](docs/protocol/FULL_RUN_V3_PROTOCOL.md)
-and [docs/protocol/ABLATION_V3_PROTOCOL.md](docs/protocol/ABLATION_V3_PROTOCOL.md).
-Every `\TODO` in the paper and the slides points at a cell from those two.
+Build the existing slides separately from `slides/` with `pdflatex defense`
+(two passes). This paper revision does not update the deck.
 
 ### External code we adapted, and what is not ours
 
@@ -292,8 +315,12 @@ row as borrowed.
 
 ## Status in one line
 
-Both modalities are run end to end and validated: 144 + 612 M1 cells, 153 + 42
-M2 cells, 18,738 checks, 0 failures. BDG beats DPS by +0.95 pp paired on M1
-(t = 5.71) and the τ setpoint reverses sign in both modalities. Read the blade
-run section above before editing the paper — five findings there change what may
-be claimed.
+Both modalities have run v3 end to end: 144 + 612 M1 cells and 153 + 42 M2 cells,
+with 0 validator failures. At the pre-registered per-cell bar, **BDG does not beat
+plug on M1** (`bdg_e4t0.5` 0/0/6 ties; `bdg_e4t1` 0 above / 3 below). On M2
+(bar inherited from M1, since M2 pre-registered none), `bdg_e4t0.5` beats plug on 3 of
+4 (property, w) cells. It gets there by contracting the spread while its bias
+worsens, and at about 10× plug's applied correction on gc. `bdg_e4t1` ties plug in all
+4. Our own VP diffusion model **has results** (28 Sep): 18 v3 cells, `--backend vp`, checkpoint `weights/diff_ema.pt` md5 `8a3390a6`. **Flow matching beats it on molecule stability, validity and atom stability at matched everything** -- see [docs/results/V3_RESULTS_vp.md](docs/results/V3_RESULTS_vp.md) and [DATA_INDEX.md](docs/results/DATA_INDEX.md). Start from
+[V3_FINAL_SUMMARY.md](docs/results/V3_FINAL_SUMMARY.md); the paper fill map is
+[PAPER_TABLE_FILL_V3.md](docs/results/PAPER_TABLE_FILL_V3.md).

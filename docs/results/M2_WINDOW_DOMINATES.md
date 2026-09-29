@@ -1,5 +1,18 @@
 # On M2 the guidance window matters ~10x more than the guidance method
 
+> **Correction, 28 Sep (cross-check of the blade run; see SCOPE_FM_GUIDANCE_STATUS.md).**
+> The best result any method achieves *inside* v3's window is **+4.23 pp**
+> (`bdg_e8t0.5` at w = 4, 3 seeds, [M2_ABLATION_GRID.md](M2_ABLATION_GRID.md)), not
+> +2.5 pp, so **on gc** the window is worth about **5x** the method, not 10x. Both
+> terms are gc-only: cpg has no t = 0 cell, and its in-window gain reaches +18.30 pp
+> (`bdg_e4t0.5`, w = 4), so the ratio does not hold for M2 as a whole. The +22.82 pp
+> window gain and the 30-32 % clip at t >= 0 check out against the cells. At t >= 0,
+> against plug, the two headline BDG arms land on opposite sides of the bar.
+> `bdg_e4t0.5` is a **tie** (-2.33 pp, unpaired z -2.67; read it as "no advantage at
+> t >= 0"). `bdg_e4t1` is a **clear loss** (-20.80 pp, z -26.58). Full table:
+> [M2_V3_RESULTS.md](M2_V3_RESULTS.md) section 6. The text below is Bobo's original
+> and is left as written.
+
 This is the most consequential M2 result and it does not flatter our method, so
 it is recorded before the write-up is drafted rather than after.
 

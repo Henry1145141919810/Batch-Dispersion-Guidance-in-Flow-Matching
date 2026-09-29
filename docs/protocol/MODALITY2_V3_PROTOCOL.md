@@ -30,7 +30,7 @@ for each of the four departures.
 |---|---|---|
 | data | QM9 molecules | DeepFlyBrain enhancers, 500 bp, official split |
 | state | coords + feats + mask, EGNN | `[B, 500, 4]` on the simplex (Δ³)⁵⁰⁰, dilated 1-D CNN |
-| generator | 3 base models (`fm`, `equifm`, `edm`) | **one**: `fm_m2_dfb500.pt`, frozen |
+| generator | 4 base models (`fm`, `equifm`, `edm`, `vp`) | **one**: `fm_m2_dfb500.pt`, frozen |
 | step | Euler/Heun on ℝ³ⁿ | Euler **+ clamp-renormalise projection** each step |
 | properties | mu, alpha, gap (3 learned pairs) | **gc, cpg** (2 analytic pairs) |
 | f_A (guided) | a trained network | `gc_soft` / `cpg_soft`, differentiable, **exact** |

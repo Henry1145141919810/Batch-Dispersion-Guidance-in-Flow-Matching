@@ -1,0 +1,29 @@
+<section id="s1d2" style="background:#F7F6F2; color:#3A4553; font-family:'IBM Plex Sans', Arial, sans-serif; padding:80px 128px 116px; display:flex; flex-direction:column; gap:28px">
+<div style="display:flex; flex-direction:column; gap:4px">
+<p style="font-size:24px; font-weight:600; letter-spacing:2px; text-transform:uppercase; color:#1F5FA9">Part 1 · Set up the study · diffusion 2 of 2</p>
+<h2 style="font-family:'Source Serif 4', Georgia, serif; font-size:56px; font-weight:600; line-height:1.1; color:#16202C">Diffusion: training, selection, sampling</h2>
+</div>
+<div style="background:#FDFCFA; border:1px solid #DDD9CF; border-radius:14px; padding:22px 28px">
+<p style="font-size:30px; line-height:1.4"><span style="color:#16202C"><b>Matched by construction.</b></span> Same representation, split, EGNN backbone, optimiser, schedule, batch, EMA, clipping, seed and pre-registered selection rule as the flow model. It differs <b>only in the corruption process</b> — which is what makes 2a a comparison of families, not of engineering.</p>
+</div>
+<div style="display:flex; gap:24px">
+<div style="flex:1; display:flex; flex-direction:column; gap:10px; background:#FDFCFA; border:1px solid #DDD9CF; border-radius:14px; padding:24px 28px">
+<h3 style="font-size:30px; font-weight:600; line-height:1.25; color:#16202C">Architecture [9]</h3>
+<p style="font-size:26px; line-height:1.35">EGNN 256×8, 3.75M parameters, ε-prediction head. Adam 2e-4, cosine to 5%, batch 256, clip 5.0, EMA 0.9999, 1500 epochs.</p>
+</div>
+<div style="flex:1; display:flex; flex-direction:column; gap:10px; background:#FDFCFA; border:1px solid #DDD9CF; border-radius:14px; padding:24px 28px">
+<h3 style="font-size:30px; font-weight:600; line-height:1.25; color:#16202C">Selection</h3>
+<p style="font-size:26px; line-height:1.35">Highest validation atom stability at NFE 100, ties on loss — the identical rule.</p>
+</div>
+<div style="flex:1.15; display:flex; flex-direction:column; gap:10px; background:#FDFCFA; border:1px solid #DDD9CF; border-radius:14px; padding:24px 28px">
+<h3 style="font-size:30px; font-weight:600; line-height:1.25; color:#16202C">Sampling [2, 11]</h3>
+<p style="font-size:26px; line-height:1.35">100-step decreasing grid, then the Tweedie endpoint jump, so the unguided budget is <b>NFE 101</b> against the flow model's 100. We report the asymmetry rather than hide it.</p>
+</div>
+</div>
+<div style="background:#FBEFE3; border-left:8px solid #A35A12; border-radius:10px; padding:18px 28px">
+<p style="font-size:28px; line-height:1.4; color:#16202C"><b>Status, plainly.</b> Our VP diffusion is implemented, gated and smoke-tested; the full-scale run is <span style="color:#C62828"><b>[TODO: v3 Job A]</b></span>. Today's only <i>measured</i> diffusion comparator is a borrowed checkpoint, labelled as borrowed in 2a — so we claim no family winner from it.</p>
+</div>
+<p style="position:absolute; left:1616px; top:52px; width:176px; font-size:48px; font-weight:700; line-height:1.15; text-align:center; color:#F7F6F2; background:#1F5FA9; border-radius:14px; padding:8px 12px">1d</p>
+<p style="position:absolute; left:128px; bottom:40px; width:300px; font-size:18px; color:#5F6A77">CIS 6270 · Group 2 · 8 / 29</p>
+<p style="position:absolute; left:448px; bottom:40px; width:1344px; font-size:18px; line-height:1.3; text-align:right; color:#5F6A77">[9] Satorras et al. 2021 (EGNN) · [2] Hoogeboom et al. 2022 (EDM) · [11] Karras et al. 2022 (EDM design space)</p>
+</section>

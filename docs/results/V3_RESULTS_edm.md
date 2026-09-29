@@ -6,7 +6,7 @@ Protocol: [FULL_RUN_V3_PROTOCOL.md](../protocol/FULL_RUN_V3_PROTOCOL.md).
 
 > **There is no chemistry floor in v3, and no arm is excluded.** Every in-band number below is printed beside the chemistry it cost. `w = 1` is not each arm's best strength -- tfg's floor-clearing strength under v2 was 0.01-0.05, so at w = 1 it is 20-100x that -- and an arm far above its own best will show high in-band with collapsed stability. **Do not read the in-band column as a ranking.**
 
-## Base model: QM9 diffusion (TFG/EDMsecond), our property pair (`--backend edm`)
+## Base model: QM9 diffusion (TFG/EDMsecond, borrowed), our property pair (`--backend edm`)
 
 | setting | value |
 |---|---|
@@ -16,9 +16,11 @@ Protocol: [FULL_RUN_V3_PROTOCOL.md](../protocol/FULL_RUN_V3_PROTOCOL.md).
 | guidance window | t >= 0.5 |
 | n, seeds | 2000 x 3 = 6000 molecules per arm |
 | delta | global rule: mu 0.17541, alpha 0.50618, gap 0.00748 |
+| delta spread across cells (relative) | mu 0.0e+00, alpha 0.0e+00, gap 0.0e+00 |
 | sampler | 100-step euler, batch 500 |
 | chemistry floor | **none** -- nothing is excluded; chemistry is reported |
 | non-finite | 0 across all cells |
+| measured cost | 1.5 GPU-h over 18 cells, on NVIDIA RTX A6000 |
 
 ### mu (delta 0.17541)
 

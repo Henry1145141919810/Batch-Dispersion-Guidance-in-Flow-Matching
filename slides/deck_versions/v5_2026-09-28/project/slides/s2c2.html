@@ -1,0 +1,26 @@
+<section id="s2c2" style="background:#F7F6F2; color:#3A4553; font-family:'IBM Plex Sans', Arial, sans-serif; padding:80px 128px 116px; display:flex; flex-direction:column; gap:20px">
+<div style="display:flex; flex-direction:column; gap:4px">
+<p style="font-size:24px; font-weight:600; letter-spacing:2px; text-transform:uppercase; color:#1F5FA9">Part 2 · Evidence for Modality 1 · innovation 2 of 4</p>
+<h2 style="font-family:'Source Serif 4', Georgia, serif; font-size:56px; font-weight:600; line-height:1.1; color:#16202C">BDG: the mechanism</h2>
+</div>
+<div style="display:flex; justify-content:center; background:#FFFFFF; border:1px solid #DDD9CF; border-radius:14px; padding:14px 20px">
+<img src="/_blob/711d7e25e96a55f45b67fd2be9188b85" alt="BDG in four steps. 1: the frozen guide f_A scores the batch at time t, giving one predicted property F_i per sample. 2: the batch mean F-bar and variance V_b are measured and compared with the requested setpoint tau. 3: the relative error e sets the deviation coefficient w_eff = 1 + eta e; e above zero contracts more than plug-in, e below zero contracts less, and a negative w_eff expands the batch. 4: every sample is updated along its own property gradient and the batch is measured again at the next step. The rule: n_i = (y − F-bar), the centring term fixed at 1, minus w_eff (F_i − F-bar), the servoed deviation term." style="width:1250px; height:556px; object-fit:contain">
+</div>
+<div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:22px">
+<div style="display:flex; flex-direction:column; gap:8px; background:#FDFCFA; border:1px solid #DDD9CF; border-radius:14px; padding:20px 28px; padding:16px 24px">
+<h3 style="font-size:30px; font-weight:600; line-height:1.25; color:#16202C">One coefficient changes</h3>
+<p style="font-size:26px; line-height:1.35">The centring term keeps coefficient 1; η = 0 gives plug-in [12] exactly.</p>
+</div>
+<div style="display:flex; flex-direction:column; gap:8px; background:#FDFCFA; border:1px solid #DDD9CF; border-radius:14px; padding:20px 28px; padding:16px 24px">
+<h3 style="font-size:30px; font-weight:600; line-height:1.25; color:#16202C">Same network calls</h3>
+<p style="font-size:26px; line-height:1.35">Both terms share one gradient; BDG adds two batch reductions.</p>
+</div>
+<div style="display:flex; flex-direction:column; gap:8px; background:#FDFCFA; border:1px solid #DDD9CF; border-radius:14px; padding:20px 28px; padding:16px 24px">
+<h3 style="font-size:30px; font-weight:600; line-height:1.25; color:#16202C">Two knobs</h3>
+<p style="font-size:26px; line-height:1.35">Gain η ≥ 0 and setpoint τ = τ_mult·s (s: f_A's training s.d.).</p>
+</div>
+</div>
+<p style="position:absolute; left:1616px; top:52px; width:176px; font-size:48px; font-weight:700; line-height:1.15; text-align:center; color:#F7F6F2; background:#1F5FA9; border-radius:14px; padding:8px 12px">2c</p>
+<p style="position:absolute; left:128px; bottom:40px; width:300px; font-size:18px; color:#5F6A77">CIS 6270 · Group 2 · 16 / 29</p>
+<p style="position:absolute; left:448px; bottom:40px; width:1344px; font-size:18px; line-height:1.3; text-align:right; color:#5F6A77">Original figure and formulation (this work) · plug-in base after [12] Chung et al. 2023 (DPS)</p>
+</section>

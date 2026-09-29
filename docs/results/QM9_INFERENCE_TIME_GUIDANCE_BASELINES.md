@@ -30,8 +30,8 @@ If **VP diffusion** is selected instead, the natural main suite is **full TFG + 
 
 The assignment PDF, pages 1 and 3, requires at least three relevant methods published within five years. The paper instructions explicitly say the two trained base models do not replace the external methods, require the strongest internal reference in addition, and require disclosure of changes in checkpoints/data/compute:
 
-- [Assignment](CIS_6270_Fall_2026_Project1_Assignment.pdf), pages 1, 3, and 6.
-- [Paper instructions](proj1_tex/Project1_Paper_Instructions.tex), particularly lines 321 and 394.
+- [Assignment](../../course/CIS_6270_Fall_2026_Project1_Assignment.pdf), pages 1, 3, and 6.
+- [Paper instructions](../../course/Project1_Paper_Instructions.tex), particularly lines 321 and 394.
 
 A shared-backbone comparison is a defensible **comparison of guidance algorithms**, particularly because guidance is our proposed contribution. It is not a reproduction of every original paper's complete generative system or evidence that our backbone beats their backbones. This is an interpretation of the assignment, not an instructor's explicit ruling. The same three-baseline requirement remains for Modality 2; this document addresses QM9 only.
 
@@ -56,7 +56,7 @@ The alternatives were selected for frozen-model compatibility, scientific releva
 
 ## 2. Local code audit: what Claude should assume
 
-The working source is **`proj1/`**. `transfer/` and `_ship/` contain copies/packages; do not independently patch them and assume the active implementation changed.
+The working source is **`proj1/`**. `archive/transfer_copy_2026-09-19/` and `archive/ship_packages_2026-09-19/` (local-only) contain copies/packages; do not independently patch them and assume the active implementation changed.
 
 | Local evidence | Consequence |
 |---|---|
@@ -391,7 +391,7 @@ Best-of-N sampling using the **guide** is also worth including as an internal co
 ### 10.1 Fix the experiment before launching sweeps
 
 1. **Select and hash one generator checkpoint.** Carry forward the model-family decision supported by the assignment's matched FM-versus-diffusion experiment. Do not choose the family merely because its baselines are easier.
-2. **Freeze the guide/evaluator pair for every method.** Reuse the chosen pair from [the predictor decision](FA_FB_ARCHITECTURE_DECISION.md); this handoff does not change that choice. Verify feature order, normalization, atom counts, and checkpoint split provenance. Existing historical claims of disjointness are not a replacement for index checks.
+2. **Freeze the guide/evaluator pair for every method.** Reuse the chosen pair from [the predictor decision](../protocol/FA_FB_ARCHITECTURE_DECISION.md); this handoff does not change that choice. Verify feature order, normalization, atom counts, and checkpoint split provenance. Existing historical claims of disjointness are not a replacement for index checks.
 3. **Start with dipole `mu`.** Adding `alpha` or gap is useful later but not necessary to implement the first comparison. Source availability for another property does not establish a working adapter.
 4. **Construct fixed target/atom-count pairs.** For broad targeting, sample `(n_atoms, target_mu)` jointly from a held-out evaluation pool and save them. For fixed-target experiments, choose target values/size strata using training/validation support. Do not pair extreme targets with impossible atom counts or allow methods to change `n_atoms` for an easier task.
 5. **Separate tuning from final evaluation.** Use validation targets, seeds, and generated samples for tuning, then freeze configurations before final runs. The evaluator may support a fixed validation model-selection rule, but final test seeds/targets cannot determine hyperparameters or which generated candidates survive.
@@ -548,9 +548,9 @@ This is a **schema/example**, not a runnable configuration with validated optima
 
 ### 11.4 What has actually been checked in this research pass
 
-The public source snapshots are in [audit/guidance_baselines_2026](audit/guidance_baselines_2026). Each repository has a `manifest.json` with its commit, exact source URLs, and file SHA-256 hashes. Downloaded source was inspected as text; it was not installed or executed.
+The public source snapshots are in [audit/guidance_baselines_2026](../../audit/guidance_baselines_2026). Each repository has a `manifest.json` with its commit, exact source URLs, and file SHA-256 hashes. Downloaded source was inspected as text; it was not installed or executed.
 
-Independent synthetic checks were run using [check_formulas.py](audit/guidance_baselines_2026/check_formulas.py), with results in [formula_checks.json](audit/guidance_baselines_2026/formula_checks.json):
+Independent synthetic checks were run using [check_formulas.py](../../audit/guidance_baselines_2026/check_formulas.py), with results in [formula_checks.json](../../audit/guidance_baselines_2026/formula_checks.json):
 
 | Check | Maximum absolute discrepancy |
 |---|---:|
@@ -586,12 +586,12 @@ The short citations throughout this document link to primary papers. The explana
 
 | Repository | Pinned revision | Most useful files / local copy |
 |---|---|---|
-| TFG | `f8d17f3ec2f0e7377dedf7b7bc62fad15f36cb77` | [TFG](https://github.com/YWolfeee/Training-Free-Guidance/blob/f8d17f3ec2f0e7377dedf7b7bc62fad15f36cb77/methods/tfg.py), [LGD](https://github.com/YWolfeee/Training-Free-Guidance/blob/f8d17f3ec2f0e7377dedf7b7bc62fad15f36cb77/methods/lgd.py), [base sampler](https://github.com/YWolfeee/Training-Free-Guidance/blob/f8d17f3ec2f0e7377dedf7b7bc62fad15f36cb77/methods/base.py), [local manifest](audit/guidance_baselines_2026/TFG/manifest.json) |
-| OC-Flow | `ca218ba616f7e3a58a05924fdb547bd579b3c900` | [molecular methods](https://github.com/WangLuran/Guided-Flow-Matching-with-Optimal-Control/blob/ca218ba616f7e3a58a05924fdb547bd579b3c900/molecule/guided_sample.py), [driver](https://github.com/WangLuran/Guided-Flow-Matching-with-Optimal-Control/blob/ca218ba616f7e3a58a05924fdb547bd579b3c900/molecule/main_guided.py), [local manifest](audit/guidance_baselines_2026/OC-Flow/manifest.json) |
-| FlowGrad | `0cc3717e51ce2810bc44f5755397d11a8c43989a` | [original trajectory/optimization implementation](https://github.com/gnobitab/FlowGrad/blob/0cc3717e51ce2810bc44f5755397d11a8c43989a/utils/flowgrad_utils.py), [local manifest](audit/guidance_baselines_2026/FlowGrad/manifest.json) |
-| Flow guidance framework | `b47872e9f72c0b8360c6232fa8ae45f64159bdae` | [repository snapshot](https://github.com/AI4Science-WestlakeU/flow_guidance/tree/b47872e9f72c0b8360c6232fa8ae45f64159bdae), [local manifest](audit/guidance_baselines_2026/FlowGuidance/manifest.json) |
-| TFG-Flow | `4e7ef1655d77d564e2d0a37b016abab0780b5d04` | [mixed discrete/continuous guidance](https://github.com/linhaowei1/TFG-Flow/blob/4e7ef1655d77d564e2d0a37b016abab0780b5d04/diffusion/guidance.py), [local manifest](audit/guidance_baselines_2026/TFG-Flow/manifest.json) |
-| DPS | `effbde7325b22ce8dc3e2c06c160c021e743a12d` | [original conditioning code](https://github.com/DPS2022/diffusion-posterior-sampling/blob/effbde7325b22ce8dc3e2c06c160c021e743a12d/guided_diffusion/condition_methods.py), [local manifest](audit/guidance_baselines_2026/DPS/manifest.json) |
+| TFG | `f8d17f3ec2f0e7377dedf7b7bc62fad15f36cb77` | [TFG](https://github.com/YWolfeee/Training-Free-Guidance/blob/f8d17f3ec2f0e7377dedf7b7bc62fad15f36cb77/methods/tfg.py), [LGD](https://github.com/YWolfeee/Training-Free-Guidance/blob/f8d17f3ec2f0e7377dedf7b7bc62fad15f36cb77/methods/lgd.py), [base sampler](https://github.com/YWolfeee/Training-Free-Guidance/blob/f8d17f3ec2f0e7377dedf7b7bc62fad15f36cb77/methods/base.py), [local manifest](../../audit/guidance_baselines_2026/TFG/manifest.json) |
+| OC-Flow | `ca218ba616f7e3a58a05924fdb547bd579b3c900` | [molecular methods](https://github.com/WangLuran/Guided-Flow-Matching-with-Optimal-Control/blob/ca218ba616f7e3a58a05924fdb547bd579b3c900/molecule/guided_sample.py), [driver](https://github.com/WangLuran/Guided-Flow-Matching-with-Optimal-Control/blob/ca218ba616f7e3a58a05924fdb547bd579b3c900/molecule/main_guided.py), [local manifest](../../audit/guidance_baselines_2026/OC-Flow/manifest.json) |
+| FlowGrad | `0cc3717e51ce2810bc44f5755397d11a8c43989a` | [original trajectory/optimization implementation](https://github.com/gnobitab/FlowGrad/blob/0cc3717e51ce2810bc44f5755397d11a8c43989a/utils/flowgrad_utils.py), [local manifest](../../audit/guidance_baselines_2026/FlowGrad/manifest.json) |
+| Flow guidance framework | `b47872e9f72c0b8360c6232fa8ae45f64159bdae` | [repository snapshot](https://github.com/AI4Science-WestlakeU/flow_guidance/tree/b47872e9f72c0b8360c6232fa8ae45f64159bdae), [local manifest](../../audit/guidance_baselines_2026/FlowGuidance/manifest.json) |
+| TFG-Flow | `4e7ef1655d77d564e2d0a37b016abab0780b5d04` | [mixed discrete/continuous guidance](https://github.com/linhaowei1/TFG-Flow/blob/4e7ef1655d77d564e2d0a37b016abab0780b5d04/diffusion/guidance.py), [local manifest](../../audit/guidance_baselines_2026/TFG-Flow/manifest.json) |
+| DPS | `effbde7325b22ce8dc3e2c06c160c021e743a12d` | [original conditioning code](https://github.com/DPS2022/diffusion-posterior-sampling/blob/effbde7325b22ce8dc3e2c06c160c021e743a12d/guided_diffusion/condition_methods.py), [local manifest](../../audit/guidance_baselines_2026/DPS/manifest.json) |
 
 ## 13. Wording for the eventual paper
 

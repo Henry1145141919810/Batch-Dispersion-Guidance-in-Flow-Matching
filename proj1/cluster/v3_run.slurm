@@ -194,6 +194,17 @@ SEEDS=(20261001 20261002 20261003)
 # applied inside transfer_sweep, so this array does not have to know about the
 # reduced set -- adding a backend is one word here plus a row there.
 #
+# `vp` (OUR OWN QM9 diffusion, added 28 Sep) IS REGISTERED BUT IS NOT HERE,
+# and that is deliberate. This list must match transfer_sweep.V3_CHAIN_BACKENDS,
+# not the full V3_BACKENDS registry. The preflight below loops every backend in
+# this list and is submit_v3.sh's ONE `afterok` link -- so a backend whose
+# checkpoint is missing does not skip, it fails the preflight and stops fm,
+# equifm and edm from running at all. The vp checkpoint does not exist yet.
+# `vp` is 18 cells / ~1.5 GPU-h and fits in ONE 4-hour window, so it runs as
+# nine standalone tasks instead (BETTY_RUNBOOK.md, "QM9 diffusion, OURS").
+# ADD IT HERE, and to V3_CHAIN_BACKENDS, once the checkpoint exists and has a
+# pinned md5 beside FM_MD5 below. That takes the array from 0-26 to 0-35.
+#
 # n_tasks is NB * NP * NS, so the array range changes when this does:
 # submit_v3.sh derives it, and test_v3.py gates that they agree.
 BACKENDS=(fm equifm edm)

@@ -1,7 +1,11 @@
 # Status and run log
 
+> **Historical (18-22 Sep).** Not maintained since the protocol became v3 on 26 Sep. For
+> current status read [SCOPE_FM_GUIDANCE_STATUS.md](SCOPE_FM_GUIDANCE_STATUS.md); for the v3-final
+> results (blade, 27-28 Sep) read [V3_FINAL_SUMMARY.md](../results/V3_FINAL_SUMMARY.md).
+
 **Updated 18 Sep 2026, 16:05.** Live task state. Plan of record: **S + D + SMG**
-(see [INNOVATION_IDEAS_INDEX.md](INNOVATION_IDEAS_INDEX.md), [FEASIBILITY_TESTS_HOW_TO_RUN_AND_DECIDE.md](FEASIBILITY_TESTS_HOW_TO_RUN_AND_DECIDE.md)).
+(see [INNOVATION_IDEAS_INDEX.md](../methods/INNOVATION_IDEAS_INDEX.md), [FEASIBILITY_TESTS_HOW_TO_RUN_AND_DECIDE.md](../../archive/FEASIBILITY_TESTS_HOW_TO_RUN_AND_DECIDE.md)).
 Deadline **29 Sep 08:30**, defence 30 Sep.
 
 ## How Betty is reached
@@ -28,13 +32,13 @@ the script asked for 12 h; one was cancelled, the other resubmitted at 4 h.
 | S0 assets — QM9 tensors | **done** | 133,885 molecules, zero skipped; 4-way split |
 | S0 assets — predictors f_A / f_B | **done, gate passed** | val MAE 0.0897 / 0.0840 D vs 1.53 D chance |
 | S1 symmetry checks | **done** | 12/12 pass, float64, incl. new finite-gradient check |
-| FM trainer written | **done** | [train_fm.py](proj1/scripts/train_fm.py), smoke-tested |
+| FM trainer written | **done** | [train_fm.py](../../proj1/scripts/train_fm.py), smoke-tested |
 | FM trainer — resume + time guard | **done, tested** | `--resume` chains 4 h jobs; `--max-minutes 225` pauses cleanly |
-| FM trainer — full run (SUPERSEDED) | **discarded** | job 8495717, 150 epochs, val 1.8596. Trained on `train_ab`, violating the pre-registered split. Archived under `proj1/checkpoints/v2_*`; see [SPLIT_PROTOCOL.md](SPLIT_PROTOCOL.md) |
+| FM trainer — full run (SUPERSEDED) | **discarded** | job 8495717, 150 epochs, val 1.8596. Trained on `train_ab`, violating the pre-registered split. Archived under `proj1/checkpoints/v2_*`; see [SPLIT_PROTOCOL.md](../protocol/SPLIT_PROTOCOL.md) |
 | **FM base model — FINAL** | **done, 20 Sep** | jobs 8524621-24 chained, 1500/1500 epochs on `train_a` (51,527), 27.6 s/epoch, ~11 h 25 m. **Selected epoch 1300: atom_stab 0.9390, mol_stab 0.3926, val 1.79762.** All links `COMPLETED 0:0`, clean time-guard stops, resume boundaries exact (492 -> 986 -> 1480 -> 1500) |
-| **FM base model — benchmark** | **done, 20 Sep** | [BASE_MODEL_BENCHMARK.md](BASE_MODEL_BENCHMARK.md). EDM protocol, 3 seeds x 10k, corrected evaluator: **atom 0.935 +- 0.002, mol 0.39 +- 0.01, validity 0.75** at NFE 100. Like-for-like bar (EEGSDE Table 5, unconditional half-data EDM): 98.37 / 81.74. Gap is not the data split; leading suspect is unscaled one-hot atom types (EDM Table 10). NFE saturates by 500 (+0.5 atom). **Epoch 1500 beats selected 1300 on all 3 seeds x 10k (+0.18 atom, +1.0 mol); ship `fm_last.pt` ema (0.937 / 0.40 / 0.76) as a disclosed amendment to the pre-registered rule.** Audited twice by an independent agent. |
+| **FM base model — benchmark** | **done, 20 Sep** | [BASE_MODEL_BENCHMARK.md](../results/BASE_MODEL_BENCHMARK.md). EDM protocol, 3 seeds x 10k, corrected evaluator: **atom 0.935 +- 0.002, mol 0.39 +- 0.01, validity 0.75** at NFE 100. Like-for-like bar (EEGSDE Table 5, unconditional half-data EDM): 98.37 / 81.74. Gap is not the data split; leading suspect is unscaled one-hot atom types (EDM Table 10). NFE saturates by 500 (+0.5 atom). **Epoch 1500 beats selected 1300 on all 3 seeds x 10k (+0.18 atom, +1.0 mol); ship `fm_last.pt` ema (0.937 / 0.40 / 0.76) as a disclosed amendment to the pre-registered rule.** Audited twice by an independent agent. |
 | Evaluator fix | **done, 20 Sep** | `evaluation.py` BONDS3 lacked EDM's C#O 113 pm triple entry; inflated generated-sample stability 0.2-1.1 pt, invisible on real data. Now entry-for-entry identical to EDM (brute-force verified). Packages rebuilt: fm `44e4ac00a001`, diff `149d1377a076`. Runs started with the old table need no restart (selection effect < noise). |
-| Diffusion — full run | **not started** | job 8501085 cancelled (wrong split). Betty is now free; old `diff*.pt` are `train_ab`-era and must be archived first or the selection guard refuses to start. Parsa also has the diffusion package |
+| Diffusion — full run | **done, 28 Sep** | Trained by Bobo to epoch 1500, selected epoch 1475; published as `weights/diff_ema.pt`, md5 `8a3390a6`. Benchmarked through v3 as `--backend vp`: 18 cells, 0.81 GPU-h on a B200 MIG 2g.45gb, 0 non-finite. Earlier attempts: 8501085 was `train_a` but only 150 epochs on the old selection rule; 8590174 was the right run and died at epoch ~80 on a node failure |
 | Cluster scripts | **run on Betty** | setup completed; the `--resume` slurm version still needs pushing (`transfer/`) |
 | Diffusion trainer | **done, smoke-tested** | VP schedule in `src/diffusion.py`; eps-prediction; same resume/guard as FM |
 | Samplers (Euler + Heun) | **done, tested** | `src/sampling.py`, both families, full-field Heun, call counting |
@@ -123,7 +127,7 @@ delta = 0.168 D. The guidance temperature `s` defaults to the property std (1.54
   in *On the Guidance of Flow Matching*; STSL already puts second-order Tweedie information
   into guidance; Heun is long-established. What survives is the **nonlinear-property mean
   correction** ½ tr(HΣ), which vanishes for affine f — the claim rests entirely on properties
-  with curvature. See [SMG_PRIOR_WORK_AUDIT.md](SMG_PRIOR_WORK_AUDIT.md).
+  with curvature. See [SMG_PRIOR_WORK_AUDIT.md](../methods/SMG_PRIOR_WORK_AUDIT.md).
 - **The mode-collapse figure (0.357 → 0.075) is provisional.** It must be re-run against the
   same soft likelihood the sampler targets before it supports any performance claim.
 

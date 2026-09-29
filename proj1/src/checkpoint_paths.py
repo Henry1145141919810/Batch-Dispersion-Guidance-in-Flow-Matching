@@ -43,6 +43,33 @@ _GENERATOR = (
     os.path.join(WEIGHTS, "fm_ema.pt"),
 )
 
+# OUR VP diffusion generator. NOT weights/EDMsecond -- that is TFG's borrowed
+# checkpoint, reached by --edm-dir.
+#
+# `diff.pt` COMES FIRST, and the order is the point. train_diffusion.py writes
+# TWO files: `diff_last.pt` every epoch as resume state, and `diff.pt` only
+# when the pre-registered rule selects (highest validation atom stability at
+# NFE 100). Preferring `diff_last.pt` would silently hand sampling whatever
+# epoch the trainer last happened to reach -- including an abandoned partial
+# run, which is exactly the state job 8590174 left behind at epoch ~80.
+#
+# `weights/vp_ema.pt` is the published slim copy, by analogy with fm_ema.pt.
+# NOTHING IN THE REPO PRODUCES IT YET: fm_ema.pt came from a one-off slimming
+# recorded in weights/README.md, and no equivalent has been run for VP. It is
+# last here so a fresh clone's error names a path its owner can recognise.
+_VP_GENERATOR = (
+    os.path.join(BETTY, "diff.pt"),
+    os.path.join(LOCAL_CKPT, "diff.pt"),
+    os.path.join(BETTY, "diff_last.pt"),
+    os.path.join(LOCAL_CKPT, "diff_last.pt"),
+    # The published slim copy. `diff_ema.pt` is the name it actually shipped
+    # under (Bobo, 28 Sep, "Publish the diffusion generator weights,
+    # EMA-only") and mirrors `fm_ema.pt`'s naming; `vp_ema.pt` was this file's
+    # first guess at that name and is kept so an older clone still resolves.
+    os.path.join(WEIGHTS, "diff_ema.pt"),
+    os.path.join(WEIGHTS, "vp_ema.pt"),
+)
+
 # Directories to look in for f_A_<prop>.pt, f_B_<prop>.pt, rch_<prop>.pt.
 _PREDICTOR_DIRS = (LOCAL_CKPT, BETTY, WEIGHTS)
 
@@ -58,6 +85,21 @@ def default_generator() -> str:
         if os.path.exists(p):
             return p
     return _GENERATOR[-1]
+
+
+def default_vp_generator() -> str:
+    """The VP-diffusion generator checkpoint when `--vp-ckpt` is not given.
+
+    Same contract as `default_generator`: first that exists, else the LAST
+    candidate so the error names `weights/vp_ema.pt` rather than a cluster
+    path. As of 28 Sep 2026 none of the three exists -- the 1500-epoch run on
+    `train_a` has not completed -- so this returns a path that is meant to
+    fail loudly in `--backend vp`, not a fallback to some other model.
+    """
+    for p in _VP_GENERATOR:
+        if os.path.exists(p):
+            return p
+    return _VP_GENERATOR[-1]
 
 
 def find_predictor(name: str) -> str | None:
