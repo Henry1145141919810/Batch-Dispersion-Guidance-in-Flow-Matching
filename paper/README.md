@@ -5,15 +5,15 @@ find the slide content.
 
 ## Read it
 
-`paper/main.pdf` is the current **v7** build, revised on 28 September 2026.
+`paper/main.pdf` is the current **v8** build, revised on 29 September 2026.
 The main text is five pages; references and the expanded appendix follow.
 The five-page limit covers the main text only. See
-`versions/v7_revision_notes.md` for the changes, factual corrections and grading map.
+`versions/v8_revision_notes.md` for the changes, factual corrections and grading map.
 
 ## Edit it
 
 **Edit manuscript prose in `main.tex`.** All prose, tables, the overview,
-algorithm and appendix remain in this one source. Sixteen table blocks are
+algorithm and appendix remain in this one source. Eighteen table blocks are
 regenerated between `% BEGIN DATA` / `% END DATA` markers by
 `tools/build_results.py`; edit that builder when changing those table layouts.
 Figures and numerical tables read the same final result cells.
@@ -32,9 +32,9 @@ pdflatex -interaction=nonstopmode main.tex
 Run it twice after bibtex or cross-references come out as `??`.
 
 Before compiling, from the repository root, regenerate the measured figures and
-tables with `python paper/tools/build_results.py` (NumPy and Matplotlib required).
+tables with `python paper/tools/build_results.py` (NumPy, Matplotlib and SciPy required).
 Then run `python paper/tools/build_results.py --check` for a read-only check of
-all sixteen table blocks, the key numerical claims, and all 973 source hashes.
+all eighteen table blocks, the key numerical claims, and all 973 source hashes.
 The builder reads only the final `n2000` trees and keeps strengths, backends,
 stages, seed identities and the early-window diagnostic separate.
 
@@ -46,7 +46,7 @@ stages, seed identities and the early-window diagnostic separate.
 ```
 
 `check.py` must say `all checks pass`. It enforces the 200-250-word abstract,
-exactly three introduction paragraphs, and things that are easy to break by
+exactly three introduction and Discussion paragraphs, and things that are easy to break by
 accident: that all fourteen required sections exist, that the contribution list has
 four or five bullets, that every table and figure is referenced from the text, that
 no q90 number appears (this paper reports q50 only), and that no phrase our own
@@ -61,7 +61,7 @@ will notice.
 ## Evidence status
 
 The local final run has landed: 774 molecular and 199 sequence result files.
-Our own VP diffusion benchmark is included in Table 1 and Table S6. Its selected
+Our own VP diffusion benchmark is included in Table 1 and Table S7. Its selected
 epoch-1475 EMA checkpoint matches the result-cell fingerprint. FM has higher
 stability and validity, supporting the choice to carry FM forward. VP was sampled
 on B200 MIG; the other molecular models used RTX A6000, so runtime is not matched.
@@ -74,17 +74,19 @@ in the measured late window; TFG-MC differs. Dirichlet FM, Fisher Flow and MOG-D
 background references, not evaluated generators. Joint molecular useful yield
 and batch-aware intervals require sample-level files on the source machine.
 The correct plug-in ablation is **eta = 0**, with positive tau. Tau = 0 is undefined.
-All 612 molecular ablation cells are represented in numeric Tables S8-S13.
+All 612 molecular ablation cells are represented in numeric Tables S10-S15.
+Table S3 separates sampling operation counts; Table S9 reports exploratory
+coverage gained per stability point lost, distinguishing eta = 4 from eta = 8.
 
 ## Current graphics
 
 - Figure 1: the overview drawn directly in `main.tex`.
-- Figure 2: `figs/results_v7.pdf`, final-run molecular spread and DNA coverage gains.
-- Supplement: `figs/ablation_fm_v7.pdf` and `figs/ablation_equifm_v7.pdf`, all 12 grids.
-- `results_manifest_v7.json`: source hashes, seed contrasts, target-error and DNA identity audits.
+- Figure 2: `figs/results_v8.pdf`, all six molecular spread curves and DNA coverage gains.
+- Supplement: `figs/ablation_fm_v8.pdf` and `figs/ablation_equifm_v8.pdf`, all 12 grids.
+- `results_manifest_v8.json`: source hashes, seed contrasts, target-error and DNA identity audits, plus exchange ratios and coefficient/coverage diagnostics.
 
 `figs/mechanism.pdf` and its older builder use pilot data and are historical;
-they are not included in v7. Earlier standalone overview files are also historical.
+they are not included in v8. Earlier standalone overview files are also historical.
 
 ## Files
 
@@ -97,8 +99,8 @@ paper/
   refs_extra.bib     references we added; every entry verified against arXiv
   neurips_2026.sty   template style file, unmodified
   figs/
-    results_v7.pdf   Figure 2, generated from final cells
-    ablation_*_v7.pdf  complete molecular ablation heatmaps
+    results_v8.pdf   Figure 2, generated from final cells
+    ablation_*_v8.pdf  complete molecular ablation heatmaps
     overview.*      historical standalone versions; live overview is in main.tex
     mechanism.*     historical pilot-based figure, not used
   tools/
@@ -107,11 +109,12 @@ paper/
     prosecount.py    word budget per section
   versions/
     CHANGELOG.md     WHAT CHANGED AND WHY, per version. Read this first.
-    v7_main.tex      the numbered v7 release
-    v7_main.pdf
-    v7_2026-09-28/   rebuildable v7 snapshot with SHA256SUMS.txt
-    v7_revision_notes.md   corrections, data audit and rubric map
-    v6_*, v5_*, ...  earlier releases, kept
+    v8_main.tex      the numbered v8 release
+    v8_main.pdf
+    v8_2026-09-29/   rebuildable v8 snapshot with SHA256SUMS.txt
+    v8_revision_notes.md   corrections, deck audit and rubric map
+    v7_pre_v8_2026-09-29/  exact files before this revision
+    v7_*, v6_*, ...  earlier releases, kept
     v2_pre_v3_2026-09-27/  the exact source as it stood before the v3 revision
 ```
 

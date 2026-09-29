@@ -5,6 +5,28 @@ now `paper/main.tex`; `paper/body.tex` points readers there. Numbered snapshots
 are retained when the live paper changes. Paper version numbers and experiment
 protocol version numbers are independent.
 
+## v8 - 29 Sep 2026
+
+Further manuscript revision informed by the supplied defense deck and checked
+against the final result cells. Five main pages, one reference page and seventeen
+appendix pages; the previous live files are preserved in `v7_pre_v8_2026-09-29/`.
+
+- Clarified the study's logic and restored the three-paragraph Discussion.
+- Retained own-VP results and compared guidance on both trained model families.
+- Expanded the selected dipole ablation with stronger plug-in and stability.
+- Added main-table diversity/yield and runtime context, plus separate neural-call
+  counts in Table S3.
+- Redrew the overview and plotted all six molecular spread curves.
+- Added exploratory stability-exchange ratios and coefficient/coverage diagnostics,
+  separating eta = 4 from eta = 8 and descriptive findings from causal claims.
+- Regenerated eighteen table blocks and three vector figures; verified all 973
+  source hashes. Removed the duplicate QM9 bibliography entry.
+- All 23 PDF pages visually reviewed; five-page main-text limit and layout,
+  citation, structure and numerical checks pass without changing template style.
+
+See `v8_revision_notes.md` for the evidence audit, rubric map and preserved limits.
+The rebuildable snapshot is `v8_2026-09-29/`, with SHA-256 checksums.
+
 ## v7 - 28 Sep 2026
 
 Revised all eight requested points and incorporated the newly arrived own-VP

@@ -1,4 +1,4 @@
-"""Rebuild v8 figures and inline table blocks from the final n=2000 cells.
+"""Rebuild v7 figures and inline table blocks from the final n=2000 cells.
 
 Run from the repository root. No pilot, n=5000, or cross-strength pooling.
 The manifest stores source hashes, seed measurements, and comparison statistics.
@@ -15,9 +15,7 @@ import sys
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-from matplotlib.lines import Line2D
 import numpy as np
-from scipy.stats import spearmanr
 
 ROOT = Path(__file__).resolve().parents[2]
 PAPER = ROOT / 'paper'
@@ -34,7 +32,6 @@ NAMES = {'unguided': 'Unguided', 'plug': 'DPS-style plug-in',
          'bdg_e4t1': r'\textbf{BDG, $\tau_m=1$}'}
 PL = {'mu': r'$\mu$', 'alpha': r'$\alpha$', 'gap': 'gap', 'gc': 'GC', 'cpg': 'CpG'}
 KEY = 'in_band_fraction_dec'
-VERSION = 8
 # The older summary module predates arrival of the VP benchmark. Reuse its
 # strict cell validation with the protocol's two VP arms explicitly registered.
 V.BACKEND_ARMS['vp'] = ('unguided', 'plug')
@@ -65,32 +62,6 @@ def contrast(a,b,key=KEY,bar=2.99):
                 seed_deltas_pp=[100*(ra[key]-rb[key]) for ra,rb in zip(a,b)])
 def duration(rs,m2=False): return avg(rs,'minutes')*60/2000 if m2 else avg(rs,'seconds')/2000
 def bias(rs): return avg(rs,'f_B_dec_mean')-avg(rs,'target_mean')
-def exchange(be,p,eta=None):
-    """Descriptive decoded-IB gain per stability loss from one zero-gain cell.
-
-    eta=None compares w=4 zero gain with w=1 zero gain. Otherwise only eta
-    and tau change, at w=1 and tau_m=.5. Use ablation-stage rows throughout.
-    """
-    base=abl[be,1][p,'bdg_e0t1']
-    arm=abl[be,4][p,'bdg_e0t1'] if eta is None else abl[be,1][p,f'bdg_e{eta}t0.5']
-    delta=100*(avg(arm,KEY)-avg(base,KEY))
-    loss=100*(avg(base,'mol_stability')-avg(arm,'mol_stability'))
-    assert loss>0
-    return dict(delta_ib_pp=delta,stability_loss_pp=loss,ratio=delta/loss)
-
-def diagnostics():
-    out={'exchange':{},'gain_coverage_spearman':{},'spread_ratios':{},'guided_contrasts':{}}
-    for be in ('fm','equifm'):
-        for p in PROPS:
-            out['exchange'][f'{be}/{p}']={str(e):exchange(be,p,e) for e in (4,8,None)}
-            u=spread(heads[be][p,'unguided'])
-            out['spread_ratios'][f'{be}/{p}']=[spread(abl[be,1][p,f'bdg_e8t{t:g}'])/u for t in (.5,.75,1,1.5)]
-            for w in (1,4):
-                rs=[abl[be,w][p,a] for a in V.ABL_ARMS if a!='bdg_e0t1']
-                out['gain_coverage_spearman'][f'{be}/{p}/{w}']=float(spearmanr([st.mean(r['diag']['bdg_w_eff'] for r in row) for row in rs],[avg(row,KEY) for row in rs]).statistic)
-    for be in ('fm','vp'):
-        for p in PROPS: out['guided_contrasts'][f'{be}/{p}']=contrast(heads[be][p,'plug'],heads[be][p,'unguided'])
-    return out
 def latex_table(caption,label,cols,header,rows):
     return '\n'.join([r'\begin{table}[!htbp]',r'\centering\small',r'\caption{'+caption+'}',r'\label{'+label+'}',r'\begin{tabular}{'+cols+'}',r'\toprule',header+r'\\',r'\midrule',*rows,r'\bottomrule',r'\end{tabular}',r'\end{table}'])
 
@@ -104,24 +75,23 @@ def tables():
         if be=='vp': rows.append(r'\midrule')
     out['BASE']=latex_table('Unguided QM9, $3\\times2{,}000$ samples: percentages, mean $\\pm$ seed sd. Lower rows use pretrained external models. Timing includes scoring: RTX A6000 except $^*$B200 MIG; runtimes are not hardware matched.','tab:fmvd','lccccc',r'Generator & Mol. stable$\uparrow$ & Valid$\uparrow$ & Unique$\uparrow$ & NFE & s/sample',rows)
     rows=[]
-    for w,a in ((1,'bdg_e0t1'),(4,'bdg_e0t1'),(1,'bdg_e4t0.5'),(1,'bdg_e4t1'),(1,'bdg_e8t0.5'),(1,'bdg_e8t1.5')):
-        rs=abl['fm',w]['mu',a]
+    for a in ('bdg_e0t1','bdg_e4t0.5','bdg_e4t1','bdg_e8t0.5','bdg_e8t1.5'):
+        rs=abl['fm',1]['mu',a]
         e,t=a.removeprefix('bdg_e').split('t')
         if e=='0': t='--'
-        rows.append(f'{w} & {e} & {t} & '+pm(rs,KEY)+f' & {avg(rs,"prop_mae_eval_dec"):.3f} & {avg(rs,"f_B_dec_mean"):.3f} & {spread(rs):.3f} & {100*avg(rs,"mol_stability"):.1f}'+r'\\')
-    out['ABLATION']=latex_table('Dipole ablation on our FM: q50 $y=2.4932$ D, band $\\pm0.17541$ D. IB is percent mean $\\pm$ seed sd; stability is percent mean. Decoded MAE, mean and spread $\\sigma$ are in D. Zero gain is plug-in; its $w=4$ row tests stronger guidance.','tab:ablation','cccccccc',r'$w$ & $\eta$ & $\tau_m$ & IB$\uparrow$ & MAE$\downarrow$ & Mean & $\sigma$ & Stable$\uparrow$',rows)
+        rows.append(f'{e} & {t} & '+pm(rs,KEY)+f' & {avg(rs,"prop_mae_eval_dec"):.3f} & {avg(rs,"f_B_dec_mean"):.3f} & {spread(rs):.3f}'+r'\\')
+    out['ABLATION']=latex_table('Numeric ablation: our FM, dipole $\\mu$, q50 target $y=2.4932$ D, band $\\pm0.17541$ D, $w=1$. IB is percent mean $\\pm$ seed sd; MAE, mean and spread $\\sigma$ are decoded, in D. Zero gain ($\\eta=0$) is plug-in.','tab:ablation','cccccc',r'$\eta$ & $\tau_m$ & IB$\uparrow$ & MAE$\downarrow$ & Mean & $\sigma$',rows)
     rows=[]
     for a in ARMS:
         name=r'Plug-in ($\eta=0$)' if a=='plug' else NAMES[a]
-        rs=heads['fm']['mu',a]
-        rows.append(name+' & '+' & '.join(pm(heads['fm'][(p,a)],KEY) for p in PROPS)+' & '+' / '.join(f'{100*avg(heads["fm"][(p,a)],"mol_stability"):.1f}' for p in PROPS)+f' & {100*avg(rs,"unique_valid_per_sample"):.1f} & {duration(rs):.3f}'+r'\\')
-    out['M1']=latex_table('Our FM, $w=1$: decoded IB, percent mean $\\pm$ seed sd; stability means in $\\mu/\\alpha/\\mathrm{gap}$ order. DV is distinct-valid yield (\\%), and time is s/sample, both for $\\mu$. Plug-in is $\\eta=0$; BDG uses $\\eta=4$. Rows are matched-backbone adaptations.','tab:recent','lcccccc',r'Method & IB $\mu\uparrow$ & IB $\alpha\uparrow$ & IB gap$\uparrow$ & Stable$\uparrow$ & DV$\uparrow$ & Time',rows)
+        rows.append(name+' & '+' & '.join(pm(heads['fm'][(p,a)],KEY) for p in PROPS)+' & '+' / '.join(f'{100*avg(heads["fm"][(p,a)],"mol_stability"):.1f}' for p in PROPS)+r'\\')
+    out['M1']=latex_table('Our FM, $w=1$: decoded IB, percent mean $\\pm$ seed sd; stability in $\\mu/\\alpha/\\mathrm{gap}$ order. Plug-in removes BDG\'s residual ($\\eta=0$); BDG uses $\\eta=4$. Recent-method rows are adaptations. Full metrics: Table~\\ref{tab:full-fm}.','tab:recent','lcccc',r'Method & IB $\mu\uparrow$ & IB $\alpha\uparrow$ & IB gap$\uparrow$ & Mol. stable$\uparrow$',rows)
     rows=[]
     for a in M.HEADLINE_ARMS:
         # Keep all adaptations visible and report fidelity at the same strength.
         gc,cp=seq('gc',a,4),seq('cpg',a,4)
-        rows.append(NAMES[a]+' & '+pm(gc,'in_band_fraction')+' & '+pm(cp,'in_band_fraction')+' & '+f'{1e4*avg(gc,"kmer_js"):.2f} / {1e4*avg(cp,"kmer_js"):.2f} & {avg(gc,"diversity"):.4f} / {avg(cp,"diversity"):.4f} & {duration(cp,True):.3f}'+r'\\')
-    out['M2']=latex_table('DNA, $w=4$, $t\\ge0.5$: decoded IB (percent mean $\\pm$ seed sd); JSD ($\\times10^{-4}$) and Hamming diversity in GC/CpG order. Time is recorded s/sequence for CpG. TFG-MC is a restricted adaptation. Full results: Table~\\ref{tab:full-m2}.','tab:m2','lccccc',r'Method & GC IB$\uparrow$ & CpG IB$\uparrow$ & JSD$\downarrow$ & Hamming & Time',rows)
+        rows.append(NAMES[a]+' & '+pm(gc,'in_band_fraction')+' & '+pm(cp,'in_band_fraction')+' & '+f'{1e4*avg(gc,"kmer_js"):.2f} / {1e4*avg(cp,"kmer_js"):.2f} & {avg(gc,"diversity"):.4f} / {avg(cp,"diversity"):.4f}'+r'\\')
+    out['M2']=latex_table('DNA, $w=4$, $t\\ge0.5$: decoded IB (percent mean $\\pm$ seed sd); 3-mer JSD ($\\times10^{-4}$) and normalized Hamming diversity in GC/CpG order. TFG-MC is a restricted adaptation. Full results: Table~\\ref{tab:full-m2}.','tab:m2','lcccc',r'Method & GC IB$\uparrow$ & CpG IB$\uparrow$ & JSD$\downarrow$ & Hamming',rows)
     out['M2']=out['M2'].replace(r'\centering\small',r'\centering\small\setlength{\tabcolsep}{4pt}')
     for be in ('fm','equifm','edm','vp'):
         rows=[]
@@ -163,18 +133,6 @@ def tables():
                 rs=seq(p,a,w); pooled=M.pooled(rs)
                 rows.append(f'{PL[p]}, {w} & '+NAMES[a]+' & '+pm(rs,'in_band_fraction')+f' & {1e4*avg(rs,"kmer_js"):.2f} & {avg(rs,"decode_conf"):.3f} & {avg(rs,"diversity"):.4f} & {100*pooled["clip_frac"]:.2f} & {duration(rs,True):.3f}'+r'\\')
     out['FULL-M2']=latex_table('All DNA headline settings. IB is percent mean $\\pm$ seed sd; JSD is multiplied by $10^4$; Conf. is decoding confidence; Div. is normalized Hamming distance; Clip is percent of guided sample-steps. Unguided rows repeat a common reference and are never pooled twice.','tab:full-m2','llcccccc',r'Prop., $w$ & Method & IB$\uparrow$ & JSD$\downarrow$ & Conf. & Div. & Clip & s/seq.',rows)
-    rows=[]
-    for a in ARMS:
-        rs=heads['fm']['mu',a]; counts=rs[0]['cost']
-        assert all(r['cost']==counts for r in rs)
-        rows.append(NAMES[a]+' & '+' & '.join(str(counts[k]) for k in ('gen_fwd','gen_vjp','gen_jvp','guide_fwd','guide_bwd'))+r'\\')
-    out['COST']=latex_table('Recorded sampling operations per 2,000-molecule cell, our FM, dipole, $w=1$. Forward calls, vector--Jacobian products (VJP) and Jacobian--vector products (JVP) are separate operations, not equal-cost units. Evaluator calls are outside these counts; Table~\\ref{tab:recent} reports wall-clock including scoring.','tab:cost','lccccc',r'Method & Gen. forward & Gen. VJP & Gen. JVP & Guide forward & Guide backward',rows)
-    rows=[]
-    for be in ('fm','equifm'):
-        for p in PROPS:
-            vals=[exchange(be,p,e) for e in (4,8,None)]
-            rows.append(('Our FM' if be=='fm' else 'EquiFM')+' & '+PL[p]+' & '+' & '.join(f'{v["ratio"]:.3f}' for v in vals)+r'\\')
-    out['EXCHANGE']=latex_table('Exploratory coverage gained per stability point lost. All differences use the ablation-stage zero-gain reference at $w=1$. BDG changes $\\eta$ at $\\tau_m=0.5,w=1$; the strength control keeps $\\eta=0$ and increases $w$ to 4. Ratios use decoded IB and molecular stability means, not joint useful yield.','tab:exchange','llccc',r'Backend & Property & BDG $\eta=4$ & BDG $\eta=8$ & Plug-in $w=4$',rows)
     return out
 
 def figures():
@@ -183,18 +141,15 @@ def figures():
     colors=['#1965B0','#D55E00','#009E73']
     fig,axs=plt.subplots(1,2,figsize=(7.7,2.55),layout='constrained')
     ax=axs[0]
-    for be,ls in [('fm','-'),('equifm','--')]:
-        for p,col,mark in zip(PROPS,colors,['o','s','^']):
-            u=spread(heads[be][(p,'unguided')])
-            xs=[.5,.75,1,1.5]
-            ys=[spread(abl[be,1][p,f'bdg_e8t{t:g}'])/u for t in xs]
-            ax.plot(xs,ys,color=col,marker=mark,ls=ls,lw=1.2,markersize=4,mfc=col if be=='fm' else 'white')
+    for p,col,mark in zip(PROPS,colors,['o','s','^']):
+        u=spread(heads['fm'][(p,'unguided')])
+        xs=[.5,.75,1,1.5]
+        ys=[spread(abl['fm',1][p,f'bdg_e8t{t:g}'])/u for t in xs]
+        ax.plot(xs,ys,color=col,marker=mark,label=PL[p])
     ax.axhline(1,color='.5',ls='--',lw=.8)
-    ax.set(xlabel=r'Setpoint multiplier $\tau_m$ ($\eta=8$, $w=1$)',ylabel='Decoded spread / unguided',xticks=[.5,.75,1,1.5],ylim=(.55,1.48))
+    ax.set(xlabel=r'Setpoint multiplier $\tau_m$ ($\eta=8$, $w=1$)',ylabel='Decoded spread / unguided',xticks=[.5,.75,1,1.5],ylim=(.55,1.35))
     ax.set_title('(a) QM9: setpoint changes spread',loc='left')
-    handles=[Line2D([],[],color=c,marker=m,ls='none',label=PL[p]) for p,c,m in zip(PROPS,colors,['o','s','^'])]
-    handles += [Line2D([],[],color='.2',ls=ls,label=name) for ls,name in [('-','Our FM'),('--','EquiFM')]]
-    ax.legend(handles=handles,ncol=3,loc='upper left',frameon=False,handlelength=1.4,columnspacing=.8)
+    ax.legend(ncol=3,loc='upper left',frameon=False)
     ax=axs[1]
     for a,col,off,mark in [('bdg_e4t0.5',colors[0],-.12,'o'),('bdg_e4t1',colors[1],.12,'s')]:
         ds=[]; es=[]
@@ -206,7 +161,7 @@ def figures():
     ax.set(xticks=range(4),xticklabels=['GC\n$w=1$','GC\n$w=4$','CpG\n$w=1$','CpG\n$w=4$'],ylabel='IB difference vs plug-in (pp)',ylim=(-4,20))
     ax.set_title('(b) DNA: gain depends on property',loc='left')
     ax.legend(loc='upper left',frameon=False,ncol=2)
-    fig.savefig(PAPER/f'figs/results_v{VERSION}.pdf'); fig.savefig(PAPER/f'figs/results_v{VERSION}.png',dpi=220); plt.close(fig)
+    fig.savefig(PAPER/'figs/results_v7.pdf'); fig.savefig(PAPER/'figs/results_v7.png',dpi=220); plt.close(fig)
     for be in ('fm','equifm'):
         fig,axs=plt.subplots(2,3,figsize=(8,5.2),layout='constrained')
         for iw,w in enumerate((1,4)):
@@ -218,7 +173,7 @@ def figures():
                     for j in range(4): ax.text(j,i,f'{mat[i,j]:+.1f}',ha='center',va='center',fontsize=9,color='white' if abs(mat[i,j])>5 else 'black')
                 ax.set(xticks=range(4),xticklabels=['.5','.75','1','1.5'],yticks=range(4),yticklabels=['1','2','4','8'],xlabel=r'$\tau_m$',ylabel=r'$\eta$',title=f'{PL[p]}, $w={w}$')
         fig.colorbar(im,ax=axs,label='Decoded IB minus zero-gain control (pp)',shrink=.85)
-        fig.savefig(PAPER/f'figs/ablation_{be}_v{VERSION}.pdf'); fig.savefig(PAPER/f'figs/ablation_{be}_v{VERSION}.png',dpi=160); plt.close(fig)
+        fig.savefig(PAPER/f'figs/ablation_{be}_v7.pdf'); fig.savefig(PAPER/f'figs/ablation_{be}_v7.png',dpi=160); plt.close(fig)
 
 def main():
     ap=argparse.ArgumentParser(description=__doc__)
@@ -238,7 +193,7 @@ def main():
     source_paths += [Path(r['_path']) for r in m2rows]
     sources={str(p.relative_to(ROOT)):hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(source_paths)}
     if args.check:
-        saved=json.loads((PAPER/f'results_manifest_v{VERSION}.json').read_text())
+        saved=json.loads((PAPER/'results_manifest_v7.json').read_text())
         assert not stale, f'Stale table blocks: {stale}'
         assert saved['sources']==sources, 'Source files changed; rebuild before publication.'
         molecular=[contrast(heads[be][p,a],heads[be][p,'plug']) for be in ('fm','equifm') for p in PROPS for a in ('bdg_e4t0.5','bdg_e4t1')]
@@ -246,15 +201,6 @@ def main():
         assert all(spread(abl[be,1][p,'bdg_e8t1.5'])>spread(heads[be][p,'unguided']) for be in ('fm','equifm') for p in PROPS)
         assert all(avg(heads[be][p,'bdg_e4t0.5'],'prop_mae_eval_dec')<avg(heads[be][p,'plug'],'prop_mae_eval_dec') for be in ('fm','equifm') for p in PROPS)
         assert all(avg(heads['fm']['mu','unguided'],k)>avg(heads['vp']['mu','unguided'],k) for k in ('mol_stability','validity'))
-        diag=diagnostics()
-        assert saved['additional_diagnostics']==diag
-        assert all(all(x<y for x,y in zip(v,v[1:])) for v in diag['spread_ratios'].values())
-        assert sum(d['8']['ratio']>d['None']['ratio'] for d in diag['exchange'].values())==5
-        assert sum(d['4']['ratio']>d['None']['ratio'] for d in diag['exchange'].values())==4
-        assert .915<min(diag['gain_coverage_spearman'].values())<.925
-        assert .985<max(diag['gain_coverage_spearman'].values())<.995
-        for be in ('fm','vp'):
-            assert all((diag['guided_contrasts'][f'{be}/{p}']['z']>2.99)==(p!='alpha') for p in PROPS)
         for p in ('gc','cpg'):
             for w in (1,4):
                 for a in ('tmpd','lgd_mc'):
@@ -264,7 +210,7 @@ def main():
             assert abs(c['delta_pp']-expected)<.005
             assert (c['z']>3.16)==above
         print(f'PASS: {len(ts)} inline tables match all final cells; {len(sources)} source hashes unchanged.')
-        print('PASS: molecular and DNA claims, own FM/VP guidance, six monotone spread curves, and exploratory exchange/correlation audits.')
+        print('PASS: molecular verdicts, six widening and MAE comparisons, own FM/VP quality, DNA identity audit, and four DNA gains.')
         return
     path.write_text(main,encoding='utf8')
     (PAPER/'tmp').mkdir(exist_ok=True)
@@ -274,8 +220,7 @@ def main():
     audit['dna_identity']={f'{p}/{w}/{a}':{k:max(abs(x[k]-y[k]) for x,y in zip(seq(p,a,w),seq(p,'plug',w))) for k in ('in_band_fraction','gc_mean','gc_sd','kmer_js','diversity')} for p in ('gc','cpg') for w in (1,4) for a in ('tmpd','lgd_mc','tfg_mc')}
     audit['molecular_target_errors']={f'{be}/{p}/{a}':{'mae':avg(heads[be][p,a],'prop_mae_eval_dec'),'bias':bias(heads[be][p,a])} for be in ('fm','equifm') for p in PROPS for a in ('plug','bdg_e4t0.5')}
     audit['own_model_comparison']={be:{k:avg(heads[be]['mu','unguided'],k) for k in ('mol_stability','validity','uniqueness_of_valid','seconds')} for be in ('fm','vp')}
-    audit['additional_diagnostics']=diagnostics()
-    (PAPER/f'results_manifest_v{VERSION}.json').write_text(json.dumps(audit,indent=2),encoding='utf8')
+    (PAPER/'results_manifest_v7.json').write_text(json.dumps(audit,indent=2),encoding='utf8')
     print(f'Rebuilt {len(ts)} table blocks and 3 vector figures; {len(sources)} source hashes.')
 
 if __name__=='__main__': main()
