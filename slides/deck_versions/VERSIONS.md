@@ -1,7 +1,28 @@
 # Defense deck: version log
 
-The live deck is the Claude Slides artifact **"BDG Defense — Group 2"** (claude.ai → Artifacts).
-Each version here is a frozen snapshot of that deck, so an older draft can always be recovered.
+## Current PowerPoint release: PPTX v4, 29 September 2026
+
+[Open revised PowerPoint](pptx_v4_2026-09-29/output/BDG_Defense_Group_2_v4_revised.pptx)
+([release record](pptx_v4_2026-09-29/README.md)). Matches paper v9.
+Adds empirical property distributions with q50 and band formulas, new GC
+t >= 0.3 results, and explicit original/new window comparisons. All previous
+FM-loss, EGNN, predictor, decoding and benchmark revisions are retained.
+51 slides: 31 main/bibliography plus 20 appendix. Prior versions preserved.
+
+## Previous PowerPoint checkpoint: PPTX v3, 29 September 2026
+
+[Open revised PowerPoint](pptx_v3_2026-09-29/output/BDG_Defense_Group_2_v3_revised.pptx)
+([release record](pptx_v3_2026-09-29/README.md)).
+
+This release starts from the user's **BDG Defense — Group 2 v2.pptx** and follows
+paper **v8**, not the old pending-data LaTeX deck. It contains 47 slides:
+the original 29-slide main/bibliography sequence plus 18 appendix slides.
+The supplied v2, audited numeric snapshot and editable builder are preserved in
+the release folder. PowerPoint v3 is a separate version sequence from the older
+Claude Slides artifact versions below. Previous releases remain unchanged.
+
+The earlier live deck was the Claude Slides artifact **"BDG Defense — Group 2"**.
+The following entries are historical snapshots of that artifact.
 
 > ### ⚠️ Standing note, 28 September 2026 — read before trusting any "pending" below
 >

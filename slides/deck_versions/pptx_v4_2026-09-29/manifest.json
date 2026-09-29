@@ -1,0 +1,36 @@
+{
+  "version": "PPTX v4",
+  "date": "2026-09-29",
+  "paper_version": 9,
+  "status": "current release",
+  "source_user_file": "C:/Users/mooooonesy/Downloads/BDG Defense — Group 2 v2.pptx",
+  "source_sha256": "fe365871823b5f765f9acd857705e44e1ffc509979070b7a05b4b218ff3a9dfb",
+  "output_sha256": "9b729a9b103307bf9f45a166b0c79725f0697e3b37f3c2b7ddcd36ad68befb42",
+  "slide_count": 51,
+  "result_manifest": "paper/results_manifest_v9.json",
+  "result_file_count": 995,
+  "new_data_commits": [
+    "cfc5d64",
+    "f568f68"
+  ],
+  "checks": {
+    "package_integrity": "pass",
+    "layout_findings": 0,
+    "layout_warnings": 0,
+    "artifact_reimport_passed": true,
+    "native_powerpoint_execution_tested": false
+  },
+  "files": {
+    ".gitattributes": "8a9eed1d5624acd7125d351511c1d72fa4cc0ab40de091317054456e1322f178",
+    "output/BDG_Defense_Group_2_v4_revised.pptx": "9b729a9b103307bf9f45a166b0c79725f0697e3b37f3c2b7ddcd36ad68befb42",
+    "README.md": "233e83949d0ceacf6a5b152bfe364782e379a2de5edbbb89c0144588208dd6fe",
+    "source/BDG_Defense_Group_2_v2.pptx": "fe365871823b5f765f9acd857705e44e1ffc509979070b7a05b4b218ff3a9dfb",
+    "source/build_v3.mjs": "02a5d9eee59897cc73513d5d5ead68f38061789232db3d05599e2bf2c3f6f692",
+    "source/build_v4.mjs": "446cc0a0cfb06cf4c31258d6ede644374b33e0d19f8764e033cd8679a8543ff4",
+    "source/deck_data_v4.json": "67a783b9ac2bb4c6e4a274982c894fda0ce48faea268ac1092f83f8e918a2ea0",
+    "source/prepare_data.py": "34844189b1a26e1c8eec5be4ff19e5c4a8de5a9e0e82e3f5028ba5fed1a2daff",
+    "source/prepare_v4.py": "88b598bfe05797659577e53b824a7a70c4fba9337df8af832e2c8593bab8c385",
+    "source/property_distributions_v9.json": "8743b64ed3a2b0f9fd95875c5708975adece87af679e6692c58ccfa4e1b65f3f",
+    "source/render_final_v4.mjs": "1e5d1512185ad790b8b3390b6acc05a78495e289728701189b669da69b4fb073"
+  }
+}

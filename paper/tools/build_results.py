@@ -1,4 +1,4 @@
-"""Rebuild v8 figures and inline table blocks from the final n=2000 cells.
+"""Rebuild v9 figures and inline table blocks from the final n=2000 cells.
 
 Run from the repository root. No pilot, n=5000, or cross-strength pooling.
 The manifest stores source hashes, seed measurements, and comparison statistics.
@@ -34,7 +34,7 @@ NAMES = {'unguided': 'Unguided', 'plug': 'DPS-style plug-in',
          'bdg_e4t1': r'\textbf{BDG, $\tau_m=1$}'}
 PL = {'mu': r'$\mu$', 'alpha': r'$\alpha$', 'gap': 'gap', 'gc': 'GC', 'cpg': 'CpG'}
 KEY = 'in_band_fraction_dec'
-VERSION = 8
+VERSION = 9
 # The older summary module predates arrival of the VP benchmark. Reuse its
 # strict cell validation with the protocol's two VP arms explicitly registered.
 V.BACKEND_ARMS['vp'] = ('unguided', 'plug')
@@ -42,6 +42,16 @@ heads = {be: V.m1_load(str(ROOT/'results/v3'), be, 'v3') for be in ('fm','vp','e
 abl = {(be,w): V.m1_load(str(ROOT/'results/v3'), be, 'v3abl', w) for be in ('fm','equifm') for w in (1,4)}
 m2rows = M.load(str(ROOT/'results/m2'), 2000)
 M.duplicate_configs(m2rows)
+winrows=[]
+for path in sorted((ROOT/'results/m2/m2win/n2000').rglob('*.json')):
+    r=json.loads(path.read_text()); r.update(_path=str(path),_stage='m2win',_base=path.name)
+    winrows.append(r)
+
+def win(a, tmin=.3):
+    rows=[r for r in winrows if (r['prop'],M.arm_key(r),r['w'],r['t_min_guide'])==('gc',a,4.,tmin)]
+    assert [r['seed'] for r in rows]==[20260921,20260922,20260923],a
+    M.check_pinned(rows,'GC t>=0.3 '+a)
+    return rows
 
 def seq(p,a,w,stage='m2',tmin=.5):
     rows = [r for r in m2rows if (r['prop'],M.arm_key(r),r['w'],r['_stage'],r['t_min_guide']) == (p,a,float(w),stage,tmin)]
@@ -123,6 +133,22 @@ def tables():
         rows.append(NAMES[a]+' & '+pm(gc,'in_band_fraction')+' & '+pm(cp,'in_band_fraction')+' & '+f'{1e4*avg(gc,"kmer_js"):.2f} / {1e4*avg(cp,"kmer_js"):.2f} & {avg(gc,"diversity"):.4f} / {avg(cp,"diversity"):.4f} & {duration(cp,True):.3f}'+r'\\')
     out['M2']=latex_table('DNA, $w=4$, $t\\ge0.5$: decoded IB (percent mean $\\pm$ seed sd); JSD ($\\times10^{-4}$) and Hamming diversity in GC/CpG order. Time is recorded s/sequence for CpG. TFG-MC is a restricted adaptation. Full results: Table~\\ref{tab:full-m2}.','tab:m2','lccccc',r'Method & GC IB$\uparrow$ & CpG IB$\uparrow$ & JSD$\downarrow$ & Hamming & Time',rows)
     out['M2']=out['M2'].replace(r'\centering\small',r'\centering\small\setlength{\tabcolsep}{4pt}')
+    # Preserve the original window in the appendix; show the complete new GC
+    # comparison beside the still-late CpG comparison, with windows in headers.
+    out['M2-LATE']=out['M2'].replace('tab:m2','tab:m2-late')
+    rows=[]
+    for a in M.HEADLINE_ARMS:
+        gc=seq('gc',a,4) if a=='unguided' else (None if a=='bdg_e4t1' else win(a))
+        cp=seq('cpg',a,4)
+        g=lambda k,scale=1,d=2: '--' if gc is None else f'{scale*avg(gc,k):.{d}f}'
+        rows.append(NAMES[a]+' & '+('--' if gc is None else pm(gc,'in_band_fraction'))+' & '+pm(cp,'in_band_fraction')+' & '+g('kmer_js',1e4)+f' / {1e4*avg(cp,"kmer_js"):.2f} & '+g('diversity',1,4)+f' / {avg(cp,"diversity"):.4f} & '+('--' if gc is None else f'{duration(gc,True):.3f}')+f' / {duration(cp,True):.3f}'+r'\\')
+    out['M2']=latex_table('DNA, $w=4$: new GC window $t\\ge0.3$; CpG remains $t\\ge0.5$. IB is percent mean $\\pm$ seed sd; JSD ($\\times10^{-4}$), Hamming and s/sequence are GC/CpG. Dashes denote an unrun GC arm. Original matched-window results: Table~\\ref{tab:m2-late}.','tab:m2','lccccc',r'Method & GC IB$\uparrow$ & CpG IB$\uparrow$ & JSD$\downarrow$ & Hamming & Time',rows).replace(r'\centering\small',r'\centering\small\setlength{\tabcolsep}{3pt}')
+    rows=[]
+    for a in ('plug','tmpd','lgd_mc','tfg_mc','bdg_e4t0.5','bdg_e0t1'):
+        rs=win(a); c=contrast(rs,win('plug'),'in_band_fraction')
+        name=r'BDG $\eta=0$' if a=='bdg_e0t1' else NAMES[a]
+        rows.append(name+' & '+pm(rs,'in_band_fraction')+f' & {c["delta_pp"]:+.2f} & {st.stdev(c["seed_deltas_pp"]):.2f} & {1e4*avg(rs,"kmer_js"):.2f} & {avg(rs,"diversity"):.4f} & {100*M.pooled(rs)["clip_frac"]:.2f} & {duration(rs,True):.3f}'+r'\\')
+    out['M2-WINDOW']=latex_table('New GC window follow-up, $t\\ge0.3$, $w=4$, three seeds of 2,000. IB is percent mean $\\pm$ seed sd; differences and paired SD are percentage points against plug-in. JSD is $\\times10^{-4}$, Clip is percent of guided sample-steps. This exploratory follow-up was added after diagnosing the original late window.','tab:m2-window','lccccccc',r'Method & IB$\uparrow$ & $\Delta$IB & SD$(\Delta)$ & JSD$\downarrow$ & Hamming & Clip & s/seq.',rows)
     for be in ('fm','equifm','edm','vp'):
         rows=[]
         for p in PROPS:
@@ -198,13 +224,15 @@ def figures():
     ax=axs[1]
     for a,col,off,mark in [('bdg_e4t0.5',colors[0],-.12,'o'),('bdg_e4t1',colors[1],.12,'s')]:
         ds=[]; es=[]
-        for p,w in [('gc',1),('gc',4),('cpg',1),('cpg',4)]:
-            c=contrast(seq(p,a,w),seq(p,'plug',w),'in_band_fraction')
+        for p,w in [('gc',1),('gc',4),('gc03',4),('cpg',1),('cpg',4)]:
+            if p=='gc03' and a=='bdg_e4t1':
+                ds.append(float('nan')); es.append(float('nan')); continue
+            c=contrast(win(a),win('plug'),'in_band_fraction') if p=='gc03' else contrast(seq(p,a,w),seq(p,'plug',w),'in_band_fraction')
             ds.append(c['delta_pp']); es.append(st.stdev(c['seed_deltas_pp']))
-        ax.errorbar(np.arange(4)+off,ds,yerr=es,ls='none',marker=mark,color=col,capsize=3,label=r'$\tau_m='+('0.5' if a.endswith('.5') else '1')+'$')
+        ax.errorbar(np.arange(5)+off,ds,yerr=es,ls='none',marker=mark,color=col,capsize=3,label=r'$\tau_m='+('0.5' if a.endswith('.5') else '1')+'$')
     ax.axhline(0,color='.5',ls='--',lw=.8)
-    ax.set(xticks=range(4),xticklabels=['GC\n$w=1$','GC\n$w=4$','CpG\n$w=1$','CpG\n$w=4$'],ylabel='IB difference vs plug-in (pp)',ylim=(-4,20))
-    ax.set_title('(b) DNA: gain depends on property',loc='left')
+    ax.set(xticks=range(5),xticklabels=['GC\n$w=1$','GC\n$w=4$','GC .3\n$w=4$','CpG\n$w=1$','CpG\n$w=4$'],ylabel='IB difference vs plug-in (pp)',ylim=(-4,20))
+    ax.set_title('(b) DNA: property and window matter',loc='left')
     ax.legend(loc='upper left',frameon=False,ncol=2)
     fig.savefig(PAPER/f'figs/results_v{VERSION}.pdf'); fig.savefig(PAPER/f'figs/results_v{VERSION}.png',dpi=220); plt.close(fig)
     for be in ('fm','equifm'):
@@ -235,7 +263,7 @@ def main():
         if found[0]!=wanted: stale.append(k)
         main=re.sub(pattern,lambda _:wanted,main,flags=re.S)
     source_paths=[p for be in ('fm','vp','equifm','edm') for stage in ('v3','v3abl') for p in (ROOT/f'results/v3/{be}/{stage}/n2000').rglob('*.json')]
-    source_paths += [Path(r['_path']) for r in m2rows]
+    source_paths += [Path(r['_path']) for r in m2rows+winrows]
     sources={str(p.relative_to(ROOT)):hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(source_paths)}
     if args.check:
         saved=json.loads((PAPER/f'results_manifest_v{VERSION}.json').read_text())
@@ -263,6 +291,8 @@ def main():
             c=contrast(seq(p,'bdg_e4t0.5',w),seq(p,'plug',w),'in_band_fraction')
             assert abs(c['delta_pp']-expected)<.005
             assert (c['z']>3.16)==above
+        assert abs(contrast(win('bdg_e4t0.5'),win('plug'),'in_band_fraction')['delta_pp']-7.083333)<1e-4
+        assert avg(win('tmpd'),'in_band_fraction')!=avg(win('plug'),'in_band_fraction')
         print(f'PASS: {len(ts)} inline tables match all final cells; {len(sources)} source hashes unchanged.')
         print('PASS: molecular and DNA claims, own FM/VP guidance, six monotone spread curves, and exploratory exchange/correlation audits.')
         return
@@ -275,6 +305,8 @@ def main():
     audit['molecular_target_errors']={f'{be}/{p}/{a}':{'mae':avg(heads[be][p,a],'prop_mae_eval_dec'),'bias':bias(heads[be][p,a])} for be in ('fm','equifm') for p in PROPS for a in ('plug','bdg_e4t0.5')}
     audit['own_model_comparison']={be:{k:avg(heads[be]['mu','unguided'],k) for k in ('mol_stability','validity','uniqueness_of_valid','seconds')} for be in ('fm','vp')}
     audit['additional_diagnostics']=diagnostics()
+    audit['m2_window_followup']={a:contrast(win(a),win('plug'),'in_band_fraction') for a in ('tmpd','lgd_mc','tfg_mc','bdg_e4t0.5','bdg_e0t1')}
+    audit['m2_compute']={'new_files':len(winrows),'old_files':len(m2rows),'new_hours':sum(r['minutes'] for r in winrows)/60,'all_hours':sum(r['minutes'] for r in m2rows+winrows)/60}
     (PAPER/f'results_manifest_v{VERSION}.json').write_text(json.dumps(audit,indent=2),encoding='utf8')
     print(f'Rebuilt {len(ts)} table blocks and 3 vector figures; {len(sources)} source hashes.')
 

@@ -1,4 +1,19 @@
-# Defense deck: how to build it, who presents what, and what still needs data
+# Defense deck
+
+**Current PowerPoint, 29 September 2026:**
+[BDG Defense Group 2, PPTX v4](deck_versions/pptx_v4_2026-09-29/output/BDG_Defense_Group_2_v4_revised.pptx).
+It continues the supplied PowerPoint v2 and aligns with paper v9 and the two
+22:47 DNA commits. The 51 slides contain 31 main/bibliography slides and a
+20-slide Q&A appendix. Distribution figures for both modalities mark q50,
+band edges and formulas. New GC uses t >= 0.3; CpG retains t >= 0.5.
+Original v2 and the v3 checkpoint remain preserved.
+See the [release record](deck_versions/pptx_v4_2026-09-29/README.md) for the
+rubric map, validation and source hashes.
+
+The instructions below describe the older LaTeX deck. Its pending markers,
+four-presenter allocation and historical conclusions are not current.
+
+## Historical LaTeX build instructions
 
 **Deck:** `defense.tex` → `defense.pdf`, 29 slides.
 **Build:** `pdflatex defense && pdflatex defense` (two passes; the second fixes the

@@ -5,6 +5,18 @@ now `paper/main.tex`; `paper/body.tex` points readers there. Numbered snapshots
 are retained when the live paper changes. Paper version numbers and experiment
 protocol version numbers are independent.
 
+## v9 - 29 Sep 2026
+
+Adds the two 22:47 commits: GC guidance starts at t >= 0.3 in the new follow-up;
+CpG remains at t >= 0.5. Original comparisons are retained. Adds measured
+property distributions, q50 and bandwidth formulas for both modalities,
+expanded EGNN/decoder explanations, fixed atom-count protocol, and next steps
+on atom-count and target-density confounding. Twenty generated table blocks,
+995 source cells; five main pages and 24 pages overall. Paper v8 is unchanged.
+
+See [revision notes](v9_revision_notes.md) and [frozen snapshot](v9_2026-09-29/README.md).
+The matching defense deck is PowerPoint v4, a separate version sequence.
+
 ## v8 - 29 Sep 2026
 
 Further manuscript revision informed by the supplied defense deck and checked

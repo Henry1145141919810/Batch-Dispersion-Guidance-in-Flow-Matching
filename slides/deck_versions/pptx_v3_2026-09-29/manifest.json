@@ -1,0 +1,29 @@
+{
+  "version": "PPTX v3",
+  "date": "2026-09-29",
+  "paper_version": 8,
+  "status": "superseded checkpoint",
+  "source_user_file": "C:/Users/mooooonesy/Downloads/BDG Defense — Group 2 v2.pptx",
+  "source_sha256": "fe365871823b5f765f9acd857705e44e1ffc509979070b7a05b4b218ff3a9dfb",
+  "output_sha256": "2fcc9f9ccce51a1922c14837465ed358a834d7fe2f1f1b800e1123c172973dbf",
+  "slide_count": 47,
+  "result_manifest": "paper/results_manifest_v8.json",
+  "result_file_count": 973,
+  "new_data_commits": [],
+  "checks": {
+    "package_integrity": "pass",
+    "layout_findings": 0,
+    "layout_warnings": 0,
+    "artifact_reimport_passed": true,
+    "native_powerpoint_execution_tested": false
+  },
+  "files": {
+    ".gitattributes": "8a9eed1d5624acd7125d351511c1d72fa4cc0ab40de091317054456e1322f178",
+    "output/BDG_Defense_Group_2_v3_revised.pptx": "2fcc9f9ccce51a1922c14837465ed358a834d7fe2f1f1b800e1123c172973dbf",
+    "README.md": "b3b1c65ffc58c6a3c0b99a17b8059046100d488e38077cbc962ad9a9686ec76f",
+    "source/BDG_Defense_Group_2_v2.pptx": "fe365871823b5f765f9acd857705e44e1ffc509979070b7a05b4b218ff3a9dfb",
+    "source/build_v3.mjs": "02a5d9eee59897cc73513d5d5ead68f38061789232db3d05599e2bf2c3f6f692",
+    "source/deck_data.json": "62573e8e56ec3e26cdfb7ee283416d1db5a4287151dece9ceb45e52481bb9080",
+    "source/prepare_data.py": "34844189b1a26e1c8eec5be4ff19e5c4a8de5a9e0e82e3f5028ba5fed1a2daff"
+  }
+}
