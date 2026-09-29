@@ -256,7 +256,7 @@ proj1/tests/        43 closed-form gates (run them; they are fast)
 proj1/cluster/      SLURM job scripts for PARCC Betty
 blade_runs/         the blade GPU box's lanes and queues (no scheduler there)
 proj1/m2/           Modality 2: DNA sequences on the simplex
-weights/            inference-ready checkpoints (24 MB) -- see weights/README.md
+weights/            inference-ready checkpoints (40.5 MB) -- see weights/README.md
 results/            one JSON per experiment cell -- THE experimental record
                     (results/v3/<be>/v3|v3abl/n2000/ is the blade run;
                     results/v3/<be>/n5000/ is the earlier Betty run)
@@ -313,11 +313,12 @@ python proj1/scripts/select_arms.py --stage main
 
 The **transfer experiment** — every guidance arm re-run on a borrowed base
 model, guide and oracle, so that nothing in it but the guidance field is ours —
-needs one download and then runs from the clone:
+needs two downloads (both hash-checked) and then runs from the clone:
 
 ```bash
-python proj1/scripts/fetch_tfg_assets.py            # TFG's EDMsecond, ~100 MB
-python proj1/tests/test_transfer_backend.py         # expect ALL PASS (61 gates)
+python proj1/scripts/fetch_tfg_assets.py            # TFG's EDMsecond, 21 MB
+python proj1/scripts/fetch_equifm_assets.py         # EquiFM + OC-Flow's second oracle, 30 MB (every v3 backend loads it)
+python proj1/tests/test_transfer_backend.py         # expect ALL PASS (74 gates; 61 before the EDMsecond fetch)
 
 # the hard gate: the borrowed model through OUR evaluator. If this fails,
 # nothing downstream is trustworthy -- see the script's docstring.

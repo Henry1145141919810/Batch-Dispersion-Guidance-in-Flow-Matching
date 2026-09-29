@@ -532,7 +532,11 @@ def audit_live(F, R, TL, fm_params=None):
     if t:
         for row in t["rows"]:
             lo = row[0].lower()
-            be = "equifm" if "equifm" in lo else "edm" if "edm" in lo else "fm" if ("ours" in lo or "flow" in lo or "fm" in lo) else None
+            # `vp` is tested FIRST: its row reads "VP diffusion, ours", and the
+            # "ours" test below used to claim it for `fm`, so every VP number
+            # was compared with FM's cells and reported as a mismatch.
+            be = ("vp" if "vp" in lo else "equifm" if "equifm" in lo else "edm" if "edm" in lo
+                  else "fm" if ("ours" in lo or "flow" in lo or "fm" in lo) else None)
             if be is None:
                 skipped.append("tab:fmvd row %r: no generator recognised" % row[0])
                 continue
@@ -559,14 +563,28 @@ def audit_live(F, R, TL, fm_params=None):
                 else:
                     cands = {"%s cells" % p: F.h[be][(p, "unguided")][key] for p in PROPS}
                     cands["mean over properties"] = mean(s[key] for s in R[be]["seed"])
-                hit = [k for k, v in cands.items() if close(v, nums[0])]
+                # Rates (stability, validity, uniqueness) are fractions in the
+                # cells but the v8 manuscript prints them as PERCENTAGES
+                # (39.7 for 0.3970). Accept either scale, and say which matched,
+                # rather than flag a correctly printed percentage as a mismatch.
+                pct = key in ("mol_stability", "validity", "uniqueness_of_valid")
+
+                def match(v, tok):
+                    if close(v, tok):
+                        return "fraction"
+                    if pct and close(100.0 * v, tok):
+                        return "percent"
+                    return None
+                hit = [(k, match(v, nums[0])) for k, v in cands.items() if match(v, nums[0])]
                 out.append(("tab:fmvd", row[0], h, nums[0], "%.4f" % cands.get("mu cells", cands["mu cells"]),
-                            "ok" if hit else "MISMATCH", ("matches the %s" % hit[0]) if hit else ""))
+                            "ok" if hit else "MISMATCH",
+                            ("matches the %s (as a %s)" % hit[0]) if hit else ""))
                 if len(nums) > 1 and key != "time":
                     sds = {"%s cells" % p: sdev(r[key] for r in F.M1[(be, "v3", 1)][(p, "unguided")]) for p in PROPS}
-                    shit = [k for k, v in sds.items() if close(v, nums[1])]
+                    shit = [(k, match(v, nums[1])) for k, v in sds.items() if match(v, nums[1])]
                     out.append(("tab:fmvd", row[0], h + " (sd)", nums[1], "%.4f" % sds["mu cells"],
-                                "ok" if shit else "MISMATCH", ("seed sd of the %s" % shit[0]) if shit else ""))
+                                "ok" if shit else "MISMATCH",
+                                ("seed sd of the %s (as a %s)" % shit[0]) if shit else ""))
     # tab:guidance / tab:recent -- mu/alpha/gap triples on our FM at w = 1
     for lab in ("tab:guidance", "tab:recent"):
         t = TL.get(lab)
@@ -913,6 +931,12 @@ def claim_checks(F, X, live_src):
         s = sentence(m.start(), m.end())
         if "TFG leads useful yield" in s or "paired useful-yield reading over 18" in s or any(s == o[0] for o in out):
             continue
+        # A disclaimer is not a claim: v8's tab:exchange caption says its
+        # ratios use decoded means, "not joint useful yield". Flagging that
+        # sentence as "from another run" accused the paper of the very thing
+        # it rules out.
+        if re.search(r"\bnot\b[\w\s-]{0,20}$", txt[max(0, m.start() - 30):m.start()]):
+            continue
         out.append((s, "useful yield", "not computable from v3-final cells: the blade sidecars stay on blade (rule 11); the only paired reading is Betty n = 5000",
                     "NOT v3-FINAL", where(m.start())))
     # the second evaluator: verdict changes over the v3-final contrasts
@@ -1212,8 +1236,12 @@ class Fill:
 
     def __init__(self, M1, M2):
         self.M1, self.M2 = M1, M2
+        # `vp` (our own diffusion, unguided + plug only) is included so the
+        # live audit can check tab:fmvd's VP row against VP's own cells. Every
+        # other use of self.h names its backends explicitly, so this adds a
+        # key and changes no existing number.
         self.h = {be: {k: m1_stats(v) for k, v in M1[(be, "v3", 1)].items()}
-                  for be in ("fm", "equifm", "edm")}
+                  for be in ("fm", "equifm", "edm", "vp") if (be, "v3", 1) in M1}
         self.a = {(be, w): {k: m1_stats(v) for k, v in M1[(be, "v3abl", w)].items()}
                   for be in ("fm", "equifm") for w in (1, 4)}
         self.m2 = {}
@@ -2070,12 +2098,12 @@ def sec_fmvd(A, T, F, R):
             ", ".join(f4(s["mol_stability"]) for s in ss), ok))
     ss = R["vp"]["seed"]
     A("| VP, trained here (**ours**) | %s | %s | %s | %s | %s | %s | %s | **yes** |" % (
-        pm([x["mol_stability"] for x in ss]).replace("$\pm$", "+-"),
-        pm([x["validity"] for x in ss]).replace("$\pm$", "+-"),
-        pm([x["uniqueness_of_valid"] for x in ss]).replace("$\pm$", "+-"),
-        pm([x["unique_valid_per_sample"] for x in ss]).replace("$\pm$", "+-"),
+        pm([x["mol_stability"] for x in ss]).replace("$\\pm$", "+-"),
+        pm([x["validity"] for x in ss]).replace("$\\pm$", "+-"),
+        pm([x["uniqueness_of_valid"] for x in ss]).replace("$\\pm$", "+-"),
+        pm([x["unique_valid_per_sample"] for x in ss]).replace("$\\pm$", "+-"),
         "/".join("%g" % x for x in R["vp"]["nfe"]),
-        pm([x["s1k"] for x in ss], 1).replace("$\pm$", "+-"),
+        pm([x["s1k"] for x in ss], 1).replace("$\\pm$", "+-"),
         ", ".join(f4(x["mol_stability"]) for x in ss)))
     A("")
     A("**(4) All four `VP, trained here` cells are now fillable** from the `vp` backend (28 Sep). The NFE 100 of the FM row is confirmed by the cells (%s per batch); `edm` runs %s and `vp` runs %s."

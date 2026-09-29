@@ -10,14 +10,35 @@ to review 2.6 GB will not find the four scripts that matter. This script names
 the submission exactly, so what we hand in is the same set every time and the
 decision about what to leave out is written down rather than improvised.
 
-WHAT GOES IN (two tiers, both included by default)
+WHAT GOES IN (four tiers, all included by default)
 
   A. code, docs, paper source, configs           ~480 files,  ~18 MB
   B. the result cells the paper's tables read    ~1,117 files, ~4.5 MB
+  W. the model weights that fresh sampling needs    ~13 files, ~57 MB
+  V. vendored third-party code the external
+     backends load at import time                  ~37 files, ~30 MB
 
-Tier B is optional in principle and included in practice: with it, every table
-in the paper regenerates from the archive alone, with no GPU and no download.
-That is worth 4.5 MB. `--no-results` drops it.
+Total ~1,700 files, ~112 MB.
+
+Tier B: with it, every table in the paper regenerates from the archive alone,
+with no GPU and no download. `--no-results` drops it.
+
+Tier W: every checkpoint WE trained, so a reader can sample, not just re-read
+tables -- the flow-matching and VP-diffusion generators and the six f_A/f_B
+predictors (weights/*.pt, documented by md5 in weights/README.md), and the
+Modality 2 generator with the 12 MB DeepFlyBrain split it samples against
+(proj1/m2/blade_bundle/{fm_m2_dfb500.pt,dfb500.npz}). `--no-weights` drops it.
+
+Tier V: audit/fa_fb_search/ -- TFG and OC-Flow, vendored unmodified, with their
+origin, commit and licence in PROVENANCE.md. It is not our code, but it is
+load-bearing: proj1/src/external/tfg_assets.py imports TFG's model definitions
+from it, and the borrowed f_A/f_B property networks the `equifm` backend is
+scored with are checkpoints inside it. Without it the `edm` and `equifm`
+backends cannot even import. `--no-vendored` drops it.
+
+What the archive still cannot contain is the two BORROWED generators, which are
+third-party releases: fetch them with proj1/scripts/fetch_tfg_assets.py (TFG's
+EDMsecond) and fetch_equifm_assets.py (EquiFM). SUBMISSION.md section 7.
 
 WHAT STAYS OUT, AND WHY
 
@@ -26,29 +47,20 @@ WHAT STAYS OUT, AND WHY
   betty_pull/      cluster sync, 582 MB of checkpoints we did not author here.
   bundles/         the code tarballs already shipped to Betty, 396 MB. Shipping
                    a copy of every previous shipment inside this one is silly.
-  audit/           vendored third-party repos. 344 MB on disk but only
-                   ~30 MB tracked, and that 30 MB IS load-bearing: tfg_assets.py
-                   loads TFG's model definitions from it and the borrowed f_A/f_B
-                   property networks live there. Excluding it means the `edm` and
-                   `equifm` backends do not run from the archive alone -- see
-                   SUBMISSION.md section 7. Every paper table still regenerates,
-                   because those come from the committed cells.
+  audit/ other     everything in audit/ except tier V: reference clones and the
+                   BDG review's evidence (docs/methods/BDG_REVIEW.md cites it;
+                   it is in the git repository, not the archive).
   archive/         superseded brainstorms and dropped ideas, 64 MB.
   scratch_schnet/  a reference implementation on no results path, 32 MB.
   slides/deck_versions/   frozen deck snapshots, 30 MB. The live source travels.
-  *.pt *.npy       model weights. See WEIGHTS below -- this is the one real
-                   judgement call in the manifest.
-  *.permol.pt      per-molecule sidecars; the committed JSON cells carry every
-                   number the paper reports.
+  weights/EDMsecond/  TFG's borrowed generator, 21 MB, not ours and not tracked;
+                   fetch_tfg_assets.py downloads it.
+  other *.pt/*.npy anything binary outside tiers W and V -- cluster checkpoints,
+                   per-molecule sidecars (*.permol.pt). The committed JSON cells
+                   carry every number the paper reports.
   results/ other   superseded runs (n5000, basecmp, transfer*, v2/q90, tune,
                    bdg_port). docs/results/DATA_INDEX.md section 5 lists each
                    with what replaced it. Cite none of them; ship none of them.
-
-WEIGHTS. `weights/*.pt` is 39 MB and is NOT included. The archive therefore
-reproduces every TABLE (tier B carries the cells) but not fresh SAMPLING, which
-needs the generators. If the submission instructions allow 39 MB more, pass
-`--weights` and say so in the README; otherwise weights/README.md documents
-every checkpoint by md5 so any of them can be matched to the cells that used it.
 """
 from __future__ import annotations
 
@@ -69,7 +81,7 @@ TIER_A_PREFIX = (
     "blade_runs/",     # the off-cluster run drivers
     "course/",         # the assignment and the paper template we were given
     "slides/handoff/", # the deck's content spec (the deck itself is a separate deliverable)
-    "weights/README",  # what each checkpoint is, by md5, without the weights
+    "weights/README",  # what each checkpoint is, by md5
 )
 TIER_A_FILES = ("README.md", "ONBOARDING.md", "requirements.txt",
                 ".gitignore", ".gitattributes", "SUBMISSION.md",
@@ -77,11 +89,36 @@ TIER_A_FILES = ("README.md", "ONBOARDING.md", "requirements.txt",
 
 # Tier B. The cells the paper's tables are computed from -- the canonical run
 # only. docs/results/DATA_INDEX.md section 1 defines this set.
-TIER_B_PREFIX = ("results/v3/", "results/m2/")
+TIER_B_PREFIX = ("results/v3/", "results/m2/",
+                 # the batch-memory probe that chose v3's batch size of 500.
+                 # proj1/tests/test_v3.py reads it (`batch_probe_record_exists`)
+                 # and FAILS without it: it sat outside results/v3/, so an
+                 # earlier manifest shipped a test suite that could not pass.
+                 "results/v3_batch_memory",
+                 # Modality 2's measured summaries (correction share, realism
+                 # gate, DeepFlyBrain activity, strength and window scans),
+                 # 127 KB. paper_fill_v3.py, v3_final_summary.py and
+                 # m2_v3_results.py open them unconditionally, so without them
+                 # the paper cross-check stops at FileNotFoundError.
+                 "results/m2_")
 
-# Never, whatever tier asked for it.
+# Tier W. The checkpoints WE trained. Everything tracked under weights/ (the
+# FM and VP generators, the six predictors, and their README / manifests),
+# plus the Modality 2 generator and the data split it samples against, which
+# live beside the M2 code rather than in weights/.
+TIER_W_PREFIX = ("weights/",)
+TIER_W_FILES = ("proj1/m2/blade_bundle/fm_m2_dfb500.pt",
+                "proj1/m2/blade_bundle/dfb500.npz")
+
+# Tier V. Third-party code, vendored unmodified, that our code imports. Its
+# binary files (.npy checkpoints, .pickle args) are the borrowed property
+# networks, so they must survive the DROP_EXT filter below.
+TIER_V_PREFIX = ("audit/fa_fb_search/",)
+
+# Never, whatever tier asked for it -- EXCEPT a file that tier W or V names,
+# which is exactly the binary those tiers exist to carry.
 DROP_EXT = (".pt", ".npy", ".npz", ".zip", ".tgz", ".sdf", ".h5")
-DROP_SUBSTR = ("__pycache__", ".ipynb_checkpoints")
+DROP_SUBSTR = ("__pycache__", ".ipynb_checkpoints", ".permol.pt")
 
 
 def tracked():
@@ -91,24 +128,23 @@ def tracked():
     return [f for f in out.split("\0") if f]
 
 
-def select(files, results=True, weights=False):
+def select(files, results=True, weights=True, vendored=True):
     keep = []
     for f in files:
         if any(s in f for s in DROP_SUBSTR):
             continue
-        # `--weights` has to be part of the TIER-A test, not a late escape
-        # hatch: weights/*.pt matches neither TIER_A_PREFIX ("weights/README")
-        # nor TIER_B_PREFIX, so it was dropped two lines before the branch that
-        # was supposed to rescue it. --weights was a silent no-op.
-        is_weight = weights and f.startswith("weights/") and f.endswith(".pt")
-        in_a = f.startswith(TIER_A_PREFIX) or f in TIER_A_FILES or is_weight
+        # A tier-W/V file must be tested BEFORE the extension filter, not
+        # rescued after it: an earlier version dropped weights/*.pt by
+        # extension two lines before the branch meant to keep them, so
+        # `--weights` was a silent no-op. `carries_binary` is the exemption.
+        in_w = weights and (f.startswith(TIER_W_PREFIX) or f in TIER_W_FILES)
+        in_v = vendored and f.startswith(TIER_V_PREFIX)
+        carries_binary = in_w or in_v or f.startswith("paper/figs/")
+        in_a = f.startswith(TIER_A_PREFIX) or f in TIER_A_FILES
         in_b = results and f.startswith(TIER_B_PREFIX) and f.endswith(".json")
-        if not (in_a or in_b):
+        if not (in_a or in_b or in_w or in_v):
             continue
-        # paper/figs/ carries the paper's actual figures; nothing there should
-        # be filtered by extension. (.pdf is not in DROP_EXT, so today this
-        # only guards against a future .npz/.pt landing in that directory.)
-        if f.endswith(DROP_EXT) and not f.startswith("paper/figs/") and not is_weight:
+        if f.endswith(DROP_EXT) and not carries_binary:
             continue
         keep.append(f)
     return sorted(keep)
@@ -119,11 +155,20 @@ def main():
     ap.add_argument("--zip", action="store_true", help="write the archive (default: dry run)")
     ap.add_argument("--out", default=os.path.join(ROOT, "cis6270_p1_group2_code.zip"))
     ap.add_argument("--no-results", action="store_true", help="tier A only")
-    ap.add_argument("--weights", action="store_true",
-                    help="also include weights/*.pt (+60 MB); say so in the submission note")
+    ap.add_argument("--no-weights", action="store_true",
+                    help="drop tier W, our checkpoints (~57 MB): tables still "
+                         "rebuild, fresh sampling no longer runs")
+    ap.add_argument("--no-vendored", action="store_true",
+                    help="drop tier V, audit/fa_fb_search (~30 MB): the edm and "
+                         "equifm backends no longer import")
+    ap.add_argument("--copy-to", default=None, metavar="DIR",
+                    help="copy the manifest, unzipped, into DIR (must not exist). "
+                         "The way to test that the archive runs on its own: no "
+                         "betty_pull/, no local checkpoints, no .git")
     args = ap.parse_args()
 
-    files = select(tracked(), results=not args.no_results, weights=args.weights)
+    files = select(tracked(), results=not args.no_results,
+                   weights=not args.no_weights, vendored=not args.no_vendored)
     if not files:
         sys.exit("nothing selected -- is this a git checkout?")
 
@@ -144,9 +189,30 @@ def main():
     need = ["SUBMISSION.md", "docs/results/DATA_INDEX.md", "requirements.txt",
             "README.md", "proj1/scripts/transfer_sweep.py",
             "paper/tools/build_results.py"]
+    # ...and one that cannot SAMPLE is not what the README promises. Named
+    # file by file, so a renamed checkpoint fails the build instead of
+    # shipping an archive that stops at FileNotFoundError on the reader's side.
+    if not args.no_weights:
+        need += ["weights/fm_ema.pt", "weights/diff_ema.pt", "weights/README.md",
+                 *("weights/f_%s_%s.pt" % (s, p) for s in "AB"
+                   for p in ("mu", "alpha", "gap")),
+                 *TIER_W_FILES]
+    if not args.no_vendored:
+        need += ["audit/fa_fb_search/PROVENANCE.md"]
     missing = [f for f in need if f not in files]
     if missing:
         sys.exit("REFUSING: the manifest is missing %s" % ", ".join(missing))
+
+    if args.copy_to:
+        import shutil
+        if os.path.exists(args.copy_to):
+            sys.exit("REFUSING: %s exists; give a fresh directory" % args.copy_to)
+        for f in files:
+            dst = os.path.join(args.copy_to, f)
+            os.makedirs(os.path.dirname(dst), exist_ok=True)
+            shutil.copy2(os.path.join(ROOT, f), dst)
+        print("\ncopied %d files to %s" % (len(files), args.copy_to))
+        return 0
 
     if not args.zip:
         print("\ndry run. Add --zip to write %s" % args.out)

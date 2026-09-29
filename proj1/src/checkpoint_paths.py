@@ -53,21 +53,19 @@ _GENERATOR = (
 # epoch the trainer last happened to reach -- including an abandoned partial
 # run, which is exactly the state job 8590174 left behind at epoch ~80.
 #
-# `weights/vp_ema.pt` is the published slim copy, by analogy with fm_ema.pt.
-# NOTHING IN THE REPO PRODUCES IT YET: fm_ema.pt came from a one-off slimming
-# recorded in weights/README.md, and no equivalent has been run for VP. It is
-# last here so a fresh clone's error names a path its owner can recognise.
+# The published slim copy is `weights/diff_ema.pt` (epoch 1475, the SELECTED
+# checkpoint -- see weights/README.md), by analogy with fm_ema.pt. It is LAST
+# so that when nothing exists, the error names the file a fresh clone is
+# supposed to have. `vp_ema.pt` was this file's first guess at that name,
+# before the weights shipped; it is kept, second to last, so an older clone
+# that followed the guess still resolves.
 _VP_GENERATOR = (
     os.path.join(BETTY, "diff.pt"),
     os.path.join(LOCAL_CKPT, "diff.pt"),
     os.path.join(BETTY, "diff_last.pt"),
     os.path.join(LOCAL_CKPT, "diff_last.pt"),
-    # The published slim copy. `diff_ema.pt` is the name it actually shipped
-    # under (Bobo, 28 Sep, "Publish the diffusion generator weights,
-    # EMA-only") and mirrors `fm_ema.pt`'s naming; `vp_ema.pt` was this file's
-    # first guess at that name and is kept so an older clone still resolves.
-    os.path.join(WEIGHTS, "diff_ema.pt"),
     os.path.join(WEIGHTS, "vp_ema.pt"),
+    os.path.join(WEIGHTS, "diff_ema.pt"),
 )
 
 # Directories to look in for f_A_<prop>.pt, f_B_<prop>.pt, rch_<prop>.pt.
@@ -91,10 +89,9 @@ def default_vp_generator() -> str:
     """The VP-diffusion generator checkpoint when `--vp-ckpt` is not given.
 
     Same contract as `default_generator`: first that exists, else the LAST
-    candidate so the error names `weights/vp_ema.pt` rather than a cluster
-    path. As of 28 Sep 2026 none of the three exists -- the 1500-epoch run on
-    `train_a` has not completed -- so this returns a path that is meant to
-    fail loudly in `--backend vp`, not a fallback to some other model.
+    candidate, so the error names `weights/diff_ema.pt` -- the committed file a
+    fresh clone should have -- rather than a cluster path. It never falls back
+    to some other model: a missing VP checkpoint fails loudly in `--backend vp`.
     """
     for p in _VP_GENERATOR:
         if os.path.exists(p):

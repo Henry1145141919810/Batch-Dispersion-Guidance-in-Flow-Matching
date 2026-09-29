@@ -60,6 +60,15 @@ found the guide's blind spots. Never score with `f_A`.
 All six are EGNN, hidden 128, 4 layers, 120 epochs. See
 [docs/protocol/SPLIT_PROTOCOL.md](../docs/protocol/SPLIT_PROTOCOL.md).
 
+## Modality 2 (DeepFlyBrain enhancers)
+
+The Modality 2 generator is not in this directory: it lives beside its code, at
+`proj1/m2/blade_bundle/fm_m2_dfb500.pt` (4.1 MB, md5 prefix `7f59b60b`), with
+the data split it trains and samples on, `proj1/m2/blade_bundle/dfb500.npz`
+(12 MB, md5 prefix `6d2df4d0`). Simplex flow matching, hidden 128, 10 layers,
+500 bp crop, 1500 epochs, seed 20260921. `proj1/m2/m2_sweep.py` loads both by
+default. Both ship in the submission archive.
+
 ## Loading
 
 ```python

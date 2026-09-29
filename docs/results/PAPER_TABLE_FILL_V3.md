@@ -60,72 +60,49 @@ One more `\pend` sits in prose (sec. 4.1, "`\pend{}` marks a pending value"); it
 
 ## 1b. Audit of the live `paper/main.tex` (filled by another revision)
 
-When this ran, `paper/main.tex` (md5 `bbfa6698` of its bytes, as `md5sum` prints it; modified 2026-09-28 21:26:11) no longer matched v4: its result tables had been filled and much of its prose rewritten by a revision that is not committed. Every number in its tables that the parser recognises, and every prose or text-table number one of the checks below matches, is compared with this script's recomputation from the v3-final cells, at the printed precision; each prose row names **where** the sentence sits. **This is a snapshot**: re-run the script after the next revision.
+When this ran, `paper/main.tex` (md5 `af8a21d7` of its bytes, as `md5sum` prints it; modified 2026-09-29 08:43:59) no longer matched v4: its result tables had been filled and much of its prose rewritten by a revision that is not committed. Every number in its tables that the parser recognises, and every prose or text-table number one of the checks below matches, is compared with this script's recomputation from the v3-final cells, at the printed precision; each prose row names **where** the sentence sits. **This is a snapshot**: re-run the script after the next revision.
 
-**Tables.** 49 numbers compared; **43 mismatch**.
+**Tables.** 28 numbers compared; **0 mismatch**.
 
 | table | row | column | printed | recomputed | status | note |
 |---|---|---|---|---|---|---|
-| `tab:fmvd` | FM, ours | Mol. stable$\uparrow$ | 39.7 | 0.3970 | **MISMATCH** |  |
-| `tab:fmvd` | FM, ours | Mol. stable$\uparrow$ (sd) | 0.6 | 0.0061 | **MISMATCH** |  |
-| `tab:fmvd` | FM, ours | Valid$\uparrow$ | 75.6 | 0.7562 | **MISMATCH** |  |
-| `tab:fmvd` | FM, ours | Valid$\uparrow$ (sd) | 1.1 | 0.0108 | **MISMATCH** |  |
-| `tab:fmvd` | FM, ours | Unique$\uparrow$ | 99.8 | 0.9985 | **MISMATCH** |  |
-| `tab:fmvd` | FM, ours | s/sample | 0.051 | 0.0505 | ok | matches the mu cells |
-| `tab:fmvd` | VP diffusion, ours | Mol. stable$\uparrow$ | 28.8 | 0.3970 | **MISMATCH** |  |
-| `tab:fmvd` | VP diffusion, ours | Mol. stable$\uparrow$ (sd) | 1.3 | 0.0061 | **MISMATCH** |  |
-| `tab:fmvd` | VP diffusion, ours | Valid$\uparrow$ | 66.2 | 0.7562 | **MISMATCH** |  |
-| `tab:fmvd` | VP diffusion, ours | Valid$\uparrow$ (sd) | 0.7 | 0.0108 | **MISMATCH** |  |
-| `tab:fmvd` | VP diffusion, ours | Unique$\uparrow$ | 99.9 | 0.9985 | **MISMATCH** |  |
-| `tab:fmvd` | VP diffusion, ours | NFE | 101 | 100 | **MISMATCH** |  |
-| `tab:fmvd` | VP diffusion, ours | s/sample | 0.048 | 0.0505 | **MISMATCH** |  |
-| `tab:fmvd` | EquiFM (flow) | Mol. stable$\uparrow$ | 86.2 | 0.8622 | **MISMATCH** |  |
-| `tab:fmvd` | EquiFM (flow) | Mol. stable$\uparrow$ (sd) | 0.3 | 0.0032 | **MISMATCH** |  |
-| `tab:fmvd` | EquiFM (flow) | Valid$\uparrow$ | 93.8 | 0.9377 | **MISMATCH** |  |
-| `tab:fmvd` | EquiFM (flow) | Valid$\uparrow$ (sd) | 0.6 | 0.0060 | **MISMATCH** |  |
-| `tab:fmvd` | EquiFM (flow) | Unique$\uparrow$ | 99.7 | 0.9972 | **MISMATCH** |  |
-| `tab:fmvd` | EquiFM (flow) | s/sample | 0.086 | 0.0858 | ok | matches the mu cells |
-| `tab:fmvd` | EDMsecond (diffusion) | Mol. stable$\uparrow$ | 67.2 | 0.6715 | **MISMATCH** |  |
-| `tab:fmvd` | EDMsecond (diffusion) | Mol. stable$\uparrow$ (sd) | 1.3 | 0.0125 | **MISMATCH** |  |
-| `tab:fmvd` | EDMsecond (diffusion) | Valid$\uparrow$ | 86.0 | 0.8602 | **MISMATCH** |  |
-| `tab:fmvd` | EDMsecond (diffusion) | Valid$\uparrow$ (sd) | 1.3 | 0.0128 | **MISMATCH** |  |
-| `tab:fmvd` | EDMsecond (diffusion) | Unique$\uparrow$ | 99.8 | 0.9977 | **MISMATCH** |  |
-| `tab:fmvd` | EDMsecond (diffusion) | s/sample | 0.087 | 0.0870 | ok | matches the mu cells |
-| `tab:recent` | Unguided | Mol. stable$\uparrow$ mu | 39.7 | 0.3970 | **MISMATCH** |  |
-| `tab:recent` | Unguided | Mol. stable$\uparrow$ alpha | 39.7 | 0.3970 | **MISMATCH** |  |
-| `tab:recent` | Unguided | Mol. stable$\uparrow$ gap | 39.7 | 0.3970 | **MISMATCH** |  |
-| `tab:recent` | Plug-in ($\eta=0$) | Mol. stable$\uparrow$ mu | 35.6 | 0.3562 | **MISMATCH** |  |
-| `tab:recent` | Plug-in ($\eta=0$) | Mol. stable$\uparrow$ alpha | 37.2 | 0.3720 | **MISMATCH** |  |
-| `tab:recent` | Plug-in ($\eta=0$) | Mol. stable$\uparrow$ gap | 33.6 | 0.3355 | **MISMATCH** |  |
-| `tab:recent` | TMPD-inspired | Mol. stable$\uparrow$ mu | 38.4 | 0.3835 | **MISMATCH** |  |
-| `tab:recent` | TMPD-inspired | Mol. stable$\uparrow$ alpha | 38.9 | 0.3887 | **MISMATCH** |  |
-| `tab:recent` | TMPD-inspired | Mol. stable$\uparrow$ gap | 37.3 | 0.3732 | **MISMATCH** |  |
-| `tab:recent` | LGD-MC | Mol. stable$\uparrow$ mu | 39.9 | 0.3992 | **MISMATCH** |  |
-| `tab:recent` | LGD-MC | Mol. stable$\uparrow$ alpha | 39.2 | 0.3917 | **MISMATCH** |  |
-| `tab:recent` | LGD-MC | Mol. stable$\uparrow$ gap | 39.5 | 0.3952 | **MISMATCH** |  |
-| `tab:recent` | TFG | Mol. stable$\uparrow$ mu | 24.5 | 0.2453 | **MISMATCH** |  |
-| `tab:recent` | TFG | Mol. stable$\uparrow$ alpha | 26.8 | 0.2675 | **MISMATCH** |  |
-| `tab:recent` | TFG | Mol. stable$\uparrow$ gap | 14.4 | 0.1438 | **MISMATCH** |  |
-| `tab:recent` | \textbf{BDG, $\tau_m=0.5$} | Mol. stable$\uparrow$ mu | 35.1 | 0.3512 | **MISMATCH** |  |
-| `tab:recent` | \textbf{BDG, $\tau_m=0.5$} | Mol. stable$\uparrow$ alpha | 36.4 | 0.3643 | **MISMATCH** |  |
-| `tab:recent` | \textbf{BDG, $\tau_m=0.5$} | Mol. stable$\uparrow$ gap | 30.0 | 0.2997 | **MISMATCH** |  |
-| `tab:recent` | \textbf{BDG, $\tau_m=1$} | Mol. stable$\uparrow$ mu | 40.5 | 0.4048 | **MISMATCH** |  |
-| `tab:recent` | \textbf{BDG, $\tau_m=1$} | Mol. stable$\uparrow$ alpha | 37.9 | 0.3787 | **MISMATCH** |  |
-| `tab:recent` | \textbf{BDG, $\tau_m=1$} | Mol. stable$\uparrow$ gap | 37.6 | 0.3758 | **MISMATCH** |  |
+| `tab:fmvd` | FM, ours | Mol. stable$\uparrow$ | 39.7 | 0.3970 | ok | matches the mu cells (as a percent) |
+| `tab:fmvd` | FM, ours | Mol. stable$\uparrow$ (sd) | 0.6 | 0.0061 | ok | seed sd of the mu cells (as a percent) |
+| `tab:fmvd` | FM, ours | Valid$\uparrow$ | 75.6 | 0.7562 | ok | matches the mu cells (as a percent) |
+| `tab:fmvd` | FM, ours | Valid$\uparrow$ (sd) | 1.1 | 0.0108 | ok | seed sd of the mu cells (as a percent) |
+| `tab:fmvd` | FM, ours | Unique$\uparrow$ | 99.8 | 0.9985 | ok | matches the mu cells (as a percent) |
+| `tab:fmvd` | FM, ours | s/sample | 0.051 | 0.0505 | ok | matches the mu cells (as a fraction) |
+| `tab:fmvd` | VP diffusion, ours | Mol. stable$\uparrow$ | 28.8 | 0.2883 | ok | matches the mu cells (as a percent) |
+| `tab:fmvd` | VP diffusion, ours | Mol. stable$\uparrow$ (sd) | 1.3 | 0.0134 | ok | seed sd of the mu cells (as a percent) |
+| `tab:fmvd` | VP diffusion, ours | Valid$\uparrow$ | 66.2 | 0.6617 | ok | matches the mu cells (as a percent) |
+| `tab:fmvd` | VP diffusion, ours | Valid$\uparrow$ (sd) | 0.7 | 0.0070 | ok | seed sd of the mu cells (as a percent) |
+| `tab:fmvd` | VP diffusion, ours | Unique$\uparrow$ | 99.9 | 0.9995 | ok | matches the mu cells (as a percent) |
+| `tab:fmvd` | VP diffusion, ours | s/sample | 0.048 | 0.0483 | ok | matches the mu cells (as a fraction) |
+| `tab:fmvd` | EquiFM (flow) | Mol. stable$\uparrow$ | 86.2 | 0.8622 | ok | matches the mu cells (as a percent) |
+| `tab:fmvd` | EquiFM (flow) | Mol. stable$\uparrow$ (sd) | 0.3 | 0.0032 | ok | seed sd of the mu cells (as a percent) |
+| `tab:fmvd` | EquiFM (flow) | Valid$\uparrow$ | 93.8 | 0.9377 | ok | matches the mu cells (as a percent) |
+| `tab:fmvd` | EquiFM (flow) | Valid$\uparrow$ (sd) | 0.6 | 0.0060 | ok | seed sd of the mu cells (as a percent) |
+| `tab:fmvd` | EquiFM (flow) | Unique$\uparrow$ | 99.7 | 0.9972 | ok | matches the mu cells (as a percent) |
+| `tab:fmvd` | EquiFM (flow) | s/sample | 0.086 | 0.0858 | ok | matches the mu cells (as a fraction) |
+| `tab:fmvd` | EDMsecond (diffusion) | Mol. stable$\uparrow$ | 67.2 | 0.6715 | ok | matches the mu cells (as a percent) |
+| `tab:fmvd` | EDMsecond (diffusion) | Mol. stable$\uparrow$ (sd) | 1.3 | 0.0125 | ok | seed sd of the mu cells (as a percent) |
+| `tab:fmvd` | EDMsecond (diffusion) | Valid$\uparrow$ | 86.0 | 0.8602 | ok | matches the mu cells (as a percent) |
+| `tab:fmvd` | EDMsecond (diffusion) | Valid$\uparrow$ (sd) | 1.3 | 0.0128 | ok | seed sd of the mu cells (as a percent) |
+| `tab:fmvd` | EDMsecond (diffusion) | Unique$\uparrow$ | 99.8 | 0.9977 | ok | matches the mu cells (as a percent) |
+| `tab:fmvd` | EDMsecond (diffusion) | s/sample | 0.087 | 0.0870 | ok | matches the mu cells (as a fraction) |
 
-Rows not listed matched exactly at the printed precision. **Not audited**: quantities no cell records other than the fm parameter count (citations, captions' wording, the text of `tab:backends`, `tab:provenance` and the appendix); tab:recent: caption does not say it is our FM; audited as fm anyway; tab:recent 'Unguided' / 'IB $\\mu\\uparrow$': expected a mu/alpha/gap triple; tab:recent 'Unguided' / 'IB $\\alpha\\uparrow$': expected a mu/alpha/gap triple; tab:recent 'Unguided' / 'IB gap$\\uparrow$': expected a mu/alpha/gap triple; tab:recent 'Plug-in ($\\eta=0$)' / 'IB $\\mu\\uparrow$': expected a mu/alpha/gap triple; tab:recent 'Plug-in ($\\eta=0$)' / 'IB $\\alpha\\uparrow$': expected a mu/alpha/gap triple; tab:recent 'Plug-in ($\\eta=0$)' / 'IB gap$\\uparrow$': expected a mu/alpha/gap triple; tab:recent 'TMPD-inspired' / 'IB $\\mu\\uparrow$': expected a mu/alpha/gap triple; tab:recent 'TMPD-inspired' / 'IB $\\alpha\\uparrow$': expected a mu/alpha/gap triple; tab:recent 'TMPD-inspired' / 'IB gap$\\uparrow$': expected a mu/alpha/gap triple; tab:recent 'LGD-MC' / 'IB $\\mu\\uparrow$': expected a mu/alpha/gap triple; tab:recent 'LGD-MC' / 'IB $\\alpha\\uparrow$': expected a mu/alpha/gap triple; tab:recent 'LGD-MC' / 'IB gap$\\uparrow$': expected a mu/alpha/gap triple; tab:recent 'TFG' / 'IB $\\mu\\uparrow$': expected a mu/alpha/gap triple; tab:recent 'TFG' / 'IB $\\alpha\\uparrow$': expected a mu/alpha/gap triple; tab:recent 'TFG' / 'IB gap$\\uparrow$': expected a mu/alpha/gap triple; tab:recent '\\textbf{BDG, $\\tau_m=0.5$}' / 'IB $\\mu\\uparrow$': expected a mu/alpha/gap triple; tab:recent '\\textbf{BDG, $\\tau_m=0.5$}' / 'IB $\\alpha\\uparrow$': expected a mu/alpha/gap triple; tab:recent '\\textbf{BDG, $\\tau_m=0.5$}' / 'IB gap$\\uparrow$': expected a mu/alpha/gap triple; tab:recent '\\textbf{BDG, $\\tau_m=1$}' / 'IB $\\mu\\uparrow$': expected a mu/alpha/gap triple; tab:recent '\\textbf{BDG, $\\tau_m=1$}' / 'IB $\\alpha\\uparrow$': expected a mu/alpha/gap triple; tab:recent '\\textbf{BDG, $\\tau_m=1$}' / 'IB gap$\\uparrow$': expected a mu/alpha/gap triple; tab:m2 row 'Unguided': arm or property not recognised; tab:m2 row 'DPS-style plug-in': arm or property not recognised; tab:m2 row 'TMPD-inspired': arm or property not recognised; tab:m2 row 'LGD-MC': arm or property not recognised; tab:m2 row 'TFG-MC adaptation': arm or property not recognised; tab:m2 row '\\textbf{BDG, $\\tau_m=0.5$}': arm or property not recognised; tab:m2 row '\\textbf{BDG, $\\tau_m=1$}': arm or property not recognised; `tab:ablation` is a text table, audited through the prose checks below.
+Rows not listed matched exactly at the printed precision. **Not audited**: quantities no cell records other than the fm parameter count (citations, captions' wording, the text of `tab:backends`, `tab:provenance` and the appendix); tab:recent: caption does not say it is our FM; audited as fm anyway; tab:recent 'Unguided' / 'IB $\\mu\\uparrow$': expected a mu/alpha/gap triple; tab:recent 'Unguided' / 'IB $\\alpha\\uparrow$': expected a mu/alpha/gap triple; tab:recent 'Unguided' / 'IB gap$\\uparrow$': expected a mu/alpha/gap triple; tab:recent 'Unguided' / 'Stable$\\uparrow$': expected a mu/alpha/gap triple; tab:recent 'Unguided' / 'DV$\\uparrow$': expected a mu/alpha/gap triple; tab:recent 'Unguided' / 'Time': expected a mu/alpha/gap triple; tab:recent 'Plug-in ($\\eta=0$)' / 'IB $\\mu\\uparrow$': expected a mu/alpha/gap triple; tab:recent 'Plug-in ($\\eta=0$)' / 'IB $\\alpha\\uparrow$': expected a mu/alpha/gap triple; tab:recent 'Plug-in ($\\eta=0$)' / 'IB gap$\\uparrow$': expected a mu/alpha/gap triple; tab:recent 'Plug-in ($\\eta=0$)' / 'Stable$\\uparrow$': expected a mu/alpha/gap triple; tab:recent 'Plug-in ($\\eta=0$)' / 'DV$\\uparrow$': expected a mu/alpha/gap triple; tab:recent 'Plug-in ($\\eta=0$)' / 'Time': expected a mu/alpha/gap triple; tab:recent 'TMPD-inspired' / 'IB $\\mu\\uparrow$': expected a mu/alpha/gap triple; tab:recent 'TMPD-inspired' / 'IB $\\alpha\\uparrow$': expected a mu/alpha/gap triple; tab:recent 'TMPD-inspired' / 'IB gap$\\uparrow$': expected a mu/alpha/gap triple; tab:recent 'TMPD-inspired' / 'Stable$\\uparrow$': expected a mu/alpha/gap triple; tab:recent 'TMPD-inspired' / 'DV$\\uparrow$': expected a mu/alpha/gap triple; tab:recent 'TMPD-inspired' / 'Time': expected a mu/alpha/gap triple; tab:recent 'LGD-MC' / 'IB $\\mu\\uparrow$': expected a mu/alpha/gap triple; tab:recent 'LGD-MC' / 'IB $\\alpha\\uparrow$': expected a mu/alpha/gap triple; tab:recent 'LGD-MC' / 'IB gap$\\uparrow$': expected a mu/alpha/gap triple; tab:recent 'LGD-MC' / 'Stable$\\uparrow$': expected a mu/alpha/gap triple; tab:recent 'LGD-MC' / 'DV$\\uparrow$': expected a mu/alpha/gap triple; tab:recent 'LGD-MC' / 'Time': expected a mu/alpha/gap triple; tab:recent 'TFG' / 'IB $\\mu\\uparrow$': expected a mu/alpha/gap triple; tab:recent 'TFG' / 'IB $\\alpha\\uparrow$': expected a mu/alpha/gap triple; tab:recent 'TFG' / 'IB gap$\\uparrow$': expected a mu/alpha/gap triple; tab:recent 'TFG' / 'Stable$\\uparrow$': expected a mu/alpha/gap triple; tab:recent 'TFG' / 'DV$\\uparrow$': expected a mu/alpha/gap triple; tab:recent 'TFG' / 'Time': expected a mu/alpha/gap triple; tab:recent '\\textbf{BDG, $\\tau_m=0.5$}' / 'IB $\\mu\\uparrow$': expected a mu/alpha/gap triple; tab:recent '\\textbf{BDG, $\\tau_m=0.5$}' / 'IB $\\alpha\\uparrow$': expected a mu/alpha/gap triple; tab:recent '\\textbf{BDG, $\\tau_m=0.5$}' / 'IB gap$\\uparrow$': expected a mu/alpha/gap triple; tab:recent '\\textbf{BDG, $\\tau_m=0.5$}' / 'Stable$\\uparrow$': expected a mu/alpha/gap triple; tab:recent '\\textbf{BDG, $\\tau_m=0.5$}' / 'DV$\\uparrow$': expected a mu/alpha/gap triple; tab:recent '\\textbf{BDG, $\\tau_m=0.5$}' / 'Time': expected a mu/alpha/gap triple; tab:recent '\\textbf{BDG, $\\tau_m=1$}' / 'IB $\\mu\\uparrow$': expected a mu/alpha/gap triple; tab:recent '\\textbf{BDG, $\\tau_m=1$}' / 'IB $\\alpha\\uparrow$': expected a mu/alpha/gap triple; tab:recent '\\textbf{BDG, $\\tau_m=1$}' / 'IB gap$\\uparrow$': expected a mu/alpha/gap triple; tab:recent '\\textbf{BDG, $\\tau_m=1$}' / 'Stable$\\uparrow$': expected a mu/alpha/gap triple; tab:recent '\\textbf{BDG, $\\tau_m=1$}' / 'DV$\\uparrow$': expected a mu/alpha/gap triple; tab:recent '\\textbf{BDG, $\\tau_m=1$}' / 'Time': expected a mu/alpha/gap triple; tab:m2 row 'Unguided': arm or property not recognised; tab:m2 row 'DPS-style plug-in': arm or property not recognised; tab:m2 row 'TMPD-inspired': arm or property not recognised; tab:m2 row 'LGD-MC': arm or property not recognised; tab:m2 row 'TFG-MC adaptation': arm or property not recognised; tab:m2 row '\\textbf{BDG, $\\tau_m=0.5$}': arm or property not recognised; tab:m2 row '\\textbf{BDG, $\\tau_m=1$}': arm or property not recognised; `tab:ablation` is a text table, audited through the prose checks below.
 
 **Prose and text tables.** Numbers stated in the live text, recomputed:
 
 | where | live text | claims | recomputed from v3-final cells | status |
 |---|---|---|---|---|
 
-Checks that found no matching sentence in the live text (the claim is gone, or is now worded in a way this script does not parse; read those sentences by hand): plug clears the bar in k of 9; guidance raises decoded coverage in k of 9; stability cost of plug; run cost in GPU-hours; smallest resolvable difference (M1); M2 resolvable difference; M2 BDG gain over plug at w = 1; M2 BDG gain over plug at w = 4; M2 eta sweep; M2 inverted setpoint; M2 window gain; M2 window ratio, 'roughly ten times'; M2 window ratio, 'about five times'; expanding row: falls in k of 12, past the bar in j; contracting row: rises in k of 12, j at w = 1; Spearman range; eta = 0 identity; M2 pairwise distinctness; diversity ceiling; BDG vs plug: k contrasts, gains / losses / ties; TFG leads coverage in k of 6, spending a to b stability points; stability cost in words; expanding setpoint R range, k of 6 cells; TFG useful yield; 18 paired contrasts (abstract form); 18 paired contrasts (body form); useful yield, any sentence; second evaluator changes k of N verdicts.
+Checks that found no matching sentence in the live text (the claim is gone, or is now worded in a way this script does not parse; read those sentences by hand): plug clears the bar in k of 9; guidance raises decoded coverage in k of 9; stability cost of plug; run cost in GPU-hours; smallest resolvable difference (M1); M2 resolvable difference; M2 BDG gain over plug at w = 1; M2 BDG gain over plug at w = 4; M2 eta sweep; M2 inverted setpoint; M2 window gain; M2 window ratio, 'roughly ten times'; M2 window ratio, 'about five times'; expanding row: falls in k of 12, past the bar in j; contracting row: rises in k of 12, j at w = 1; Spearman range; eta = 0 identity; M2 pairwise distinctness; diversity ceiling; BDG vs plug: k contrasts, gains / losses / ties; TFG leads coverage in k of 6, spending a to b stability points; stability cost in words; expanding setpoint R range, k of 6 cells; TFG useful yield; 18 paired contrasts (abstract form); 18 paired contrasts (body form); second evaluator changes k of N verdicts.
 
 **What the audit means for the live paper.**
 
-- Its **table numbers match the v3-final cells**: 6 of 49 at the printed precision.
-- 43 table number(s) do not match the cells (`tab:fmvd`, `tab:recent`).
+- Its **table numbers match the v3-final cells**: 28 of 28 at the printed precision.
 
 ## 2. `tab:fmvd`: matched QM9 base models
 
@@ -1046,7 +1023,7 @@ Appendix bodies (section 7.2), measured for width only: `app_cov` 373.6 pt (fits
 | v4, tables pending | 11 | 5 | 5 | 7.6 | +0 | 0 | 0 |
 | v4 + all option A | 12 | 6 | 6 | 479.2 | +179 | 0 | 0 |
 | v4 + all option B | 12 | 6 | 6 | 264.2 | +394 | 0 | 0 |
-| live `paper/main.tex` as found | 21 | 5 | 5 | 15.6 | -- | 0 | 0 |
+| live `paper/main.tex` as found | 23 | 5 | 5 | 101.9 | -- | 0 | 0 |
 
 The limit is 5 main-text pages. "Space left" is `\pagegoal - \pagetotal` at the end of the main text; floats that LaTeX defers can make the page count jump rather than slide, so a variant that fits here can still overflow after the prose edits.
 
@@ -1058,7 +1035,5 @@ The limit is 5 main-text pages. "Space left" is `\pagegoal - \pagetotal` at the 
 4. **Prose** listed in section 11 must change with the tables.
 5. **The DeepFlyBrain-vs-Keras equivalence** must be committed or withdrawn before any DeepFlyBrain activity number is cited.
 6. **EquiFM's run-to-run noise** (caveat 5) is not in any error bar; a same-seed re-run envelope for EquiFM would size it.
-7. **The live `paper/main.tex`** (snapshot: md5 `bbfa6698` of its bytes, modified 2026-09-28 21:26:11; section 1b lists each item with where it sits):
-   - 43 table number(s) do not match the cells (`tab:fmvd`, `tab:recent`).
-   Re-run this script after each revision.
+7. **The live `paper/main.tex`** (snapshot: md5 `af8a21d7` of its bytes, modified 2026-09-29 08:43:59; section 1b lists each item with where it sits): no problem found. Re-run this script after each revision.
 

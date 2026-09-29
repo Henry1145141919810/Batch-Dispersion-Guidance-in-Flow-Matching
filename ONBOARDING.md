@@ -19,7 +19,7 @@ to exist before anything runs:
 |---|---|---|---|
 | **code** | this repository | `git clone` | 30 MB |
 | **QM9 data** | the molecules | step 3 — download + parse | 430 MB |
-| **weights** | our generator and predictors | already in `weights/` | 24 MB |
+| **weights** | our FM and VP generators and predictors | already in `weights/` | 40.5 MB |
 
 The borrowed TFG checkpoints used by the transfer experiment are **committed**
 (`audit/fa_fb_search/`, see its `PROVENANCE.md`), so you do not fetch those.
@@ -168,7 +168,8 @@ so nothing in it but the guidance field is ours.
 
 ```bash
 pip install gdown                                 # if you have not already
-python proj1/scripts/fetch_tfg_assets.py          # TFG's EDMsecond, ~100 MB
+python proj1/scripts/fetch_tfg_assets.py          # TFG's EDMsecond, 21 MB
+python proj1/scripts/fetch_equifm_assets.py       # EquiFM + OC-Flow's second oracle, 30 MB
 python proj1/tests/test_transfer_backend.py --require-edm
 
 # THE HARD GATE -- do not skip
