@@ -148,8 +148,16 @@ def main():
         if "bdg_e0t1" in arms and "plug" in arms:
             d = max(abs(arms["bdg_e0t1"][m] - arms["plug"][m])
                     for m in ("in_band_fraction", "gc_mean", "gc_sd", "kmer_js"))
-            if d != 0.0:
-                fail(tag, "CONTROL FAILED: bdg(eta=0) != plug, max|d| = %.3e. "
+            # Tolerance, not exact equality. MEASURED 28 Sep: plug run twice at
+            # the same seed differs by gc_mean 3.0e-6 and 2 clipped steps once the
+            # window is early enough to guide 70 steps -- the guidance backward
+            # pass is not bit-reproducible on GPU. At t >= 0.5 with 50 guided
+            # steps it happened to land exact, which is luck, not a guarantee.
+            # 1e-5 sits above that noise and far below any real difference: a
+            # genuine eta != 0 moves in_band by percentage points.
+            if d > 1e-5:
+                fail(tag, "CONTROL FAILED: bdg(eta=0) != plug, max|d| = %.3e "
+                          "(tolerance 1e-5, the backend's own run-to-run noise). "
                           "Every BDG number is void until this holds." % d)
         # Two arms that are numerically the same arm. On M2 this is EXPECTED for
         # tmpd and lgd_mc in v3's late window -- v_f collapses from 2.97e-3 at

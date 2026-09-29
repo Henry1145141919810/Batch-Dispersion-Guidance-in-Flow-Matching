@@ -176,6 +176,52 @@ trade-off exists to win. That is structurally unlike M1, where moving a
 molecular property means changing the molecule and chemistry pays for it
 (TFG: −19.7 pp stability). **The M1 comparison is the load-bearing one.**
 
+### The window, again: M2's baselines are only degenerate because of it
+
+Asked whether a harder property would stop plug/tmpd/lgd_mc collapsing into
+one arm, the answer is **no — no property fixes it, the window does.**
+
+**v_f(t)/s², the residual endpoint uncertainty that tmpd's denominator and
+lgd_mc's draw scale are both proportional to:**
+
+| t | gc | cpg | GAGAG count | CAGCTG count |
+|---|---|---|---|---|
+| 0.3 | 0.068 | 0.249 | 0.302 | **0.738** |
+| **0.5 (v3's window)** | 2.9e-05 | 2.9e-05 | 1.6e-05 | 3.4e-05 |
+
+Motif counts were tried precisely because they are Poisson-like (sd/mean 1.4–2.9
+against GC's 0.12) rather than averages over 500 positions. **They collapse too.**
+By t = 0.5 this flow has committed, whatever the property, so every
+uncertainty-based method degenerates to DPS there by construction.
+
+**Guiding from t ≥ 0.3 instead** (gc, w = 4, 3 seeds, unguided in_band 0.1395):
+
+| arm | in_band | vs plug | kmer JS | clip |
+|---|---|---|---|---|
+| plug | 0.3025 | — | 0.00036 | 14.9 % |
+| tmpd | 0.2918 | **−1.07 pp** | 0.00037 | 14.9 % |
+| lgd_mc | 0.2997 | −0.28 pp | 0.00036 | 15.1 % |
+| tfg_mc | 0.2977 | −0.48 pp | 0.00036 | 15.2 % |
+| **bdg_e4t0.5** | **0.3733** | **+7.08 pp** | 0.00042 | 20.8 % |
+
+Four things improve together: the four published baselines **separate** (1.07 pp
+spread, was 0.00), BDG's margin grows from +2.3 to **+7.08 pp**, k-mer fidelity
+**improves** on unguided (0.00036 vs 0.00045), and the clip stays moderate at
+15–21 % rather than the 30–52 % that flattened everything at t = 0.
+
+**The argument for switching, and it is not "the numbers are better".** Matching
+v3's window *number* does not match its *regime*. v3 picked 0.5 for a flow where
+the property is still undetermined there; M2's is not. The order of evidence
+matters and is recorded: `v_f` was measured across four candidate properties
+first, the collapse at t = 0.5 was seen, and only then was t = 0.3 run. **Both
+windows are reported** — t ≥ 0.5 as the protocol-matched result and t ≥ 0.3 as
+the regime-matched one — so nothing is cherry-picked.
+
+**Also measured:** M2 is **not** bit-reproducible once the window is early
+enough to guide 70 steps — plug run twice at one seed differs by gc_mean 3.0e-6
+and 2 clipped steps. The η = 0 control therefore needs a tolerance (1e-5), as
+EquiFM's does in M1. At t ≥ 0.5 it landed exact, which was luck.
+
 ### Bugs fixed in shared code
 
 * `v3_table.py` refused **every** equifm table (δ compared exactly, but the GPU
