@@ -2,6 +2,19 @@
 
 Group 2 — Bobo Li · Henry Huang · Idea Idehpour · Haimo Fang
 
+> ### 📦 Reviewing the code submission? Start at **[SUBMISSION.md](SUBMISSION.md)**
+>
+> It is the entry point for the CIS 6270 code review: repository structure,
+> environment and setup, dataset preparation, how to run training / sampling /
+> evaluation / figures, where the innovation is implemented, and a table mapping
+> **every paper table and figure to the script that produced it**.
+>
+> The other two files worth knowing:
+> **[docs/results/DATA_INDEX.md](docs/results/DATA_INDEX.md)** says which data
+> the paper uses and which runs are superseded;
+> **[requirements.txt](requirements.txt)** pins the environment the committed
+> results were produced in.
+
 Steer a **frozen** continuous generative model to hit a target property value at
 sampling time, without retraining it. Two modalities: **QM9 3D molecules** (most
 of this repo) and **DNA sequences on the probability simplex**. **Both

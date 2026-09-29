@@ -1,0 +1,47 @@
+# CIS 6270 Project 1 — Group 2
+#
+# Versions are PINNED TO WHAT PRODUCED THE COMMITTED RESULTS, not to the latest
+# release. Every cell under results/ records its own torch and CUDA build in
+# `prov` (see docs/results/DATA_INDEX.md section 4), so a reader can check any
+# number against the environment that made it.
+#
+#   python 3.12.14
+#
+# Install:
+#   python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
+#   pip install -r requirements.txt
+#
+# TORCH IS THE ONE LINE TO GET RIGHT. The pin below is the CUDA 12.8 build used
+# for every molecular result on this machine and on Betty's B200 slices. The
+# blade box ran cu130 for the same torch version; results agree. Pick the wheel
+# that matches your driver -- the CPU build runs everything but is ~26x slower,
+# which turns a 10-minute sampling cell into four hours.
+#
+#   CUDA 12.8:  pip install torch==2.11.0 --index-url https://download.pytorch.org/whl/cu128
+#   CPU only:   pip install torch==2.11.0
+
+# ---- core: training, sampling, evaluation -------------------------------
+torch==2.11.0
+numpy==2.5.3
+rdkit==2026.3.6          # validity / stability / SMILES; the chemistry metrics
+matplotlib==3.11.2       # every figure in paper/figs/
+
+# ---- fetching the borrowed assets ---------------------------------------
+gdown==6.4.0             # proj1/scripts/fetch_tfg_assets.py (TFG's EDMsecond)
+
+# ---- Modality 2 (DeepFlyBrain enhancers) --------------------------------
+h5py                     # proj1/m2/deepflybrain.py reads the HDF5 source data.
+                         # DELIBERATELY UNPINNED: it is not installed on the
+                         # machine that wrote this file, so no version is
+                         # asserted rather than a wrong one guessed.
+
+# ---- optional: reference implementation, not on any results path --------
+# proj1/src/schnet_ref.py is a SchNet reference kept for comparison only.
+# Nothing in the paper depends on it; skip these two if they are awkward.
+# ase==3.29.0
+# torch_geometric==2.8.0.post1
+
+# ---- optional: paper tooling only ---------------------------------------
+# Needed only to rebuild the revision-notes PDF, never to produce a result.
+# pypdf==6.19.0
+# reportlab

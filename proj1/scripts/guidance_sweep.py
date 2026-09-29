@@ -932,9 +932,15 @@ def main():
                          "freeze_tune.py chose (needs --frozen); bdg = the BDG "
                          "ladder plus its own re-run unguided/plug controls")
     ap.add_argument("--bdg-variants", default="",
+                    # BDG_ETA is a LIST (the ladder runs several gains), so it
+                    # formats with the same join as BDG_TAU_MULT. It was %g,
+                    # which needs a real number -- and since this runs at
+                    # add_argument time, it raised on EVERY invocation of this
+                    # script, not just --help.
                     help="--stage bdggrid: comma-separated 'e<eta>t<mult>[o]'. "
-                         "Default: eta=%g at tau_mult %s."
-                         % (BDG_ETA, ",".join(str(m) for m in BDG_TAU_MULT)))
+                         "Default: eta=%s at tau_mult %s."
+                         % (",".join(str(e) for e in BDG_ETA),
+                            ",".join(str(m) for m in BDG_TAU_MULT)))
     ap.add_argument("--frozen", default="",
                     help="--stage full only: the json check_fullrun_go.py "
                          "--json-out wrote (FR3's frozen strengths)")

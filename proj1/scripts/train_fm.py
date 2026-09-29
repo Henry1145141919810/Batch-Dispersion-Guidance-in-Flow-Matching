@@ -141,7 +141,7 @@ def main():
     ap.add_argument("--stab-every", type=int, default=25,
                     help="epochs between sampling-based stability evaluations")
     ap.add_argument("--stab-n", type=int, default=2048,
-                    help="molecules per stability eval. 512 could not separate the last 200 epochs of the first FM run (SE ~0.0025 on atom stability, real differences ~0.002); 2048 halves the SE at ~15% extra wall time. If the curve is still rising at the end, also benchmark the final epoch before shipping the selected one.")
+                    help="molecules per stability eval. 512 could not separate the last 200 epochs of the first FM run (SE ~0.0025 on atom stability, real differences ~0.002); 2048 halves the SE at ~15%% extra wall time. If the curve is still rising at the end, also benchmark the final epoch before shipping the selected one.")
     ap.add_argument("--stab-steps", type=int, default=100, help="NFE for stability eval")
     ap.add_argument("--save-every", type=int, default=100,
                     help="also keep <tag>_ep<N>.pt every N epochs (0 = off). fm.pt holds "
