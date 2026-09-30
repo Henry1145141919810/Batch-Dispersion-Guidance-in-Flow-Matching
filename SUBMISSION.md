@@ -256,12 +256,20 @@ Origin, commit and licence for TFG and OC-Flow:
 [audit/fa_fb_search/PROVENANCE.md](audit/fa_fb_search/PROVENANCE.md). For
 EquiFM: [docs/protocol/EQUIFM_USABILITY_AUDIT.md](docs/protocol/EQUIFM_USABILITY_AUDIT.md).
 
-**The load-bearing part of `audit/` IS in the archive.** `audit/fa_fb_search/`
-(TFG and OC-Flow, ~30 MB, vendored unmodified) ships because our code imports
-it: `proj1/src/external/tfg_assets.py` loads TFG's model definitions from
-`audit/fa_fb_search/TFG/`, and the borrowed `f_A`/`f_B` property networks that
-score the `equifm` backend are checkpoints inside it. The rest of `audit/`
-(reference clones, the BDG review's evidence) stays in the git repository only.
+**The load-bearing part of `audit/` IS in the submission folder.**
+`audit/fa_fb_search/` (TFG and OC-Flow, vendored unmodified, 29.9 MB) ships
+because our code imports it: `proj1/src/external/tfg_assets.py` loads TFG's model
+definitions from `audit/fa_fb_search/TFG/`, and the borrowed `f_A`/`f_B` property
+networks that score the `equifm` and `edm` backends are checkpoints inside it.
+
+Those checkpoints look like third-party weights we should link rather than ship,
+and an earlier build excluded them on that reasoning. That was wrong, and
+`fetch_tfg_assets.py` says why in its first paragraph: the *generators* are
+missing from this repository, the *property networks* are not — they are
+committed here, and the script **checks them rather than re-downloading**. Drop
+them and nothing brings them back. The rest of `audit/` (reference clones
+including `TFG-Flow`, the BDG review's evidence) stays in the git repository
+only.
 
 **What the archive does not contain is the third-party releases** that
 upstream publishes itself. Two scripts fetch them and check each file against
@@ -298,69 +306,106 @@ Our own models — the flow-matching generator, the VP diffusion generator, the
 
 ---
 
-## 8. The submission archive
+## 8. The submission folder
 
-Built by a script so the contents are the same every time and the exclusions are
-written down rather than improvised:
+`SUBMISSION_CIS6270_Project1_Group2/` is built by one script, so its contents are
+the same every time, the exclusions are written down rather than improvised, and
+the folder is **run before it is handed in**:
 
 ```bash
-python proj1/scripts/make_submission.py                   # dry run: print the manifest
-python proj1/scripts/make_submission.py --copy-to DIR     # the manifest, unzipped, to test it
-python proj1/scripts/make_submission.py --zip             # write cis6270_p1_group2_code.zip
+python proj1/scripts/build_submission.py               # build, then verify by running it
+python proj1/scripts/build_submission.py --zip         # also write the .zip
+python proj1/scripts/build_submission.py --no-verify   # build only
 ```
 
-**~1,700 files, ~112 MB**, against a working repository of ~6,900 files and 2.6 GB.
+**1,711 files, 100.3 MB**, against a working repository of ~6,900 files and 2.6 GB.
+
+**The folder keeps the repository's layout.** `proj1/`, `docs/`, `results/`,
+`paper/`, `weights/` land under exactly those names, so every command in this
+file and in `README.md` runs inside the folder verbatim. That is not cosmetic:
+each script resolves its imports as `ROOT/proj1/src`. An earlier build renamed
+`proj1/` to `code/` and `docs/` to `results_and_docs/` because it read more
+nicely, and in that folder `python code/scripts/transfer_sweep.py` died with
+`ModuleNotFoundError: No module named 'evaluation'` — every documented command
+was broken, and it shipped that way. Do not rename them.
 
 | in | size | why |
 |---|---|---|
-| `proj1/`, `blade_runs/`, `paper/`, `docs/`, `slides/handoff/`, `course/` | ~37 MB | the code, the protocols, the manuscript and its tooling |
-| `results/v3/`, `results/m2/`: the cells | 4.5 MB | **every paper table regenerates from the archive alone**, with no GPU and no download |
-| **`weights/`**: FM and VP generators, six `f_A`/`f_B` predictors | 40.5 MB | **fresh sampling runs**, not only table rebuilding (after the one 30 MB `fetch_equifm_assets.py`, §7). md5 of each in `weights/README.md` |
-| **`proj1/m2/blade_bundle/`**: Modality 2 generator and its DeepFlyBrain split | 16.2 MB | Modality 2 samples with no download |
-| `audit/fa_fb_search/`: TFG and OC-Flow, vendored | 29.5 MB | imported by the `edm`/`equifm` backends (§7) |
-| `requirements.txt`, `README.md`, this file | — | setup and entry points |
+| `proj1/` — `src`, `scripts`, `tests`, `m2`, `cluster` | 19.1 MB | the code, including the Modality-2 generator bundle |
+| `weights/` | 40.5 MB | FM and VP generators and the six `f_A`/`f_B` predictors, so the folder can **sample**, not only rebuild tables. md5 of each in `weights/README.md` |
+| `results/v3/`, `results/m2/`, `results/bdg_port/` | 4.8 MB | the measured cells, JSON. **Every paper table and three of the four figures regenerate from the folder alone**, with no GPU and no download |
+| `docs/` — `protocol`, `results`, `methods`, `status` | 3.7 MB | the pre-registered protocols, the generated result pages, `DATA_INDEX.md` |
+| `paper/` | 1.8 MB | the manuscript, `main.pdf`, its figures, and the tooling that builds them |
+| `audit/fa_fb_search/` | 29.9 MB | external code we import, `PROVENANCE.md`, and the six **vendored** TFG property networks — 28 MB of `.npy` that no fetch script restores (§7) |
+| `blade_runs/`, `course/` | 0.4 MB | the off-cluster drivers; the assignment and paper template |
+| `README.md`, `SUBMISSION.md`, `requirements.txt` | — | the two entry points and the pinned environment |
 
 | out | why |
 |---|---|
 | `data/` (430 MB) | QM9 itself; rebuilt by `prepare_qm9.py`, seeded and reproducible |
-| `weights/EDMsecond/`, `audit/equifm_20260922/` | borrowed third-party releases (EDMsecond; EquiFM and OC-Flow's property nets); fetched and hash-checked by script (§7) |
-| `betty_pull/` (582 MB), `bundles/` (396 MB) | cluster syncs, including full training checkpoints with optimiser state — not needed to sample |
-| rest of `audit/` | reference clones and review evidence; in the git repository |
-| `archive/`, `scratch_schnet/`, `slides/deck_versions/` | superseded material and frozen snapshots |
-| superseded result trees, `*.permol.pt` sidecars | listed in `DATA_INDEX.md` §5 with what replaced each |
+| `*.permol.pt` sidecars (500 MB) | per-molecule samples. No paper table or figure reads one — `build_results.py` works from the seed-level cell JSONs. See limit 2 |
+| third-party **released** weights: `weights/EDMsecond/`, `audit/equifm_20260922/`, `DeepFlyBrain.hdf5` | ours to link, not to redistribute. Fetched and hash-checked by script (§7). TFG's property networks are a different case and do ship — see the row above |
+| `audit/fa_fb_search/TFG-Flow/` | a reference clone nothing in `proj1/` imports; its two checkpoint zips alone are 40 MB |
+| `audit/.../TFG/tf_predict_mu/logs.txt` (79 MB) | a third party's training log. A 2 MB per-file cap on the vendored tree drops it; it was half the weight of the first build |
+| versioned drafts: `figs/*_v9.pdf`, `results_manifest_v*.json`, `paper/versions/`, `paper/tmp/` | superseded. The folder shows one version of the work, not its history |
+| `betty_pull/`, `bundles/`, `archive/`, `scratch_schnet/`, `slides/deck_versions/`, the rest of `audit/` | cluster syncs and superseded material; in the git repository |
+| `logs/`, caches, `__pycache__`, LaTeX build artefacts | regenerated. A `.pyc` also records the absolute path it was compiled from |
+
+Absolute cluster paths, `@upenn.edu` addresses, login names and the build
+machine's home directory are rewritten on the way in — 1,185 substitutions
+across 1,055 files in the current build. Institutional hostnames
+(`parcc.upenn.edu`, `blade.seas.upenn.edu`) are left readable on purpose: they
+say which machines produced the numbers.
+
+### The build refuses to ship a folder that does not work
+
+It ends by running the folder it just made. Every one of these failed on the
+folder that was built before this was added:
+
+| check | what it catches |
+|---|---|
+| 13 required files present | a folder missing something a graded requirement needs: either entry point, `requirements.txt`, `transfer_sweep.py`, `build_results.py`, `DATA_INDEX.md`, both generators |
+| `proj1/scripts/transfer_sweep.py --help` | imports that do not resolve in the folder — the failure described above |
+| `proj1/scripts/v3_sanity.py` | cells absent or inconsistent. It now **fails** on an empty tree; it used to print "0 fail" and exit 0, which is how a folder containing no cells at all was certified sound |
+| `proj1/tests/test_bdg.py` | the innovation's 25 gates |
+| a scan for the account name | a scrub rule silently dropped. It caught 81 files after one rewrite of this script |
+
+Current state: all pass — 15,243 cell checks, 0 fail; all BDG gates pass. And,
+run inside the folder, `python paper/tools/build_results.py` rebuilds 23 table
+blocks and 3 vector figures and leaves `paper/main.tex` **byte-identical**. The
+tables in the PDF are the tables the shipped cells produce.
 
 **Weights are in by default.** The checkpoints shipped are the inference copies
 (EMA weights only). They are byte-identical in every parameter to the training
 checkpoints that produced the results, and every result cell records the md5 of
-the generator that made it. Resuming *training* needs the full checkpoints,
-which are on the cluster. `--no-weights` and `--no-vendored` exist if a size
-limit ever forces them out; say so in the submission note if used.
+the generator that made it. Resuming *training* needs the full checkpoints, with
+optimiser state, which are on the cluster.
 
-The script **refuses to build** an archive missing any of `SUBMISSION.md`,
-`DATA_INDEX.md`, `requirements.txt`, `README.md`, `transfer_sweep.py`,
-`build_results.py`, or, unless opted out, any of the ten shipped checkpoints.
-A submission that cannot rebuild its own tables, or sample, is not worth
-handing in.
-
-### Known limits of the archive
+### Known limits of the folder
 
 Stated rather than discovered:
 
-1. **QM9 sampling needs one download (two for `edm`)**:
-   `fetch_equifm_assets.py` (30 MB) for every v3 backend, including our own
-   `fm` and `vp`, because each cell is also scored by OC-Flow's oracle; plus
-   `fetch_tfg_assets.py` (21 MB) for `edm` (§7). Everything the code imports is
-   in the archive. Modality 2, the tests and every table rebuild need no
-   download beyond QM9. Verified on a clean copy of the manifest: after both
-   fetches, `--preflight` passes on `fm`, `vp`, `equifm` and `edm`.
-4. **Unzip to a short path on Windows.** The longest path in the archive is
-   147 characters including its root folder; below a ~110-character parent
-   directory it stays under Windows' 260-character limit.
-2. **Five Modality-2 helper scripts load from a hard-coded cluster path** at
+1. **QM9 sampling needs one download, two for `edm`.** `fetch_equifm_assets.py`
+   (30 MB) for every v3 backend including our own `fm` and `vp`, because each
+   cell is also scored by OC-Flow's oracle; plus `fetch_tfg_assets.py` (21 MB)
+   for `edm` (§7). Everything the code *imports* is in the folder. Modality 2,
+   the tests and every table rebuild need no download beyond QM9.
+2. **The paired and useful-yield readouts cannot be recomputed here.**
+   `paper_fill_v3.py`, `v3_blade_readout.py` and `v3_paired.py` read the
+   `.permol.pt` sidecars, which are 500 MB and stay in the repository. The pages
+   they produced ship instead, under `docs/results/`. Nothing in the paper's
+   tables or figures depends on them.
+3. **The property-distribution figure needs QM9.** `paper/tools/distributions.py`
+   reads `data/qm9.pt`; the other three figures come from the cells. The values
+   it drew are recorded in `paper/property_distributions.json`, which ships.
+4. **Unzip to a short path on Windows.** The longest path in the folder is 147
+   characters including its root; below a ~110-character parent directory it
+   stays under Windows' 260-character limit.
+5. **Five Modality-2 helper scripts load from a hard-coded cluster path** at
    import: `proj1/m2/{calib_k,diag_strength,gate_arms,make_vf_table,nfe_check}.py`
    raise `FileNotFoundError` off Betty. They are diagnostics, not on any results
-   path; `m2_sweep.py`, `m2_table.py` and `m2_v3_results.py` are the entry
-   points that matter and they are portable.
-3. **`prepare_qm9.py` takes no arguments and has no `--help`** — running it with
-   any argument starts a full dataset rebuild. It is seeded and deterministic,
-   so a stray rebuild is harmless, but it is not a no-op.
+   path; `m2_sweep.py`, `m2_table.py` and `m2_v3_results.py` are the entry points
+   that matter, and they are portable.
+6. **`prepare_qm9.py` takes no arguments and has no `--help`** — running it with
+   any argument starts a full dataset rebuild. It is seeded and deterministic, so
+   a stray rebuild is harmless, but it is not a no-op.

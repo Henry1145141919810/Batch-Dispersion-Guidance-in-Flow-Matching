@@ -102,8 +102,12 @@ def main():
             continue
         rows.append(r)
     if not rows:
-        print("no cells under %s" % a.root)
-        return 0
+        # A gate that reports success on an empty tree is worse than no gate: the
+        # submission folder was once built without results/ at all, and this
+        # script's "0 fail" was the evidence that it was sound. No cells is a
+        # failure of the thing being checked, not a vacuous pass.
+        print("FAIL: no cells under %s -- nothing was checked" % a.root)
+        return 1
 
     # ---------------------------------------------------------- per cell
     for r in rows:
