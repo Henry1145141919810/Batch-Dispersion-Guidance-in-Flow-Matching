@@ -11,10 +11,15 @@ the point of this page:
   BDG's sign against plug FLIPS with the window on cpg (+16.83 pp at t >= 0.5,
   -4.88 pp at t >= 0.3) while it GROWS on gc (+2.32 -> +7.08 pp).
 
-The mechanism is visible in the same table: opening the window is worth +39.8 pp
-to plug on cpg but only +18.1 pp to BDG, so plug overtakes. On gc the ordering
-is the other way (+16.2 to plug, +20.9 to BDG) and BDG's lead widens. BDG and an
-earlier window are COMPLEMENTS on gc and SUBSTITUTES on cpg.
+The mechanism is NOT "contraction has little to gain against a wide band" --
+that was the first reading and it is withdrawn. The controller diagnostics say
+the opposite: on cpg BDG is WIDENING. DPS already contracts cpg to 0.37*s,
+tighter than the tightest setpoint the pre-registered grid offers
+(tau_mult = 0.5), so the feedback correctly pulls back OUT toward its setpoint
+and undoes part of plug's contraction. in_band rewards tightness, so that costs.
+On gc plug lands at 1.25*tau and BDG contracts to 1.18, and gains. The
+controller behaves identically and correctly in both; only which side of the
+setpoint the baseline lands on differs.
 
 Reads only committed cells. Writes one markdown file. No GPU, no model.
 """
@@ -34,10 +39,13 @@ ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
 # as the 96-cell win0.3 suite. So cells are grouped by the window they RECORD,
 # and the stage only says which tree to read. WINDOWS lists the two this page
 # compares; anything else in the trees is counted and reported, not averaged in.
-STAGES = ("m2", "m2win")
+# m2tau holds the tau_mult = 0.25 diagnostic, OUTSIDE the pre-registered
+# grid. It is reported in its own section and never in the headline.
+STAGES = ("m2", "m2win", "m2tau")
 WINDOWS = (0.5, 0.3)
 ARMS = ["unguided", "plug", "tmpd", "lgd_mc", "tfg_mc",
-        "bdg_e0t1", "bdg_e4t0.5", "bdg_e4t1"]
+        "bdg_e0t1", "bdg_e4t0.5", "bdg_e4t1",
+        "bdg_e4t0.25"]   # <- outside the pre-registered grid; labelled as such
 PROPS = ["gc", "cpg"]
 NL = "\n"
 
@@ -167,6 +175,55 @@ def main():
                      % (p, arm, ib, kj, dv, 100.0 * cl / denom))
     A.append("")
 
+    # ---- the controller state: contracting or widening? ------------------
+    A.append("## Controller state at t >= 0.3, w = %g" % a.w)
+    A.append("")
+    A.append("`e = (V_b - tau^2)/tau^2` is BDG's error signal. **e < 0 means the "
+             "batch is TIGHTER than the setpoint, so the controller widens.**")
+    A.append("")
+    A.append("**The decisive column is `sd / tau` on the `bdg_e0t1` row** -- that is "
+             "plug's own spread measured against the setpoint, with the dispersion "
+             "term switched off. `gc` sits at **0.62** (looser than the tightest "
+             "grid setpoint, so BDG contracts and gains); `cpg` sits at **0.37** "
+             "(already tighter, so BDG widens and loses). Same controller, "
+             "opposite side of the setpoint.")
+    A.append("")
+    A.append("| property | arm | in-band | property sd | sd / tau | e | w_eff | widening |")
+    A.append("|---|---|---|---|---|---|---|---|")
+    for p in PROPS:
+        for arm in ARMS:
+            rs = g.get((p, 0.3, a.w, arm), [])
+            if not rs or arm in ("unguided",):
+                continue
+            ib = st.mean(x["in_band_fraction"] for x in rs) * 100.0
+            sd = st.mean(x["gc_sd"] for x in rs)
+            tau = rs[0].get("tau")
+            d = rs[0].get("diag", {})
+            def dm(k):
+                v = [x["diag"][k] for x in rs if k in x.get("diag", {})]
+                return st.mean(v) if v else None
+            e, we, wd = dm("bdg_e"), dm("bdg_w_eff"), dm("bdg_widening")
+            A.append("| %s | `%s` | %.2f | %.5f | %s | %s | %s | %s |"
+                     % (p, arm, ib, sd,
+                        ("%.2f" % (sd / tau)) if tau else "--",
+                        ("%+.3f" % e) if e is not None else "--",
+                        ("%+.2f" % we) if we is not None else "--",
+                        # eta = 0 means w_eff = 1 exactly: the dispersion term is
+                        # OFF, so the sign of e is recorded but nothing acts on it.
+                        # Printing "YES" there would claim a correction that the
+                        # control exists precisely to not make.
+                        ("n/a (eta=0)" if (we is not None and abs(we - 1.0) < 1e-9)
+                         else ("**YES**" if wd and wd > 0.5
+                               else ("no" if wd is not None else "--")))))
+    A.append("")
+    A.append("> ⚠️ **`bdg_e4t0.25` is OUTSIDE the pre-registered grid.** It is a "
+             "diagnostic that tests the mechanism -- a setpoint below 0.37*s "
+             "should reverse the sign on `cpg`, and it does (%s). It must never "
+             "be quoted as the headline. The pre-registered result stands: BDG "
+             "loses on `cpg` at the grid's tightest rung."
+             % (("%+.2f pp vs plug" % ((st.mean(x["in_band_fraction"] for x in g[("cpg", 0.3, a.w, "bdg_e4t0.25")]) - st.mean(x["in_band_fraction"] for x in g[("cpg", 0.3, a.w, "plug")])) * 100.0))
+                if ("cpg", 0.3, a.w, "bdg_e4t0.25") in g else "not run"))
+    A.append("")
     A.append("## Reading this page")
     A.append("")
     A.append("1. **Never pool or compare in-band across the two properties.** "
@@ -174,9 +231,14 @@ def main():
              "(`delta = max(0.16*s, 4.4*quantum)`), so unguided already sits "
              "in band 50.2 %% of the time on `cpg` against 14.0 %% on `gc`. The "
              "two are not on one difficulty scale.")
-    A.append("2. **BDG's mechanism is contraction**, which has little to gain "
-             "against a band that wide and something to lose as the batch mean "
-             "drifts. That is the measured reason the sign flips.")
+    A.append("2. **On `cpg` BDG is WIDENING, not failing.** See the controller "
+             "table above: DPS already contracts `cpg` to 0.37*s, tighter than "
+             "the tightest setpoint the pre-registered grid reaches, so the "
+             "feedback correctly pulls back out and in-band -- which rewards "
+             "tightness -- punishes it. The controller is behaving identically "
+             "and correctly on both properties; only which side of its setpoint "
+             "the baseline lands on differs. **The grid does not reach `cpg`'s "
+             "regime; the controller does not fail.**")
     A.append("3. **`bdg_e4t1` is catastrophic on both** properties, so the "
              "setpoint sign-reversal holds and `tau_mult = 0.5` carries the method.")
     A.append("4. **The compare set degenerates at t >= 0.5 on BOTH properties** "

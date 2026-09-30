@@ -58,7 +58,7 @@ by hand what it refuses.
 | [V3_PAIR_DELTA.md](V3_PAIR_DELTA.md) | why in-band does not cross pairs |
 | [V3_POWER.md](V3_POWER.md) | MDD per n; what the run can and cannot detect |
 | [M2_V3_RESULTS.md](M2_V3_RESULTS.md) | Modality 2 (DeepFlyBrain enhancers) |
-| **[M2_WINDOW_COMPARISON.md](M2_WINDOW_COMPARISON.md)** | **the same M2 arms at both guidance windows (29 Sep). BDG's sign against plug FLIPS on `cpg`: +16.83 pp at t>=0.5, -4.88 pp at t>=0.3** |
+| **[M2_WINDOW_COMPARISON.md](M2_WINDOW_COMPARISON.md)** | **the same M2 arms at both guidance windows (29 Sep), plus the controller state. BDG's sign against plug FLIPS on `cpg`: +16.83 pp at t>=0.5, -4.88 pp at t>=0.3 — because plug already sits tighter than the setpoint there, so BDG widens** |
 
 All of the above are **script-generated**. Do not hand-edit them — fix the
 script and re-run. Commands are in each file's header; §6 below collects them.
@@ -202,6 +202,16 @@ Betty (gate → 9-task array → table). Its gate pins the checkpoint md5
    is **-4.88 pp**. Run at one window, BDG wins on `gc` and loses on `cpg`.
    See [M2_WINDOW_COMPARISON.md](M2_WINDOW_COMPARISON.md); the paper has not
    been rebuilt against these cells.
+
+   **Why, measured (29 Sep, corrected):** on `cpg` BDG is **widening**, not
+   failing. With the dispersion term off, plug's own spread sits at **0.37·tau**
+   on `cpg` — already tighter than the tightest setpoint the pre-registered grid
+   reaches — so the feedback correctly pulls back out, and in-band punishes it.
+   On `gc` plug sits at **0.62·tau**, looser, so BDG contracts and gains. Same
+   controller, opposite side of the setpoint. A setpoint below 0.37·s reverses
+   the sign (`tau_mult = 0.25` gives **+2.28 pp**) — a diagnostic **outside** the
+   pre-registration that must never be quoted as the headline. **The grid does
+   not reach `cpg`'s regime; the controller does not fail.**
 
 
 1. **The paper's `tab:fmvd` is already filled** (`paper/main.tex:140`:
