@@ -26,6 +26,20 @@ numpy==2.5.3
 rdkit==2026.3.6          # validity / stability / SMILES; the chemistry metrics
 matplotlib==3.11.2       # every figure in paper/figs/
 
+# ---- rebuilding the paper's tables and figures --------------------------
+# Not optional, and both were missing from this file. A reader who installed
+# exactly what it listed could not run the one command the submission points at
+# for figure generation:
+scipy==1.18.1            # paper/tools/build_results.py: spearmanr, for the
+                         # gain-coverage correlation in the diagnostics block.
+                         # Without it build_results.py stops at its imports, so
+                         # NO table and NO figure can be regenerated.
+pypdf==6.19.0            # paper/tools/pagecheck.py: counts main-text pages
+                         # against the assignment's five-page limit. It was
+                         # listed below as needed "only to rebuild the
+                         # revision-notes PDF, never to produce a result", which
+                         # is wrong -- it is the page-limit gate.
+
 # ---- fetching the borrowed assets ---------------------------------------
 gdown==6.4.0             # proj1/scripts/fetch_tfg_assets.py (TFG's EDMsecond)
 
@@ -43,5 +57,5 @@ h5py                     # proj1/m2/deepflybrain.py reads the HDF5 source data.
 
 # ---- optional: paper tooling only ---------------------------------------
 # Needed only to rebuild the revision-notes PDF, never to produce a result.
-# pypdf==6.19.0
+# pypdf moved up: it is required, not optional.
 # reportlab

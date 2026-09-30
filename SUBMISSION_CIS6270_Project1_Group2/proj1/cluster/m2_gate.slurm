@@ -7,6 +7,7 @@
 #SBATCH --time=01:00:00
 #SBATCH --output=$PROJECT_ROOT/logs/m2gate-%j.out
 #SBATCH --error=$PROJECT_ROOT/logs/m2gate-%j.err
+PROJECT_ROOT="${PROJECT_ROOT:-$(pwd)}"  # default added when this submission folder was built
 #
 # GO/NO-GO for Modality 2. Trains a NAIVE linear-simplex flow-matching model on
 # Drosophila Kenyon-cell enhancers (200 bp) and tests only the three properties
@@ -24,7 +25,7 @@
 set -uo pipefail
 PROJ=$PROJECT_ROOT
 cd "$PROJ" || exit 1
-source <path redacted> || exit 1
+source $PROJECT_ROOT/redacted || exit 1
 export OMP_NUM_THREADS=8 MKL_NUM_THREADS=8
 echo "host $(hostname)  $(date -Is)"
 python -u proj1/m2/gate.py --crop 200 --steps 3000 --batch 64 --n-sample 512

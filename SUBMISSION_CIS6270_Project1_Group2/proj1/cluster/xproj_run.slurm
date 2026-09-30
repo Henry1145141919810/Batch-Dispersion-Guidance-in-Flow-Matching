@@ -7,6 +7,7 @@
 #SBATCH --time=04:00:00
 #SBATCH --output=$PROJECT_ROOT/logs/xproj-%j.out
 #SBATCH --error=$PROJECT_ROOT/logs/xproj-%j.err
+PROJECT_ROOT="${PROJECT_ROOT:-$(pwd)}"  # default added when this submission folder was built
 #
 # THE GEOMETRY-REPAIR RE-TEST. 12 cells: lgd_mc and btvg2_xproj at w = 8 and
 # w = 16, on mu/alpha/gap, on the `dist` target.

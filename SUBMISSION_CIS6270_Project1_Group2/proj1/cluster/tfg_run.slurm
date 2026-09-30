@@ -7,6 +7,7 @@
 #SBATCH --time=04:00:00
 #SBATCH --output=$PROJECT_ROOT/logs/tfg-%j.out
 #SBATCH --error=$PROJECT_ROOT/logs/tfg-%j.err
+PROJECT_ROOT="${PROJECT_ROOT:-$(pwd)}"  # default added when this submission folder was built
 #
 # THE TFG ARM, added after the full run (Henry, 23 Sep: tfg replaces dflow in
 # the compare set). The main protocol, stage for stage, for ONE arm -- so its

@@ -1,4 +1,5 @@
 #!/bin/bash
+PROJECT_ROOT="${PROJECT_ROOT:-$(pwd)}"  # default added when this submission folder was built
 # The VP bench suite, in one paste.
 #
 #   bash proj1/cluster/submit_vp_bench.sh

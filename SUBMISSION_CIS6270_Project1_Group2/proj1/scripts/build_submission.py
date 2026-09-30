@@ -15,7 +15,7 @@ Four things it does that a plain copy does not:
      them the folder cannot rebuild a single table or figure. JSON only: the
      .permol.pt sidecars beside them are 500 MB and no paper table reads one.
   3. Scrubs cluster paths. The SLURM scripts and some notes carry absolute paths
-     that contain PennKeys (<path redacted> <path redacted>).
+     that contain PennKeys ($PROJECT_ROOT/redacted $PROJECT_ROOT/redacted).
      Those are replaced by $PROJECT_ROOT, which the scripts already accept.
   4. Excludes what is regenerated, redistributed, or superseded: the 430 MB QM9
      build, third-party released weights our own fetch scripts retrieve and
@@ -35,12 +35,14 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import io
 import os
 import pathlib
 import re
 import shutil
 import subprocess
 import sys
+import time
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 
@@ -54,7 +56,9 @@ SCRUB = [
     (re.compile(r"/(?:vast|scratch\d*)/[^\s\"')]*?/cis6270-project1-group2"),
      "$PROJECT_ROOT"),
     (re.compile(r"/(?:vast|scratch\d*)/[^\s\"')]*?/cgm"), "$PROJECT_ROOT"),
-    (re.compile(r"/(?:vast|scratch\d*)/[^\s\"')]*"), "<path redacted>"),
+    # "<path redacted>" was a redirection in shell: it made 21 of the 52 shipped
+    # .sh/.slurm files fail `bash -n`. The replacement has to stay a valid word.
+    (re.compile(r"/(?:vast|scratch\d*)/[^\s\"')]*"), "$PROJECT_ROOT/redacted"),
     (re.compile(r"\b[a-z][a-z0-9]{2,}@(?:sas\.)?upenn\.edu\b"), "<email redacted>"),
     # bare login names in prose and in shell prompts
     (re.compile(r"\b(?:<user>|<user>|<user>)\b"), "<user>"),
@@ -89,9 +93,13 @@ VERSIONED = re.compile(r"_v\d+\.(?:pdf|png|json|txt)$")
 #   weights/EDMsecond/         <- proj1/scripts/fetch_tfg_assets.py     (edm)
 #   audit/**/{*.npy,*.pickle}  <- proj1/scripts/fetch_tfg_assets.py     (TFG nets)
 #   DeepFlyBrain.hdf5          <- source + md5 in proj1/m2/deepflybrain.py
-#   TFG-Flow/                  a reference clone nothing in proj1/ imports; its
-#                              two checkpoint zips alone are 40 MB
-EXCLUDE_DIRS = {"EDMsecond", "versions", "tmp", "TFG-Flow"}
+#   TFG-Flow/ and the three other clones: reference checkouts nothing in proj1/
+#     imports. TFG-Flow's two checkpoint zips alone are 40 MB. SUBMISSION.md said
+#     "the rest of audit/ stays in the git repository only", which was false in
+#     both directions for these -- they shipped, and they are .gitignore'd, so
+#     they are not in the repository either.
+EXCLUDE_DIRS = {"EDMsecond", "versions", "tmp", "TFG-Flow",
+                "MolGuidance", "PropMolFlow", "e3_diffusion_for_molecules"}
 EXCLUDE_FILES = {
     # names another lab project's data paths; not needed to grade or reproduce
     "docs/protocol/CLUSTER_BETTY_GUIDE.md",
@@ -104,6 +112,9 @@ EXCLUDE_FILES = {
     # (zenodo.org/record/5153337) and the md5, and DeepFlyBrain.json, which is
     # the architecture rather than the weights, still ships.
     "weights/deepflybrain/DeepFlyBrain.hdf5",
+    # a dump of an earlier teammate's prototype, kept as review evidence; not
+    # code, not cited, and not something to hand a grader
+    "audit/fa_fb_search/haimo_v1_extracted.txt",
 }
 
 # Present or the build refuses. Each entry is something whose absence makes the
@@ -121,6 +132,14 @@ REQUIRED = [
     # script restores -- listed here because excluding them looked reasonable once
     "audit/fa_fb_search/PROVENANCE.md",
     "audit/fa_fb_search/TFG/tf_predict_mu/model_ema_2000.npy",
+    # Modality 2 has to be runnable from the folder, and all three of these were
+    # caught by proj1/.gitignore's *.pt / *.npz rules, so they existed only on the
+    # machine that made them. The folder shipped without enhancer_gate.pt for two
+    # builds while weights/README.md documented its md5. A missing checkpoint is
+    # not a thinner folder, it is a Modality 2 nobody else can run.
+    "proj1/m2/enhancer_gate.pt",
+    "proj1/m2/blade_bundle/fm_m2_dfb500.pt",
+    "proj1/m2/blade_bundle/dfb500.npz",
 ]
 
 # Run inside the built folder. Each is a command a grader could plausibly type in
@@ -136,9 +155,85 @@ SMOKE = [
     # the cells are present AND readable: this gate used to pass vacuously on an
     # empty tree, which is how a folder with no cells in it was shipped
     ([sys.executable, "-B", "proj1/scripts/v3_sanity.py"], "cells present, 0 fail"),
-    # the innovation's own gates, which need nothing but the shipped code
-    ([sys.executable, "-B", "proj1/tests/test_bdg.py"], "BDG gates"),
+    # the innovation's own gates. NOTE 19 of 25, not 25: Part B needs data/qm9.pt,
+    # which the folder does not ship, and the test says so as it skips. The
+    # skipped six are the real-generator gates, so this check is weaker inside the
+    # folder than in the repository -- do not read a pass here as all 25.
+    ([sys.executable, "-B", "proj1/tests/test_bdg.py"], "BDG gates (19/25 here)"),
+    # the v3 gates, including the one that reads the shipped shell scripts
+    ([sys.executable, "-B", "proj1/tests/test_v3.py"], "v3 gates"),
+    # the provenance cross-check the submission cites: recomputes every generated
+    # table from the shipped cells and verifies each cell against the manifest
+    ([sys.executable, "-B", "paper/tools/build_results.py", "--check"],
+     "tables match cells, hashes verify"),
 ]
+
+# Every shipped shell script has to parse. The scrub edits these files, and an
+# edit that produced invalid shell went unnoticed through two builds because
+# nothing ever asked bash to read them.
+SHELL_GLOBS = ("proj1/cluster/*.sh", "proj1/cluster/*.slurm", "proj1/m2/*.slurm",
+               "proj1/m2/blade_bundle/*.sh", "blade_runs/*.sh")
+
+
+def write_lf(path: pathlib.Path, text: str) -> None:
+    """Write text with LF endings, whatever platform the build runs on.
+
+    pathlib's write_text uses os.linesep, so a build on Windows rewrote every
+    shipped .sh and .slurm with CRLF. The repository's own .gitattributes pins
+    `*.sh text eol=lf` and `*.slurm text eol=lf`, and says why: a CRLF shebang
+    makes the cluster's interpreter fail with "bad interpreter: No such file or
+    directory". The build was quietly undoing the rule that prevents that.
+    """
+    # Written to a sibling temp file and moved into place. Writing 1700 files in a
+    # few seconds on Windows occasionally hits a file a filesystem filter is still
+    # holding: opening a just-copied results_manifest.json for rewrite failed once
+    # with [Errno 22] Invalid argument, while the identical open succeeded a second
+    # later. os.replace is atomic, so a half-written file cannot ship either.
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    for attempt in range(4):
+        try:
+            with io.open(tmp, "w", encoding="utf-8", newline="\n") as fh:
+                fh.write(text)
+            os.replace(tmp, path)
+            return
+        except OSError:
+            if attempt == 3:
+                raise
+            time.sleep(0.25 * (attempt + 1))
+
+
+def shell_needs_project_root(rel: pathlib.PurePosixPath, text: str) -> bool:
+    """True for a shipped shell script that reads $PROJECT_ROOT and never sets it.
+
+    The scrub rewrites other people's cluster paths to $PROJECT_ROOT, and this
+    file used to claim the scripts "already accept" it. They do not: 50 shipped
+    .sh/.slurm read it and none assign it, so under `set -u` -- which
+    v3_run.slurm sets -- they die with "PROJECT_ROOT: unbound variable", and
+    proj1/tests/test_v3.py's shell_references_only_defined_vars gate fails in the
+    folder while passing in the repo. A default assignment makes the promise true.
+    """
+    if rel.suffix not in (".sh", ".slurm"):
+        return False
+    return "$PROJECT_ROOT" in text and not re.search(r"^\s*(?:export\s+)?PROJECT_ROOT=",
+                                                     text, re.M)
+
+
+def with_project_root_default(text: str) -> str:
+    """Insert a PROJECT_ROOT default after the shebang, or at the top."""
+    # A plain assignment, and deliberately `$(pwd)` rather than anything derived
+    # from ${BASH_SOURCE}: test_v3.py's shell gate reports every $NAME a script
+    # reads without assigning, so a clever default that mentions BASH_SOURCE just
+    # trades one undefined name for another. Run from the folder root, as the
+    # README says to, $(pwd) IS the project root.
+    line = ('PROJECT_ROOT="${PROJECT_ROOT:-$(pwd)}"'
+            '  # default added when this submission folder was built')
+    lines = text.split("\n")
+    at = 1 if lines and lines[0].startswith("#!") else 0
+    # after the SLURM directive block, so #SBATCH lines keep their place at the top
+    while at < len(lines) and (lines[at].startswith("#SBATCH") or not lines[at].strip()):
+        at += 1
+    lines.insert(at, line)
+    return "\n".join(lines)
 
 
 def wanted(rel: pathlib.PurePosixPath) -> bool:
@@ -195,7 +290,10 @@ def copy_tree(src: pathlib.Path, dst: pathlib.Path, label: str, stats: dict,
                 if n:
                     stats["scrubbed_hits"] = stats.get("scrubbed_hits", 0) + n
                     stats.setdefault("scrubbed_files", set()).add(str(repo_rel))
-            out.write_text(scrubbed, encoding="utf-8")
+            if shell_needs_project_root(rel, scrubbed):
+                scrubbed = with_project_root_default(scrubbed)
+                stats["rooted"] = stats.get("rooted", 0) + 1
+            write_lf(out, scrubbed)
         else:
             shutil.copy2(s, out)
             stats["binary"] = stats.get("binary", 0) + 1
@@ -215,7 +313,7 @@ def copy_files(pairs: list[tuple[str, str]], out_root: pathlib.Path,
             text = s.read_text(encoding="utf-8")
             for pat, repl in SCRUB:
                 text = pat.sub(repl, text)
-            d.write_text(text, encoding="utf-8")
+            write_lf(d, text)
         else:
             shutil.copy2(s, d)
         stats["copied"] = stats.get("copied", 0) + 1
@@ -280,6 +378,13 @@ def assemble(out: pathlib.Path, stats: dict) -> None:
     # (minus sidecars) rather than being orphaned.
     copy_tree(ROOT / "results/bdg_port", out / "results/bdg_port", "results/bdg_port",
               stats, keep=re.compile(r"\.(?:json|txt|md)$"))
+    # The loose JSON at the top of results/ -- 736 KB, 22 files. Leaving it out
+    # broke four documented commands for want of a few hundred kilobytes:
+    # test_v3.py's batch_probe_record_exists gate needs v3_batch_memory.json,
+    # v3_final_summary.py stops at m2_share.json, and m2_v3_results.py raises
+    # KeyError 'gate' without m2_gate_scores.json.
+    for f in sorted((ROOT / "results").glob("*.json")):
+        copy_files([(f"results/{f.name}", f"results/{f.name}")], out, stats)
 
     # --- the checkpoints, so the folder can sample and not only tabulate -
     copy_tree(ROOT / "weights", out / "weights", "weights", stats)
@@ -298,6 +403,33 @@ def assemble(out: pathlib.Path, stats: dict) -> None:
               keep=re.compile(r"\.(?:py|md|txt|json|sh|yml|yaml|cfg|toml|bib"
                               r"|npy|pickle)$"),
               max_bytes=20_000_000)
+
+    # --- re-point the provenance manifest at the cells AS SHIPPED --------
+    # The scrub rewrites this machine's home out of every cell's `prov` block, so
+    # 982 of the 1286 shipped cells differ byte-wise from the repository's. The
+    # manifest records hashes of the unscrubbed originals, so inside the folder
+    # `build_results.py --check` failed with "Source files changed; rebuild before
+    # publication." -- the tool the submission cites as its provenance
+    # cross-check told the grader the results were stale. The data is identical;
+    # only a redacted path differs. So the hashes are recomputed here, over the
+    # shipped bytes, with the same line-ending normalisation build_results.py uses.
+    man = out / "paper/results_manifest.json"
+    if man.exists():
+        import json
+        m = json.loads(man.read_text(encoding="utf-8"))
+        rehashed = 0
+        for key in list(m.get("sources", {})):
+            cell = out / key
+            if cell.exists():
+                digest = hashlib.sha256(
+                    cell.read_bytes().replace(b"\r\n", b"\n")).hexdigest()
+                if digest != m["sources"][key]:
+                    rehashed += 1
+                m["sources"][key] = digest
+            else:
+                stats.setdefault("manifest_missing", []).append(key)
+        write_lf(man, json.dumps(m, indent=2) + "\n")
+        stats["manifest_rehashed"] = rehashed
 
     # --- the assignment and the paper template we were given ------------
     for pdf in sorted((ROOT / "course").glob("CIS_6270_*.pdf")):
@@ -331,7 +463,7 @@ def write_manifest(out: pathlib.Path) -> tuple[int, float]:
               "(fetched and hash-checked by `proj1/scripts/fetch_*_assets.py`), "
               "and the `.permol.pt` per-molecule sidecars (500 MB; no paper "
               "table reads one). See SUBMISSION.md §8.", ""]
-    (out / "MANIFEST.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    write_lf(out / "MANIFEST.md", "\n".join(lines) + "\n")
     return len(files), total / 1e6
 
 
@@ -377,6 +509,27 @@ def verify(out: pathlib.Path) -> list[str]:
             problems.append(f"{what}: exit {r.returncode} — {tail}")
         else:
             print(f"  ok  {what}: {tail}")
+
+    # every shipped shell script must parse
+    scripts = sorted(p for g in SHELL_GLOBS for p in out.glob(g))
+    bad = []
+    for s in scripts:
+        try:
+            r = subprocess.run(["bash", "-n", s.relative_to(out).as_posix()],
+                               cwd=out, capture_output=True, text=True, timeout=60)
+        except (OSError, subprocess.TimeoutExpired):
+            bad = []                      # no bash here; cannot judge, so do not
+            print("  --  shell syntax: bash unavailable, not checked")
+            break
+        if r.returncode != 0:
+            bad.append(f"{s.relative_to(out).as_posix()}: "
+                       f"{(r.stderr or '').strip().splitlines()[-1:] or ['?']}")
+    else:
+        if bad:
+            problems.append(f"shell syntax: {len(bad)} of {len(scripts)} scripts "
+                            f"do not parse, e.g. {bad[0]}")
+        else:
+            print(f"  ok  shell syntax: {len(scripts)} scripts parse")
     return problems
 
 
@@ -425,6 +578,25 @@ def main() -> int:
             print("verified: required files present, and the folder runs.")
     purged = purge_bytecode(out)
 
+    if not ok:
+        # The docstring promises this script "refuses to leave a broken one
+        # behind", and it used to write a clean-looking MANIFEST.md anyway --
+        # complete file count, and the missing PDF's hash line simply absent. A
+        # refused folder now says so in place of a manifest.
+        write_lf(out / "REFUSED.md",
+                 "# This folder was REFUSED by its own build\n\n"
+                 "Verification failed, so no manifest was written. Do not submit "
+                 "it. Fix the problems below and run\n"
+                 "`python proj1/scripts/build_submission.py` again.\n\n"
+                 + "".join(f"- {p}\n" for p in problems))
+        print(f"  wrote REFUSED.md instead of a manifest; {purged} __pycache__ purged")
+        return 1
+
+    # Written twice on purpose. write_manifest counts the files it can see, and on
+    # the first pass MANIFEST.md does not exist yet, so the folder it describes is
+    # always one file smaller than the folder that ships -- it printed 1711 when
+    # 1712 shipped. The second pass counts the manifest too.
+    write_manifest(out)
     n, mb = write_manifest(out)
 
     print(f"built {out.name}: {n} files, {mb:.1f} MB")

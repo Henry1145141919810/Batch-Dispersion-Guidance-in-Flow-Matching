@@ -8,6 +8,7 @@
 #SBATCH --time=04:00:00
 #SBATCH --output=$PROJECT_ROOT/logs/bdg-%j.out
 #SBATCH --error=$PROJECT_ROOT/logs/bdg-%j.err
+PROJECT_ROOT="${PROJECT_ROOT:-$(pwd)}"  # default added when this submission folder was built
 #
 # BDG: two-sided setpoint control of the ACROSS-BATCH variance of the predicted
 # property, plus the ablation ladder and its MATCHED controls.
@@ -37,7 +38,7 @@ export PATH="/cm/local/apps/slurm/current/bin:$PATH"
 export SLURM_CONF=/cm/shared/apps/slurm/etc/slurm/slurm.conf
 
 PROJ=$PROJECT_ROOT
-VENV=<path redacted>
+VENV=$PROJECT_ROOT/redacted
 mkdir -p "$PROJ/logs" "$PROJ/results/sweep"
 cd "$PROJ"
 

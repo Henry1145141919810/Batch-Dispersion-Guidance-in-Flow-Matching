@@ -7,6 +7,7 @@
 #SBATCH --time=04:00:00
 #SBATCH --output=$PROJECT_ROOT/logs/bdgh-%A_%a.out
 #SBATCH --error=$PROJECT_ROOT/logs/bdgh-%A_%a.err
+PROJECT_ROOT="${PROJECT_ROOT:-$(pwd)}"  # default added when this submission folder was built
 #
 # THE TRUE HOLD CONTROL for BDG, one rung per property at its MEASURED fixed
 # point. A setpoint servo should do nothing when the batch already sits at the
@@ -21,7 +22,7 @@
 set -uo pipefail
 PROJ=$PROJECT_ROOT
 cd "$PROJ" || exit 1
-source <path redacted> || exit 1
+source $PROJECT_ROOT/redacted || exit 1
 export OMP_NUM_THREADS=4 MKL_NUM_THREADS=4
 
 CELLS=(

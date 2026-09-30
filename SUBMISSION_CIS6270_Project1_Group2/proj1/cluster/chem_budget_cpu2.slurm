@@ -7,6 +7,7 @@
 #SBATCH --time=04:00:00
 #SBATCH --output=$PROJECT_ROOT/logs/cb2-%A_%a.out
 #SBATCH --error=$PROJECT_ROOT/logs/cb2-%A_%a.err
+PROJECT_ROOT="${PROJECT_ROOT:-$(pwd)}"  # default added when this submission folder was built
 #
 # ONE CELL PER TASK. The first attempt gave each task 32 cores and got ~1 core of
 # real use: this model's tensors (batch 64 x 29 atoms) are too small for torch's
@@ -18,7 +19,7 @@
 set -uo pipefail
 PROJ=$PROJECT_ROOT
 cd "$PROJ" || exit 1
-source <path redacted> || exit 1
+source $PROJECT_ROOT/redacted || exit 1
 export OMP_NUM_THREADS=4 MKL_NUM_THREADS=4
 
 PROPS=(gap mu alpha); ARMS=(lgd_mc lgd_mc_chem); WS=(4 16 32 1)

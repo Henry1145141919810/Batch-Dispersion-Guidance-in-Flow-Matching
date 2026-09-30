@@ -9,6 +9,7 @@
 #SBATCH --time=03:00:00
 #SBATCH --output=$PROJECT_ROOT/logs/chembudget-%A_%a.out
 #SBATCH --error=$PROJECT_ROOT/logs/chembudget-%A_%a.err
+PROJECT_ROOT="${PROJECT_ROOT:-$(pwd)}"  # default added when this submission folder was built
 #
 # HYPOTHESIS. The chemistry guard is not a targeting method - it is a STRENGTH
 # BUDGET. FR3a caps every arm at the strength where molecule stability falls
@@ -28,7 +29,7 @@ set -uo pipefail
 export PATH="/cm/local/apps/slurm/current/bin:$PATH"
 PROJ=$PROJECT_ROOT
 cd "$PROJ" || exit 1
-source <path redacted> || exit 1
+source $PROJECT_ROOT/redacted || exit 1
 
 PROPS=(mu alpha gap)
 P=${PROPS[${SLURM_ARRAY_TASK_ID:-0}]}

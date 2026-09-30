@@ -7,6 +7,7 @@
 #SBATCH --time=10:00:00
 #SBATCH --output=$PROJECT_ROOT/logs/chembudgetcpu-%A_%a.out
 #SBATCH --error=$PROJECT_ROOT/logs/chembudgetcpu-%A_%a.err
+PROJECT_ROOT="${PROJECT_ROOT:-$(pwd)}"  # default added when this submission folder was built
 #
 # WHY CPU. Every GPU on the cluster is allocated (32/32 mig45, 16/16 mig90,
 # 216/216 dgx-b200); the shortest running job has ~14 h left and SLURM estimated
@@ -26,7 +27,7 @@
 set -uo pipefail
 PROJ=$PROJECT_ROOT
 cd "$PROJ" || exit 1
-source <path redacted> || exit 1
+source $PROJECT_ROOT/redacted || exit 1
 export OMP_NUM_THREADS=${SLURM_CPUS_PER_TASK:-32}
 export MKL_NUM_THREADS=${SLURM_CPUS_PER_TASK:-32}
 

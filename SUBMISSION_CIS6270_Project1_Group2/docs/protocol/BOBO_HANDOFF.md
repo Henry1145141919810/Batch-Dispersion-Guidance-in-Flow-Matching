@@ -57,7 +57,7 @@ different generator.
 
 ## 2. Point the job at your checkout
 
-The job file defaults to Henry's `<path redacted> path. Override it — no editing:
+The job file defaults to Henry's `$PROJECT_ROOT/redacted path. Override it — no editing:
 
 ```
 export CGM_PROJ=/path/to/your/clone

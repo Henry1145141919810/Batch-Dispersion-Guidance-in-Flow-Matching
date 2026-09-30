@@ -161,7 +161,7 @@ authoritative.
 ```bash
 export SLURM_CONF=/cm/shared/apps/slurm/etc/slurm/slurm.conf
 cd $PROJECT_ROOT
-PY=<path redacted>
+PY=$PROJECT_ROOT/redacted
 
 # 1. gates (fast, no cluster). Expect "all BDG gates pass".
 $PY proj1/tests/test_bdg.py
@@ -358,7 +358,7 @@ literal. Read §11.4 before writing §4.6 — the task is *not* the published be
 
 ## 11.1 Data — and one trap
 
-`<path redacted>
+`$PROJECT_ROOT/redacted
 - `KC_regions.fa` — 6,126 **Drosophila** Kenyon-cell enhancers, native 500 bp (`chr2L..chrX`)
 - `MEL_regions.fa` — 3,885 **human** melanoma enhancers (`chr1..chr22`)
 

@@ -1,4 +1,5 @@
 #!/bin/bash
+PROJECT_ROOT="${PROJECT_ROOT:-$(pwd)}"  # default added when this submission folder was built
 # Queue the WHOLE base-model comparison in one go. Nothing to resubmit.
 #
 #   bash proj1/cluster/submit_basecmp.sh              # the default budget

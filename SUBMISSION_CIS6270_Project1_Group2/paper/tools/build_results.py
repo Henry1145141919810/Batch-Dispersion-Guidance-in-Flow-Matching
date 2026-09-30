@@ -82,6 +82,21 @@ def spread(rs):
     # Pool second moments, not the mean RMSE squared.
     bias = st.mean(r['f_B_dec_mean']-r['target_mean'] for r in rs)
     return math.sqrt(max(0,st.mean(r['prop_rmse_eval_dec']**2 for r in rs)-bias**2))
+def cell_hash(p):
+    """sha256 of a result cell, identifying its CONTENT rather than its bytes.
+
+    Any \r\n is normalised away first. A cell is JSON written by our own
+    scripts, so its line endings depend on the OS that wrote it and on the git
+    checkout it came through (core.autocrlf), not on anything measured. Hashing
+    the raw bytes made this manifest checkout-dependent: on a Windows checkout
+    1055 of the 1073 hashes differed from the committed ones, every one of them
+    for a file whose data was identical, and --check then failed the publication
+    gate with "Source files changed; rebuild before publication." The normalised
+    hash is what git stores for the same file, so it agrees on every platform.
+    """
+    return hashlib.sha256(p.read_bytes().replace(b'\r\n', b'\n')).hexdigest()
+
+
 def contrast(a,b,key=KEY,bar=2.99):
     assert [r['seed'] for r in a]==[r['seed'] for r in b], 'Paired seed order differs'
     pa,pb=avg(a,key),avg(b,key)
@@ -519,7 +534,13 @@ def main():
         main=re.sub(pattern,lambda _:wanted,main,flags=re.S)
     source_paths=[p for be in ('fm','vp','equifm','edm') for stage in ('v3','v3abl') for p in (ROOT/f'results/v3/{be}/{stage}/n2000').rglob('*.json')]
     source_paths += [Path(r['_path']) for r in m2rows+winrows]
-    sources={str(p.relative_to(ROOT)):hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(source_paths)}
+    # as_posix(), not str(): str() gives OS-dependent separators, so the manifest
+    # was written with results\v3\... on Windows and results/v3/... elsewhere. The
+    # hashes were identical either way, but all 1073 keys changed, and --check
+    # compares them -- so regenerating on a different OS than the one that last
+    # wrote the manifest failed the publication gate with "Source files changed"
+    # when nothing had. The path is provenance, so it is recorded portably.
+    sources={p.relative_to(ROOT).as_posix():cell_hash(p) for p in sorted(source_paths)}
     if args.check:
         saved=json.loads((PAPER/'results_manifest.json').read_text())
         assert not stale, f'Stale table blocks: {stale}'
@@ -561,7 +582,9 @@ def main():
     audit['own_model_comparison']={be:{k:avg(heads[be]['mu','unguided'],k) for k in ('mol_stability','validity','uniqueness_of_valid','seconds')} for be in ('fm','vp')}
     audit['additional_diagnostics']=diagnostics()
     audit['m2_window_followup']={a:contrast(win(a),win('plug'),'in_band_fraction') for a in ('tmpd','lgd_mc','tfg_mc','bdg_e4t0.5','bdg_e0t1')}
-    audit['m2_compute']={'new_files':len(winrows),'old_files':len(m2rows),'new_hours':sum(r['minutes'] for r in winrows)/60,'all_hours':sum(r['minutes'] for r in m2rows+winrows)/60}
+    # rounded: the unrounded sums differ in the last float digit between runs, which
+    # is a diff in a provenance file for no reason at all
+    audit['m2_compute']={'new_files':len(winrows),'old_files':len(m2rows),'new_hours':round(sum(r['minutes'] for r in winrows)/60,6),'all_hours':round(sum(r['minutes'] for r in m2rows+winrows)/60,6)}
     (PAPER/'results_manifest.json').write_text(json.dumps(audit,indent=2),encoding='utf8')
     print(f'Rebuilt {len(ts)} table blocks and 3 vector figures; {len(sources)} source hashes.')
 

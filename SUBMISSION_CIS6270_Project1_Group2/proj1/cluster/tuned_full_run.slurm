@@ -7,6 +7,7 @@
 #SBATCH --time=04:00:00
 #SBATCH --output=$PROJECT_ROOT/logs/tunedfull-%j.out
 #SBATCH --error=$PROJECT_ROOT/logs/tunedfull-%j.err
+PROJECT_ROOT="${PROJECT_ROOT:-$(pwd)}"  # default added when this submission folder was built
 #
 # STAGE 2 of 2: the v2 full-run protocol at BOTH operating points the tune
 # sweep chose.

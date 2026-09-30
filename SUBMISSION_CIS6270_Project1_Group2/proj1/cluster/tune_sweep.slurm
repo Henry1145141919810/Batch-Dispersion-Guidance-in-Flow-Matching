@@ -7,6 +7,7 @@
 #SBATCH --time=04:00:00
 #SBATCH --output=$PROJECT_ROOT/logs/tune-%j.out
 #SBATCH --error=$PROJECT_ROOT/logs/tune-%j.err
+PROJECT_ROOT="${PROJECT_ROOT:-$(pwd)}"  # default added when this submission folder was built
 #
 # STAGE 1 of 2: the JOINT strength x start-time screen.
 #

@@ -7,6 +7,7 @@
 #SBATCH --time=01:00:00
 #SBATCH --output=$PROJECT_ROOT/logs/run-%j.out
 #SBATCH --error=$PROJECT_ROOT/logs/run-%j.err
+PROJECT_ROOT="${PROJECT_ROOT:-$(pwd)}"  # default added when this submission folder was built
 #
 # Generic one-off job: tests, M-0, M-1, sampling sweeps. Pass the command in.
 #

@@ -7,6 +7,7 @@
 #SBATCH --time=04:00:00
 #SBATCH --output=$PROJECT_ROOT/logs/bdgw-%A_%a.out
 #SBATCH --error=$PROJECT_ROOT/logs/bdgw-%A_%a.err
+PROJECT_ROOT="${PROJECT_ROOT:-$(pwd)}"  # default added when this submission folder was built
 #
 # THE REDUCTION CONTROL. BDG's numerator is affine in F_i, so
 #   (y - F_i) - eta*e*(F_i - F_bar) = (1 + eta*e) * (y_eff - F_i)
@@ -20,7 +21,7 @@
 set -uo pipefail
 PROJ=$PROJECT_ROOT
 cd "$PROJ" || exit 1
-source <path redacted> || exit 1
+source $PROJECT_ROOT/redacted || exit 1
 export OMP_NUM_THREADS=4 MKL_NUM_THREADS=4
 CELLS=("mu plug -0.414 weff" "mu plug -0.288 weff" "alpha plug -0.465 weff" "gap plug -0.8 weff")
 T=${SLURM_ARRAY_TASK_ID:-0}

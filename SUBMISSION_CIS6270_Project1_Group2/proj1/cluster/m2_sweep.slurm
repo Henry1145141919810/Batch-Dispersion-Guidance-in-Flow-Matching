@@ -6,6 +6,7 @@
 #SBATCH --time=03:00:00
 #SBATCH --output=$PROJECT_ROOT/logs/m2sw-%A_%a.out
 #SBATCH --error=$PROJECT_ROOT/logs/m2sw-%A_%a.err
+PROJECT_ROOT="${PROJECT_ROOT:-$(pwd)}"  # default added when this submission folder was built
 #
 # Modality 2 transfer run. Specs mirrored from Modality 1: n=512, batch=512 (one
 # batch -- for BDG the batch IS the estimator), 100 Euler steps, t_min=0.5,
@@ -19,7 +20,7 @@
 set -uo pipefail
 PROJ=$PROJECT_ROOT
 cd "$PROJ/proj1/m2" || exit 1
-source <path redacted> || exit 1
+source $PROJECT_ROOT/redacted || exit 1
 export OMP_NUM_THREADS=4 MKL_NUM_THREADS=4
 CELLS=(
  "unguided - 1" "plug - 1" "plug - 0.25" "plug - 4" "bdg e0t1 1"

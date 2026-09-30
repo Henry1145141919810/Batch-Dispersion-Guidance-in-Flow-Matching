@@ -7,6 +7,7 @@
 #SBATCH --time=04:00:00
 #SBATCH --output=$PROJECT_ROOT/logs/final-%j.out
 #SBATCH --error=$PROJECT_ROOT/logs/final-%j.err
+PROJECT_ROOT="${PROJECT_ROOT:-$(pwd)}"  # default added when this submission folder was built
 #
 # FULL-SCALE FINAL DATA -- only for the arms that survived screening.
 #

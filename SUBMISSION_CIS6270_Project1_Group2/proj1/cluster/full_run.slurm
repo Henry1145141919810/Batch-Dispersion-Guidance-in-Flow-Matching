@@ -7,6 +7,7 @@
 #SBATCH --time=04:00:00
 #SBATCH --output=$PROJECT_ROOT/logs/full-%j.out
 #SBATCH --error=$PROJECT_ROOT/logs/full-%j.err
+PROJECT_ROOT="${PROJECT_ROOT:-$(pwd)}"  # default added when this submission folder was built
 #
 # THE FULL-SCALE RUN. The compare-set arms EXCEPT dflow -- unguided, plug,
 # tmpd, lgd_mc, btvg, btvg_var -- once per property, at its FROZEN strength, on the

@@ -322,7 +322,10 @@ python proj1/scripts/build_submission.py --zip         # also write the .zip
 python proj1/scripts/build_submission.py --no-verify   # build only
 ```
 
-**1,711 files, 100.3 MB**, against a working repository of ~6,900 files and 2.6 GB.
+**1,721 files, 100.8 MB**, against a working repository of ~6,900 files and 2.6 GB.
+The per-directory breakdown is generated into `MANIFEST.md` rather than typed
+here, because typed numbers drift: six of the fourteen in an earlier version of
+this section were wrong by the time an audit checked them.
 
 **The folder keeps the repository's layout.** `proj1/`, `docs/`, `results/`,
 `paper/`, `weights/` land under exactly those names, so every command in this
@@ -335,12 +338,12 @@ was broken, and it shipped that way. Do not rename them.
 
 | in | size | why |
 |---|---|---|
-| `proj1/` — `src`, `scripts`, `tests`, `m2`, `cluster` | 19.1 MB | the code, including the Modality-2 generator bundle |
+| `proj1/` — `src`, `scripts`, `tests`, `m2`, `cluster` | 19.4 MB | the code, including the Modality-2 generator bundle |
 | `weights/` | 40.5 MB | FM and VP generators and the six `f_A`/`f_B` predictors, so the folder can **sample**, not only rebuild tables. md5 of each in `weights/README.md` |
-| `results/v3/`, `results/m2/`, `results/bdg_port/` | 4.8 MB | the measured cells, JSON. **Every paper table and three of the four figures regenerate from the folder alone**, with no GPU and no download |
+| `results/v3/`, `results/m2/`, `results/bdg_port/`, and the 22 loose `results/*.json` | 5.3 MB | the measured cells, JSON. **Every paper table and three of the four figures regenerate from the folder alone**, with no GPU and no download. The loose JSON is 736 kB and four documented commands need it, so leaving it out was a false economy |
 | `docs/` — `protocol`, `results`, `methods`, `status` | 3.7 MB | the pre-registered protocols, the generated result pages, `DATA_INDEX.md` |
 | `paper/` | 1.8 MB | the manuscript, `main.pdf`, its figures, and the tooling that builds them |
-| `audit/fa_fb_search/` | 29.9 MB | external code we import, `PROVENANCE.md`, and the six **vendored** TFG property networks — 28 MB of `.npy` that no fetch script restores (§7) |
+| `audit/fa_fb_search/` | 29.6 MB | external code we import, `PROVENANCE.md`, and the six **vendored** TFG property networks — 28 MB of `.npy` that no fetch script restores (§7) |
 | `blade_runs/`, `course/` | 0.4 MB | the off-cluster drivers; the assignment and paper template |
 | `README.md`, `SUBMISSION.md`, `requirements.txt` | — | the two entry points and the pinned environment |
 
@@ -350,9 +353,10 @@ was broken, and it shipped that way. Do not rename them.
 | `*.permol.pt` sidecars (500 MB) | per-molecule samples. No paper table or figure reads one — `build_results.py` works from the seed-level cell JSONs. See limit 2 |
 | third-party **released** weights: `weights/EDMsecond/`, `audit/equifm_20260922/`, `DeepFlyBrain.hdf5` | ours to link, not to redistribute. Fetched and hash-checked by script (§7). TFG's property networks are a different case and do ship — see the row above |
 | `audit/fa_fb_search/TFG-Flow/` | a reference clone nothing in `proj1/` imports; its two checkpoint zips alone are 40 MB |
-| `audit/.../TFG/tf_predict_mu/logs.txt` (79 MB) | a third party's training log. A 2 MB per-file cap on the vendored tree drops it; it was half the weight of the first build |
+| `audit/.../TFG/tf_predict_mu/logs.txt` (79 MB) | a third party's training log. A 20 MB per-file cap on the vendored tree drops it while keeping the 6.7 MB property nets; it was half the weight of the first build |
 | versioned drafts: `figs/*_v9.pdf`, `results_manifest_v*.json`, `paper/versions/`, `paper/tmp/` | superseded. The folder shows one version of the work, not its history |
-| `betty_pull/`, `bundles/`, `archive/`, `scratch_schnet/`, `slides/deck_versions/`, the rest of `audit/` | cluster syncs and superseded material; in the git repository |
+| `betty_pull/`, `bundles/`, `archive/`, `scratch_schnet/`, `slides/deck_versions/` | cluster syncs and superseded material; in the git repository |
+| `audit/fa_fb_search/{TFG-Flow,MolGuidance,PropMolFlow,e3_diffusion_for_molecules}/` | reference clones nothing in `proj1/` imports. They are also `.gitignore`d, so an earlier claim that they "stay in the git repository only" was wrong in both directions |
 | `logs/`, caches, `__pycache__`, LaTeX build artefacts | regenerated. A `.pyc` also records the absolute path it was compiled from |
 
 Absolute cluster paths, `@upenn.edu` addresses, login names and the build
@@ -368,11 +372,18 @@ folder that was built before this was added:
 
 | check | what it catches |
 |---|---|
-| 13 required files present | a folder missing something a graded requirement needs: either entry point, `requirements.txt`, `transfer_sweep.py`, `build_results.py`, `DATA_INDEX.md`, both generators |
+| 18 required files present | a folder missing something a graded requirement needs: either entry point, `requirements.txt`, `transfer_sweep.py`, `build_results.py`, `DATA_INDEX.md`, both generators, the three Modality-2 artifacts, one vendored TFG property net |
 | `proj1/scripts/transfer_sweep.py --help` | imports that do not resolve in the folder — the failure described above |
 | `proj1/scripts/v3_sanity.py` | cells absent or inconsistent. It now **fails** on an empty tree; it used to print "0 fail" and exit 0, which is how a folder containing no cells at all was certified sound |
-| `proj1/tests/test_bdg.py` | the innovation's 25 gates |
+| `proj1/tests/test_bdg.py` | the innovation's gates. **19 of 25 inside the folder**: Part B needs `data/qm9.pt`, which is not shipped, and the test says so as it skips. The six skipped are the real-generator gates, so a pass here is weaker than a pass in the repository |
+| `proj1/tests/test_v3.py` | all 106 v3 gates, including the one that reads the shipped SLURM scripts for undefined variables |
+| `paper/tools/build_results.py --check` | the provenance cross-check itself: every generated table recomputed from the shipped cells, every cell verified by hash |
+| `bash -n` on all 51 shipped shell scripts | a scrub that produces invalid shell. The path redaction used to insert `<path redacted>`, which is a redirection: 21 of the 52 scripts did not parse, and nothing noticed because nothing asked bash to read them |
 | a scan for the account name | a scrub rule silently dropped. It caught 81 files after one rewrite of this script |
+
+If any of these fails the folder gets a `REFUSED.md` in place of `MANIFEST.md`, so a
+rejected build cannot be mistaken for a finished one. It used to print REFUSING
+and then write a clean-looking manifest anyway.
 
 Current state: all pass — 15,243 cell checks, 0 fail; all BDG gates pass. And,
 run inside the folder, `python paper/tools/build_results.py` rebuilds 23 table
@@ -395,16 +406,22 @@ Stated rather than discovered:
    for `edm` (§7). Everything the code *imports* is in the folder. Modality 2,
    the tests and every table rebuild need no download beyond QM9.
 2. **The paired and useful-yield readouts cannot be recomputed here.**
-   `paper_fill_v3.py`, `v3_blade_readout.py` and `v3_paired.py` read the
-   `.permol.pt` sidecars, which are 500 MB and stay in the repository. The pages
-   they produced ship instead, under `docs/results/`. Nothing in the paper's
-   tables or figures depends on them.
+   `v3_blade_readout.py` and `v3_paired.py` read the `.permol.pt` sidecars, which
+   are 500 MB and stay in the repository. `paper_fill_v3.py --latex-check` stops
+   earlier than that, on `paper/versions/v4_main.tex`: it audits the live text
+   against the v4 snapshot, and the numbered snapshots are not shipped. The pages
+   all three produced ship instead, under `docs/results/`. Nothing in the paper's
+   tables or figures depends on any of them — `build_results.py --check` is the
+   cross-check that does run here, and it passes.
 3. **The property-distribution figure needs QM9.** `paper/tools/distributions.py`
    reads `data/qm9.pt`; the other three figures come from the cells. The values
    it drew are recorded in `paper/property_distributions.json`, which ships.
-4. **Unzip to a short path on Windows.** The longest path in the folder is 147
-   characters including its root; below a ~110-character parent directory it
-   stays under Windows' 260-character limit.
+4. **Unzip to a short path on Windows.** The longest path is a 129-character
+   result-cell name, 164 including the root folder, so the parent directory has
+   about **96** characters to spare under Windows' 260-character limit. (An
+   earlier version of this note said 147 and ~110, which was wrong in the unsafe
+   direction; `git worktree add` into a 155-character path died with `Filename
+   too long` on exactly these cell names.)
 5. **Five Modality-2 helper scripts load from a hard-coded cluster path** at
    import: `proj1/m2/{calib_k,diag_strength,gate_arms,make_vf_table,nfe_check}.py`
    raise `FileNotFoundError` off Betty. They are diagnostics, not on any results
@@ -413,3 +430,9 @@ Stated rather than discovered:
 6. **`prepare_qm9.py` takes no arguments and has no `--help`** — running it with
    any argument starts a full dataset rebuild. It is seeded and deterministic, so
    a stray rebuild is harmless, but it is not a no-op.
+7. **The folder ships with no `__pycache__`, but running it makes some.** The
+   build sweeps bytecode after its own checks, and a `.pyc` records the absolute
+   path it was compiled from — this machine's home directory. The checks here and
+   in `test_v3.py` run with `-B` for that reason, but anything else executed in
+   the folder will leave `__pycache__` behind. If the folder is re-zipped after
+   being run, delete those first.

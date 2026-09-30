@@ -569,9 +569,15 @@ inv = re.search(r'srun python -u "\$TS"(.*?)--max-minutes', src, re.S)
 gate("slurm_ts_invocation_found", bool(inv))
 used = set(re.findall(r"(--[a-z][a-z0-9-]+)", inv.group(1))) if inv else set()
 used.add("--max-minutes")
+# -B: without it this call compiles transfer_sweep.py and its imports, leaving
+# __pycache__ behind. In the repository that is noise; inside the submission
+# folder it is a leak, because a .pyc records the absolute path of the source it
+# was compiled from, i.e. the home directory of whoever ran the test.
 help_txt = subprocess.run(
-    [sys.executable, os.path.join(ROOT, "proj1", "scripts", "transfer_sweep.py"), "--help"],
-    capture_output=True, text=True).stdout
+    [sys.executable, "-B",
+     os.path.join(ROOT, "proj1", "scripts", "transfer_sweep.py"), "--help"],
+    capture_output=True, text=True,
+    env=dict(os.environ, PYTHONDONTWRITEBYTECODE="1")).stdout
 flags = set(re.findall(r"(--[a-z][a-z0-9-]+)", help_txt))
 gate("slurm_passes_only_real_flags", bool(used) and used <= flags,
      "passes %d flags; not in transfer_sweep.py: %s"

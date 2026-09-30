@@ -7,6 +7,7 @@
 #SBATCH --time=04:00:00
 #SBATCH --output=$PROJECT_ROOT/logs/bdg-%A_%a.out
 #SBATCH --error=$PROJECT_ROOT/logs/bdg-%A_%a.err
+PROJECT_ROOT="${PROJECT_ROOT:-$(pwd)}"  # default added when this submission folder was built
 #
 # BDG: two-sided setpoint control of the ACROSS-BATCH variance of the predicted
 # property. 39 cells = the ablation ladder plus its MATCHED controls.
@@ -40,7 +41,7 @@
 set -uo pipefail
 PROJ=$PROJECT_ROOT
 cd "$PROJ" || exit 1
-source <path redacted> || exit 1
+source $PROJECT_ROOT/redacted || exit 1
 export OMP_NUM_THREADS=4 MKL_NUM_THREADS=4
 
 # (prop arm w variant) -- exactly plan_bdg_cells' order, controls first

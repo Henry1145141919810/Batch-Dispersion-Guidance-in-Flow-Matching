@@ -7,6 +7,7 @@
 #SBATCH --time=04:00:00
 #SBATCH --output=$PROJECT_ROOT/logs/diff-%j.out
 #SBATCH --error=$PROJECT_ROOT/logs/diff-%j.err
+PROJECT_ROOT="${PROJECT_ROOT:-$(pwd)}"  # default added when this submission folder was built
 #
 # VP diffusion generator -- the second required model family.
 #

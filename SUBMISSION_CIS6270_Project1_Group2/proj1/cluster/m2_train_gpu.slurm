@@ -7,6 +7,7 @@
 #SBATCH --time=04:00:00
 #SBATCH --output=$PROJECT_ROOT/logs/m2gpu-%j.out
 #SBATCH --error=$PROJECT_ROOT/logs/m2gpu-%j.err
+PROJECT_ROOT="${PROJECT_ROOT:-$(pwd)}"  # default added when this submission folder was built
 #
 # Modality 2 base model, scaled up on GPU to be a defensible base rather than a
 # gate. Three changes from the 200 bp CPU run:
@@ -33,7 +34,7 @@
 set -uo pipefail
 PROJ=$PROJECT_ROOT
 cd "$PROJ/proj1/m2" || exit 1
-source <path redacted> || exit 1
+source $PROJECT_ROOT/redacted || exit 1
 echo "host $(hostname)  $(date -Is)"
 nvidia-smi --query-gpu=name,memory.total --format=csv,noheader || echo "no gpu visible"
 python -u simplex_fm.py --crop 500 --steps 100000 --batch 256 \

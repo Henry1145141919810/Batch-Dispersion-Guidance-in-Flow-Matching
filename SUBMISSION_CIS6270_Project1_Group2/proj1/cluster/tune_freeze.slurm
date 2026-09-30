@@ -7,6 +7,7 @@
 #SBATCH --time=00:20:00
 #SBATCH --output=$PROJECT_ROOT/logs/tunefreeze-%j.out
 #SBATCH --error=$PROJECT_ROOT/logs/tunefreeze-%j.err
+PROJECT_ROOT="${PROJECT_ROOT:-$(pwd)}"  # default added when this submission folder was built
 #
 # THE GATE between the two stages. Reads the finished tune sweep, picks the two
 # operating points per (property, arm), and writes frozen_tune.json plus the

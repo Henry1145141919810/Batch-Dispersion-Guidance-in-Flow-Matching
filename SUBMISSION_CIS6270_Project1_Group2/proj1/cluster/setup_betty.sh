@@ -1,4 +1,5 @@
 #!/bin/bash
+PROJECT_ROOT="${PROJECT_ROOT:-$(pwd)}"  # default added when this submission folder was built
 # One-time remote setup. Run ON a Betty login node -- setup only, no compute.
 #
 #   bash setup_betty.sh

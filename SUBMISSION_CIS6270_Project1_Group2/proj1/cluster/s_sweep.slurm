@@ -7,6 +7,7 @@
 #SBATCH --time=04:00:00
 #SBATCH --output=$PROJECT_ROOT/logs/ssweep-%A_%a.out
 #SBATCH --error=$PROJECT_ROOT/logs/ssweep-%A_%a.err
+PROJECT_ROOT="${PROJECT_ROOT:-$(pwd)}"  # default added when this submission folder was built
 #
 # FINDINGS Gap 0, never run: the guidance tolerance s is hardcoded to f_A.y_std
 # (guidance_sweep.py:918) and is 9.2x / 17.0x / 6.2x wider than the delta the
@@ -31,7 +32,7 @@
 set -uo pipefail
 PROJ=$PROJECT_ROOT
 cd "$PROJ" || exit 1
-source <path redacted> || exit 1
+source $PROJECT_ROOT/redacted || exit 1
 export OMP_NUM_THREADS=4 MKL_NUM_THREADS=4
 
 SMODES=(y_std y_std_4 2delta delta delta_4 zero)

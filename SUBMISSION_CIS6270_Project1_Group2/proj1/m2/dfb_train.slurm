@@ -6,11 +6,12 @@
 #SBATCH --cpus-per-task=32
 #SBATCH --time=36:00:00
 #SBATCH --output=$PROJECT_ROOT/proj1/m2/logs/dfb_%j.out
+PROJECT_ROOT="${PROJECT_ROOT:-$(pwd)}"  # default added when this submission folder was built
 set -euo pipefail
 export SLURM_CONF=/cm/shared/apps/slurm/etc/slurm/slurm.conf
 export OMP_NUM_THREADS=28 MKL_NUM_THREADS=28
 cd $PROJECT_ROOT
-PY=<path redacted>
+PY=$PROJECT_ROOT/redacted
 echo "host $(hostname)  start $(date -Is)"
 # 489 epochs x 328 steps x batch 256 = 41.1M sample-views, the published Linear
 # FM budget. Far beyond what 36h of CPU reaches; early stopping or the wall ends

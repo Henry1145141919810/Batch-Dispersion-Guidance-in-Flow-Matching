@@ -7,6 +7,7 @@
 #SBATCH --time=04:00:00
 #SBATCH --output=$PROJECT_ROOT/logs/transfer-%j.out
 #SBATCH --error=$PROJECT_ROOT/logs/transfer-%j.err
+PROJECT_ROOT="${PROJECT_ROOT:-$(pwd)}"  # default added when this submission folder was built
 #
 # THE TRANSFER: every guidance arm on a BORROWED flow-matching base model,
 # EquiFM (Song et al. 2023), steered by TFG's guide tf_predict_<p> and scored

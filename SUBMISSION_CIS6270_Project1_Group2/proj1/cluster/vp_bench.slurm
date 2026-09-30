@@ -7,6 +7,7 @@
 #SBATCH --time=04:00:00
 #SBATCH --output=logs/vp-%j.out
 #SBATCH --error=logs/vp-%j.err
+PROJECT_ROOT="${PROJECT_ROOT:-$(pwd)}"  # default added when this submission folder was built
 #
 # THE VP BENCH SUITE -- our own QM9 diffusion model, and ONLY the gaps.
 #

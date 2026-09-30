@@ -7,6 +7,7 @@
 #SBATCH --time=02:00:00
 #SBATCH --output=$PROJECT_ROOT/logs/ufloor-%A_%a.out
 #SBATCH --error=$PROJECT_ROOT/logs/ufloor-%A_%a.err
+PROJECT_ROOT="${PROJECT_ROOT:-$(pwd)}"  # default added when this submission folder was built
 #
 # FIX A DENOMINATOR ERROR BEFORE IT REACHES THE PAPER.
 # DIST_PROTOCOL.md:181 registers the chemistry floor as mol_stability >= 0.9 x UNGUIDED
@@ -21,7 +22,7 @@
 set -uo pipefail
 PROJ=$PROJECT_ROOT
 cd "$PROJ" || exit 1
-source <path redacted> || exit 1
+source $PROJECT_ROOT/redacted || exit 1
 export OMP_NUM_THREADS=4 MKL_NUM_THREADS=4
 
 PROPS=(mu alpha gap); SEEDS=(20261001 20261002)

@@ -30,7 +30,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-FASTA = ("<path redacted>"
+FASTA = ("$PROJECT_ROOT/redacted"
          "enhancer_data/KC_regions.fa")
 IDX = {c: i for i, c in enumerate("ACGT")}
 
@@ -63,7 +63,7 @@ def one_hot(seqs, L):
     return x
 
 
-DFB_PKL = ("<path redacted>"
+DFB_PKL = ("$PROJECT_ROOT/redacted"
            "enhancer_data/DeepFlyBrain_data.pkl")
 
 

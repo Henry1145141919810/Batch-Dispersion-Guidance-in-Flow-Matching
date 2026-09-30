@@ -7,6 +7,7 @@
 #SBATCH --time=04:00:00
 #SBATCH --output=logs/v3-%j.out
 #SBATCH --error=logs/v3-%j.err
+PROJECT_ROOT="${PROJECT_ROOT:-$(pwd)}"  # default added when this submission folder was built
 #
 # THE LOG PATHS ARE RELATIVE, and submit_v3.sh overrides them anyway with
 # --output/--error built from CGM_PROJ. They used to be absolute into one

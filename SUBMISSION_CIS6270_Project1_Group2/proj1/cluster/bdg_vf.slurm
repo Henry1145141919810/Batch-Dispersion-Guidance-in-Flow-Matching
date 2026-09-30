@@ -7,6 +7,7 @@
 #SBATCH --time=04:00:00
 #SBATCH --output=$PROJECT_ROOT/logs/bdgvf-%A_%a.out
 #SBATCH --error=$PROJECT_ROOT/logs/bdgvf-%A_%a.err
+PROJECT_ROOT="${PROJECT_ROOT:-$(pwd)}"  # default added when this submission folder was built
 #
 # THE V_F LEG of the V_b-vs-V_F contrast, re-run after the first attempt was
 # OOM-killed at batch=512.
@@ -23,7 +24,7 @@
 set -uo pipefail
 PROJ=$PROJECT_ROOT
 cd "$PROJ" || exit 1
-source <path redacted> || exit 1
+source $PROJECT_ROOT/redacted || exit 1
 export OMP_NUM_THREADS=8 MKL_NUM_THREADS=8
 
 CELLS=(

@@ -9,10 +9,11 @@
 #SBATCH --time=04:00:00
 #SBATCH --output=$PROJECT_ROOT/logs/diffbench-%j.out
 #SBATCH --error=$PROJECT_ROOT/logs/diffbench-%j.err
+PROJECT_ROOT="${PROJECT_ROOT:-$(pwd)}"  # default added when this submission folder was built
 set -euo pipefail
 REPO=$PROJECT_ROOT
 cd "$REPO"
-source <path redacted>
+source $PROJECT_ROOT/redacted
 echo "host: $(hostname)"; nvidia-smi -L
 # NOTE filenames deliberately avoid "_euler_" -- .gitignore:88 is
 # results/bench/*_euler_*.json and would silently untrack these artifacts.

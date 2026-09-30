@@ -1,4 +1,5 @@
 #!/bin/bash
+PROJECT_ROOT="${PROJECT_ROOT:-$(pwd)}"  # default added when this submission folder was built
 # Protocol v3 + its BDG ablation, on BOTH base models, in one paste.
 #
 #   bash proj1/cluster/submit_v3.sh

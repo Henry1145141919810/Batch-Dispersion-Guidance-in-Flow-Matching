@@ -1,4 +1,5 @@
 #!/bin/bash
+PROJECT_ROOT="${PROJECT_ROOT:-$(pwd)}"  # default added when this submission folder was built
 # Fires when the M1 headline lanes exit. Runs the two M2 measurements that the
 # protocol requires BEFORE any sweep cell -- it does NOT start the sweep, because
 # choosing the window and the strength from those tables is a judgement call and

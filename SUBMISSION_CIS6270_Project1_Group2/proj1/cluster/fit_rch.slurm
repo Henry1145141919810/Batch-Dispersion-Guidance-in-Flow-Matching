@@ -7,6 +7,7 @@
 #SBATCH --time=02:00:00
 #SBATCH --output=$PROJECT_ROOT/logs/fitrch-%j.out
 #SBATCH --error=$PROJECT_ROOT/logs/fitrch-%j.err
+PROJECT_ROOT="${PROJECT_ROOT:-$(pwd)}"  # default added when this submission folder was built
 #
 # Fit the Residual Calibration Head (Haimo v1) for every property.
 #

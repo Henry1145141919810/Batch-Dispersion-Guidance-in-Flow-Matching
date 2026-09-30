@@ -7,6 +7,7 @@
 #SBATCH --time=04:00:00
 #SBATCH --output=$PROJECT_ROOT/logs/basecmp-%j.out
 #SBATCH --error=$PROJECT_ROOT/logs/basecmp-%j.err
+PROJECT_ROOT="${PROJECT_ROOT:-$(pwd)}"  # default added when this submission folder was built
 #
 # THE BASE-MODEL COMPARISON. One question: for each guidance method, does its
 # behaviour survive a change of base model when NOTHING ELSE changes?

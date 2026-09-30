@@ -1,4 +1,5 @@
 #!/bin/bash
+PROJECT_ROOT="${PROJECT_ROOT:-$(pwd)}"  # default added when this submission folder was built
 # The t >= 0.3 cells Henry needs for tab:m2 and tab:full-m2.
 #
 # Batches of 4 ON PURPOSE: each guided cell holds ~5.7 GiB and the card is

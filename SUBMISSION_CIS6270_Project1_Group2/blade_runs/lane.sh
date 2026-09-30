@@ -1,4 +1,5 @@
 #!/bin/bash
+PROJECT_ROOT="${PROJECT_ROOT:-$(pwd)}"  # default added when this submission folder was built
 # blade stand-in for proj1/cluster/v3_run.slurm's run_one: blade has no scheduler.
 #
 #   setsid nohup bash blade_runs/lane.sh <gpu> <ABSOLUTE queue file> &

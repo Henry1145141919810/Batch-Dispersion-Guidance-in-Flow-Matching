@@ -7,6 +7,7 @@
 #SBATCH --time=04:00:00
 #SBATCH --output=$PROJECT_ROOT/logs/sweepv2-%j.out
 #SBATCH --error=$PROJECT_ROOT/logs/sweepv2-%j.err
+PROJECT_ROOT="${PROJECT_ROOT:-$(pwd)}"  # default added when this submission folder was built
 #
 # Stage 2 screening: the three new arms (SPBC, BTVG, SHG) plus the three v1
 # arms that were implemented and gated but never queued (smg_mean, rch = Haimo

@@ -1,0 +1,39 @@
+{
+  "arm": "bdg_e4t0.5",
+  "budget_gib": 33.52761268615723,
+  "confirm": {
+    "equifm": {
+      "alloc_gib": 19.632151126861572,
+      "backend": "equifm",
+      "batch": 500,
+      "resv_gib": 26.65234375
+    },
+    "fm": {
+      "alloc_gib": 10.7130126953125,
+      "backend": "fm",
+      "batch": 500,
+      "resv_gib": 17.572265625
+    }
+  },
+  "fits": {},
+  "headroom": 0.8,
+  "n": 5000,
+  "points": [
+    {
+      "alloc_gib": 10.7130126953125,
+      "backend": "fm",
+      "batch": 500,
+      "resv_gib": 17.572265625
+    },
+    {
+      "alloc_gib": 19.632151126861572,
+      "backend": "equifm",
+      "batch": 500,
+      "resv_gib": 26.65234375
+    }
+  ],
+  "prop": "mu",
+  "steps": 10,
+  "vram_gb": 45.0,
+  "vram_gib": 41.90951585769653
+}

@@ -6,6 +6,7 @@
 #SBATCH --time=02:00:00
 #SBATCH --output=$PROJECT_ROOT/logs/m2train-%j.out
 #SBATCH --error=$PROJECT_ROOT/logs/m2train-%j.err
+PROJECT_ROOT="${PROJECT_ROOT:-$(pwd)}"  # default added when this submission folder was built
 # Modality 2 base model: naive linear flow matching on the DNA simplex.
 # The gate (proj1/m2/gate.py, job 8715948) cleared all three bars at 3000 steps;
 # this is the real run at 20k with a cosine schedule so the base is not
@@ -13,7 +14,7 @@
 set -uo pipefail
 PROJ=$PROJECT_ROOT
 cd "$PROJ/proj1/m2" || exit 1
-source <path redacted> || exit 1
+source $PROJECT_ROOT/redacted || exit 1
 export OMP_NUM_THREADS=16 MKL_NUM_THREADS=16
 echo "host $(hostname)  $(date -Is)"
 python -u simplex_fm.py --steps 20000 --batch 64 --crop 200 \

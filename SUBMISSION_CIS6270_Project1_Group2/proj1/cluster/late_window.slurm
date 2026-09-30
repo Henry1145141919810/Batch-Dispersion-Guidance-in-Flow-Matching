@@ -7,6 +7,7 @@
 #SBATCH --time=04:00:00
 #SBATCH --output=$PROJECT_ROOT/logs/lw-%A_%a.out
 #SBATCH --error=$PROJECT_ROOT/logs/lw-%A_%a.err
+PROJECT_ROOT="${PROJECT_ROOT:-$(pwd)}"  # default added when this submission folder was built
 #
 # RETIRE A CONFOUND. FINDINGS 4.4 states as STRUCTURAL that "the region where the
 # closure becomes valid is the region where guidance has no effect" - at
@@ -29,7 +30,7 @@
 set -uo pipefail
 PROJ=$PROJECT_ROOT
 cd "$PROJ" || exit 1
-source <path redacted> || exit 1
+source $PROJECT_ROOT/redacted || exit 1
 export OMP_NUM_THREADS=4 MKL_NUM_THREADS=4
 
 PROPS=(mu gap); WS=(1 16 64)

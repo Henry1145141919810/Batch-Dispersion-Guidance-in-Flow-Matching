@@ -7,6 +7,7 @@
 #SBATCH --time=04:00:00
 #SBATCH --output=$PROJECT_ROOT/logs/v2-%j.out
 #SBATCH --error=$PROJECT_ROOT/logs/v2-%j.err
+PROJECT_ROOT="${PROJECT_ROOT:-$(pwd)}"  # default added when this submission folder was built
 #
 # THE v2 FULL RUN: fixed target (q90 of QM9), n = 5000, 3 seeds.
 # Protocol: docs/protocol/FULL_RUN_V2_PROTOCOL.md (rules V1-V8).

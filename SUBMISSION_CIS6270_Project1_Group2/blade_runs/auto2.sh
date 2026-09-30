@@ -1,4 +1,5 @@
 #!/bin/bash
+PROJECT_ROOT="${PROJECT_ROOT:-$(pwd)}"  # default added when this submission folder was built
 # Autonomous run: M1 headline -> M2 (gc) -> M1 ablation -> extras, with a
 # validation gate between stages.
 #

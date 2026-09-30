@@ -7,6 +7,7 @@
 #SBATCH --time=04:00:00
 #SBATCH --output=$PROJECT_ROOT/logs/sweep-%j.out
 #SBATCH --error=$PROJECT_ROOT/logs/sweep-%j.err
+PROJECT_ROOT="${PROJECT_ROOT:-$(pwd)}"  # default added when this submission folder was built
 #
 # Stage 1 guidance screening on the FROZEN fm_v1 base model.
 #
