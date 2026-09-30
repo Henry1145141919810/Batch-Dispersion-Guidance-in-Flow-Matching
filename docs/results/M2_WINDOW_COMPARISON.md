@@ -30,7 +30,6 @@ Set aside (a different window, not part of this comparison): 4 cells at t >= 0.2
 | `bdg_e0t1` | -- | 30.25 ±1.96 | -- |
 | `bdg_e4t0.5` | 16.42 ±1.21 | 37.33 ±6.48 | +20.92 pp |
 | `bdg_e4t1` | 14.07 ±0.98 | 15.58 ±0.78 | +1.52 pp |
-| `bdg_e4t0.25` | -- | -- | -- |
 
 The window is worth **+16.15 pp to plug** and **+20.92 pp to BDG** here, so BDG's margin goes **+2.32 pp -> +7.08 pp**.
 
@@ -100,7 +99,7 @@ The window is worth **+39.83 pp to plug** and **+18.12 pp to BDG** here, so BDG'
 
 ## Reading this page
 
-1. **Never pool or compare in-band across the two properties.** `cpg`'s band is quantum-floored at 0.60 sd against `gc`'s 0.16 (`delta = max(0.16*s, 4.4*quantum)`), so unguided already sits in band 50.2 %% of the time on `cpg` against 14.0 %% on `gc`. The two are not on one difficulty scale.
+1. **Never pool or compare in-band across the two properties.** `cpg`'s band is quantum-floored at 0.60 sd against `gc`'s 0.16 (`delta = max(0.16*s, 4.4*quantum)`), so unguided already sits in band 50.2 % of the time on `cpg` against 14.0 % on `gc`. The two are not on one difficulty scale.
 2. **On `cpg` BDG is WIDENING, not failing.** See the controller table above: DPS already contracts `cpg` to 0.37*s, tighter than the tightest setpoint the pre-registered grid reaches, so the feedback correctly pulls back out and in-band -- which rewards tightness -- punishes it. The controller is behaving identically and correctly on both properties; only which side of its setpoint the baseline lands on differs. **The grid does not reach `cpg`'s regime; the controller does not fail.**
 3. **`bdg_e4t1` is catastrophic on both** properties, so the setpoint sign-reversal holds and `tau_mult = 0.5` carries the method.
 4. **The compare set degenerates at t >= 0.5 on BOTH properties** (`tmpd` and `lgd_mc` are bit-identical to `plug` there). That is a theorem about the residual endpoint variance collapsing, not a property of the observable -- see `docs/methods/`.

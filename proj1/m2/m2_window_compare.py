@@ -143,6 +143,8 @@ def main():
         for arm in ARMS:
             m5, s5, n5 = cell(p, 0.5, a.w, arm)
             m3, s3, n3 = cell(p, 0.3, a.w, arm)
+            if m5 is None and m3 is None:
+                continue          # not run on this property at either window
             f = lambda m, s: "--" if m is None else "%.2f ±%.2f" % (m, s)
             d = ("--" if (m5 is None or m3 is None) else "%+.2f pp" % (m3 - m5))
             A.append("| `%s` | %s | %s | %s |" % (arm, f(m5, s5), f(m3, s3), d))
@@ -229,7 +231,7 @@ def main():
     A.append("1. **Never pool or compare in-band across the two properties.** "
              "`cpg`'s band is quantum-floored at 0.60 sd against `gc`'s 0.16 "
              "(`delta = max(0.16*s, 4.4*quantum)`), so unguided already sits "
-             "in band 50.2 %% of the time on `cpg` against 14.0 %% on `gc`. The "
+             "in band 50.2 % of the time on `cpg` against 14.0 % on `gc`. The "
              "two are not on one difficulty scale.")
     A.append("2. **On `cpg` BDG is WIDENING, not failing.** See the controller "
              "table above: DPS already contracts `cpg` to 0.37*s, tighter than "
