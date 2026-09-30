@@ -1,0 +1,662 @@
+"""ODE samplers -- Euler and Heun -- for both model families, with guidance.
+
+Implements SMG_PRIOR_WORK_AUDIT.md section 3 exactly:
+
+  Euler         x_{n+1} = x_n + h F(x_n, t_n)
+  Heun (RK2)    k1 = F(x_n, t_n);  x~ = x_n + h k1;  k2 = F(x~, t_n + h)
+                x_{n+1} = x_n + h/2 (k1 + k2)
+
+with F the FULL guided field, re-evaluated (generator, posterior, f, g, H, c,
+v_f, all schedules) at the predicted state in stage two. Holding the guidance
+fixed across stages would be a different method.
+
+Fields (section 3.1 / 3.2):
+
+  flow matching   F = v_theta + w (1 - t) / t * G,           t: 0 -> 1, h > 0
+  VP diffusion    F = -1/2 beta x - 1/2 beta (s_theta + G),   tau: 1 -> 0, h < 0
+
+with G in score units from guidance.py and s_theta = -eps_theta / sigma.
+
+GUIDANCE CLIP. The (1 - t)/t conversion factor is 19 at t = 0.05 and the raw
+property gradient is several Debye per angstrom, so an unclipped correction
+dwarfs the base velocity early in the trajectory and throws the sample off the
+data manifold (measured: molecule stability 0.16 -> 0.02, a third of
+trajectories non-finite). The correction is therefore capped at `clip` times
+the base velocity norm, per sample. This is the velocity-relative trust region
+of OSCAR (component A in our catalogue) -- prior work, adopted, not claimed.
+`clip=None` disables it for the ablation that shows why it is needed.
+
+Endpoint policy, declared once and used by every arm: integrate to the last
+grid point, then jump to the posterior mean m there. Every generator, guide,
+VJP and JVP pass is counted in `sampler.cost` so cost is measured, not inferred
+from step counts.
+"""
+from __future__ import annotations
+
+import torch
+
+from diffusion import alpha_sigma, beta
+from guidance import (Cost, DISPLACEMENT_MODES, fm_posterior,  # noqa: E501
+                      guidance_field, tfg_components, vp_posterior)
+from guidance_update import GuidanceUpdater
+from models.egnn import zero_com
+
+
+def _clip_to_velocity(G_c, G_f, v_c, v_f, mask, clip):
+    """Scale (G_c, G_f) per sample so its norm is at most clip * |(v_c, v_f)|."""
+    if clip is None:
+        return G_c, G_f
+    gn = torch.sqrt((G_c ** 2).sum((1, 2)) + (G_f ** 2).sum((1, 2)) + 1e-12)
+    vn = torch.sqrt((v_c ** 2).sum((1, 2)) + (v_f ** 2).sum((1, 2)) + 1e-12)
+    f = torch.clamp(clip * vn / gn, max=1.0).view(-1, 1, 1)
+    return G_c * f, G_f * f
+
+
+class _Base:
+    def __init__(self, net, mask, f_net=None, y=None, s=1.0, mode="plug",
+                 w=1.0, n_probe=1, probe_seed=0, clip=1.0,
+                 n_mc=4, sigma_mc=0.1, want_kappa3=False, rch=None,
+                 band_tau=None, band_eta=1.0, band_radius=None,
+                 tau=None, spbc_eta=1.0, spbc_radius=None,
+                 schedule=None,
+                 update_rule="euler", update_kw=None, log_velocity=False,
+                 # BDG. eta DEFAULTS TO 0.0, not 1.0: at eta = 0 the dispersion
+                 # term is multiplied by zero, so an un-configured `bdg` is
+                 # bit-identical to plug rather than silently servoing at unit
+                 # gain. Every caller that wants the controller sets eta.
+                 tfg=None, bdg_eta=0.0, bdg_tau=None, bdg_onesided=False,
+                 bdg_e_override=None):
+        self.net, self.mask = net, mask
+        self.f_net, self.y, self.s, self.mode, self.w = f_net, y, s, mode, w
+        # TFG's configuration (a dict, see guidance_sweep.tfg_config). The arm
+        # is built by the sampler, not by guidance_field, so it is validated
+        # here rather than failing on the first guided step of a long run.
+        self.tfg = tfg
+        if mode == "tfg" and f_net is not None:
+            need = {"rho", "mu", "gamma", "mad", "n_iter", "eps_bsz",
+                    "rho_schedule", "mu_schedule", "sigma_schedule", "clip_scale"}
+            miss = need - set(tfg or {})
+            if miss:
+                raise ValueError("mode='tfg' needs tfg={...} with %s" % sorted(miss))
+            if update_rule != "euler":
+                raise ValueError("mode='tfg' builds its own step; update_rule "
+                                 "must be 'euler', got %r" % update_rule)
+            if schedule is not None:
+                raise ValueError("mode='tfg' cannot be combined with an SHG schedule")
+        self.n_probe, self.clip = n_probe, clip
+        self.n_mc, self.sigma_mc = n_mc, sigma_mc
+        # arms that need extra state: rch carries a fitted head, band carries
+        # its tolerance, kappa3 is a diagnostic column on whatever arm is running
+        self.want_kappa3, self.rch = want_kappa3, rch
+        self.band_tau, self.band_eta, self.band_radius = band_tau, band_eta, band_radius
+        self.tau, self.spbc_eta, self.spbc_radius = tau, spbc_eta, spbc_radius
+        # BDG: gain, setpoint sd, and the positive-part ablation. The setpoint
+        # is resolved by the caller (guidance_sweep sets bdg_tau = mult * s
+        # once the guide's y_std is known), so nothing here has to know it.
+        #
+        # THE BATCH IS THE ESTIMATOR for this arm: V_b is taken over the tensor
+        # the sampler hands to guidance_field, which is one batch. Splitting n
+        # across batches runs that many independent controllers, so a BDG cell
+        # must be run with batch == n.
+        self.bdg_eta, self.bdg_tau = bdg_eta, bdg_tau
+        self.bdg_onesided = bdg_onesided
+        # None = the live controller. A float replays that value for this
+        # step with the feedback cut (open-loop control); the replay
+        # harness sets it per step.
+        self.bdg_e_override = bdg_e_override
+        if mode == "bdg" and f_net is not None and bdg_tau is None:
+            raise ValueError("mode='bdg' needs bdg_tau (the setpoint sd)")
+        # SHG: [(t_lo, t_hi, mode, w), ...]. The first interval containing t
+        # wins; outside every interval, guidance is off. `mode`/`w` on the
+        # sampler are the fallback when no schedule is given.
+        self.schedule = schedule
+        # THE UPDATE RULE. The only thing this changes is how the guidance
+        # direction returned by guidance_field is turned into the correction
+        # added to the field; "euler" is the original first-order behaviour and
+        # returns the direction untouched. `_primary_stage` is False during a
+        # Heun second stage so one ODE step advances the optimiser state once.
+        self.updater = GuidanceUpdater(rule=update_rule, **(update_kw or {}))
+        self._primary_stage = True
+        # Velocity diagnostic, OFF by default and pure logging: when enabled,
+        # every guided step also applies the SAME downstream conversion and
+        # clip to the RAW direction, so the counterfactual "what vanilla would
+        # have done from this very state" is measured rather than modelled.
+        self.log_velocity = log_velocity
+        self.vel_rows = []
+        self._raw_dir = None
+        self.kappa3_log = []
+        self.schedule_log = {}
+        self.diag_acc = {}
+        self.cost = Cost()
+        self.n_field = 0
+        self.n_clipped = 0
+        self.n_guided = 0
+        self.probe_gen = torch.Generator(device=mask.device).manual_seed(probe_seed)
+        self.last_diag = None
+
+    def active(self, t_scalar):
+        """(mode, weight) in force at this time, or (None, 0.0) for unguided.
+
+        A handoff is a hard switch, so a Heun step that straddles a boundary
+        would otherwise blend two fields inside one step. Both Heun stages call
+        this with their own time, so each stage uses one regime -- which is
+        what the memo requires (section 9.5).
+
+        THE SCHEDULE'S THIRD FIELD IS A MULTIPLIER ON self.w, NOT AN ABSOLUTE
+        WEIGHT. Returning it directly made every SHG arm ignore the strength
+        knob entirely: the screening sweep produced five cells per arm at
+        w = 0.01 ... 4 that were identical to the last digit (alpha MAE 4.811
+        at every strength). That is the same signature as the earlier `band`
+        dead-code bug, and it is why the multiplier is applied here."""
+        if self.schedule is None:
+            return self.mode, self.w
+        for (lo, hi, mode, mult) in self.schedule:
+            if lo <= t_scalar < hi:
+                return mode, self.w * mult
+        return None, 0.0
+
+    def note_guided(self, mode):
+        """Record that a step was ACTUALLY guided with `mode`.
+
+        Counting inside `active()` overcounted, because the caller may still
+        skip the step on t_min_guide or t >= 1: a schedule starting at 0.50
+        with t_min_guide = 0.75 logged 10 steps of which 5 never ran."""
+        self.schedule_log[mode] = self.schedule_log.get(mode, 0) + 1
+
+    def reset_counts(self):
+        self.cost.reset()
+        self.n_field = self.n_clipped = self.n_guided = 0
+        self.schedule_log = {}
+        self.diag_acc = {}
+        self.kappa3_log = []      # was omitted; would double-count on reuse
+        self.updater.reset()      # moment buffers are per-trajectory
+        self.vel_rows = []
+
+    # Diagnostics worth carrying out of the run. Deliberately a short list:
+    # these are the quantities that decide whether BTVG's variance model held
+    # and whether SPBC's forecast was moving anything, and without them the
+    # sweep cannot answer either question.
+    DIAG_KEYS = ("btvg_V_over_tau2", "btvg_V_nonpositive", "btvg_V_raw",
+                 "spbc_bias", "spbc_increment", "spbc_live_fraction",
+                 "spbc_mean_response", "c", "v_f",
+                 "btvg2_gate", "btvg2_V_over_tau2", "btvg2_capped",
+                 "btvg2_var_share", "chem_active", "chem_removed", "chem_P",
+                 # TFG: how often its own rescale_grad bound, what share of
+                 # the step is the clean-space (mean) piece -- the gate that
+                 # tfg has not collapsed into plug -- and how far the raw
+                 # correction sits above the shared velocity clip
+                 "tfg_var_rescaled", "tfg_d0_rescaled", "tfg_d0_frac",
+                 "tfg_corr_over_v",
+                 # BDG's controller state. Without these the arm's mechanism
+                 # is unfalsifiable -- the same gap that made `osc`'s
+                 # mechanism unmeasurable. `bdg_dev_rms`/`bdg_disp_rms` are
+                 # RMS, not mean, because the raw quantities are mean-zero
+                 # over the batch by construction; `bdg_e_raw` is pre-clamp so
+                 # the one-sided cells still show the widening branch's depth.
+                 "bdg_e", "bdg_e_raw", "bdg_e_measured", "bdg_V_b",
+                 "bdg_V_over_tau2",
+                 "bdg_tau", "bdg_dev_rms", "bdg_disp_rms", "bdg_w_eff",
+                 # ...and because THIS accumulator is a mean over guided steps,
+                 # `bdg_w_eff` alone is still unfalsifiable: w_eff was measured
+                 # changing sign up to 34 times in a 50-step window and sitting
+                 # at 0 +- 0.19 near the setpoint, so its run-mean reads ~0 for
+                 # an arm that was violently active. sqrt(mean(bdg_w_eff_sq)) is
+                 # its RMS over steps and mean(bdg_w_eff_neg) is the fraction of
+                 # guided steps on which the deviation term REVERSED. This list
+                 # is a whitelist, so a key absent here is silently dropped.
+                 "bdg_w_eff_sq", "bdg_w_eff_neg",
+                 "bdg_batch",
+                 # bobo's original three, kept so bdg_table.py and test_bdg.py
+                 # keep reading what they expect. `bdg_dev`/`bdg_disp` are
+                 # mean-zero over the batch, so THIS accumulator's mean drives
+                 # them to ~1e-7 -- the _rms pair above is what carries the
+                 # signal. `bdg_widening` is the fraction of guided steps with
+                 # e < 0, i.e. the controller ASKED to widen; `bdg_w_eff_neg`
+                 # is the fraction where 1 + eta*e < 0, i.e. the deviation term
+                 # actually reversed. Both are wanted; they are not the same.
+                 "bdg_dev", "bdg_disp", "bdg_widening")
+
+    def _accumulate_diag(self, diag):
+        """Running mean of each diagnostic over every guided step and batch."""
+        for key in self.DIAG_KEYS:
+            v = diag.get(key)
+            if v is None:
+                continue
+            try:
+                x = float(v.double().mean()) if hasattr(v, "double") else float(v)
+            except Exception:
+                continue
+            if x != x:                       # NaN carries no information here
+                continue
+            tot, n = self.diag_acc.get(key, (0.0, 0))
+            self.diag_acc[key] = (tot + x, n + 1)
+
+    def diag_summary(self):
+        return {k: tot / n for k, (tot, n) in self.diag_acc.items() if n}
+
+    # ---- TFG (Ye et al., NeurIPS 2024), a sampler-level arm ----------------
+    #
+    # TFG's update at N_recur = 1 (methods/tfg.py:127-129), on its VP state:
+    #
+    #     x_prev = DDIM(x_t, m)  +  rho_t * G / sqrt(alpha_t)
+    #                            +  sqrt(abar_prev) * D0
+    #
+    # with G, D0 from guidance.tfg_components and alpha_t = abar_t/abar_prev.
+    # Both additions are DISPLACEMENTS per step, not velocities -- D0 in
+    # particular is an O(1) shift of the endpoint, which is what "mean
+    # guidance" means. Here the base step is this sampler's own ODE step and
+    # the two displacements are added to it, divided by h so `integrate`'s
+    # x + h * F lands exactly on them. Each family supplies its abar(t) and
+    # the geometry that maps TFG's VP displacements onto its state
+    # (_tfg_abar / _tfg_geometry). The shared velocity-relative clip then
+    # applies exactly as for every other arm.
+
+    def _tfg_schedule(self, i):
+        """(rho_i, mu_i, std_i, abar_i, abar_next, alpha_i) at grid step i.
+
+        TFG normalises each schedule over the WHOLE grid -- s * T / sum(s),
+        tfg.py:46-74 -- whether or not a step is guided, so the per-step
+        magnitudes are TFG's own even inside a guidance window.
+        """
+        cfg = self.tfg
+        ts = self._grid_ts.detach().to("cpu", torch.float64)
+        ab = self._tfg_abar(ts).to(torch.float64).reshape(-1)
+        cur, nxt = ab[:-1], ab[1:]
+        alpha = cur / nxt.clamp(min=1e-300)
+
+        def norm(kind):
+            if kind == "increase":
+                s = alpha
+            elif kind == "decrease":
+                s = 1.0 - alpha
+            elif kind == "constant":
+                s = torch.ones_like(alpha)
+            else:
+                raise ValueError("unknown TFG schedule %r" % kind)
+            return s * len(s) / s.sum()
+
+        rho_i = float(cfg["rho"]) * float(norm(cfg["rho_schedule"])[i])
+        mu_i = float(cfg["mu"]) * float(norm(cfg["mu_schedule"])[i])
+        sk = cfg["sigma_schedule"]
+        if sk == "decrease":
+            std_i = float(cfg["gamma"]) * float((1.0 - cur[i]).clamp(min=0.0).sqrt())
+        elif sk == "constant":
+            std_i = float(cfg["gamma"])
+        else:
+            raise ValueError("unknown TFG sigma schedule %r" % sk)
+        return rho_i, mu_i, std_i, float(cur[i]), float(nxt[i]), float(alpha[i])
+
+    def _tfg_step(self, coords, feats, t_scalar, post_fn, w, base_c, base_f):
+        """TFG's two displacements for this step, as a velocity for integrate.
+
+        `w` multiplies TFG's (rho_bar, mu_bar) -- so w = 1 is TFG's published
+        configuration and the shared strength grid brackets it. It does NOT
+        touch gamma (the smoothing width), n_iter or the schedules.
+        """
+        if not self._primary_stage:
+            raise NotImplementedError(
+                "tfg is defined per Euler step (TFG's DDIM update); a Heun "
+                "second stage has no TFG counterpart -- use solver='euler'")
+        ts = getattr(self, "_grid_ts", None)
+        i = getattr(self, "_grid_i", None)
+        if ts is None or i is None or float(ts[i]) != float(t_scalar):
+            raise RuntimeError("tfg needs the time grid: run it through "
+                               "sampling.integrate, which records it")
+        t1 = float(ts[i + 1])
+        h = t1 - float(t_scalar)
+        rho_i, mu_i, std_i, ab_cur, ab_nxt, alpha_i = self._tfg_schedule(i)
+        var_scale, k_var, k_0 = self._tfg_geometry(float(t_scalar), t1,
+                                                   ab_cur, ab_nxt, alpha_i)
+        cfg = self.tfg
+        a_var = float(w) * rho_i * k_var
+        G_c, G_f, D_c, D_f, dg = tfg_components(
+            self.f_net, post_fn, coords, feats, self.mask, self.y, cfg["mad"],
+            std_i, float(w) * mu_i, n_iter=cfg["n_iter"],
+            eps_bsz=cfg["eps_bsz"], want_var=(a_var != 0.0),
+            var_scale=var_scale, clip_scale=cfg["clip_scale"],
+            generator=self.probe_gen, cost=self.cost)
+        m3 = self.mask.unsqueeze(-1)
+        dv_c, dv_f = a_var * G_c, a_var * G_f          # displacements
+        d0_c, d0_f = k_0 * D_c, k_0 * D_f
+        C_c = zero_com((dv_c + d0_c) / h, self.mask)
+        C_f = (dv_f + d0_f) / h * m3
+
+        def nrm(a, b):
+            return torch.sqrt((a ** 2).sum((1, 2)) + (b ** 2).sum((1, 2)))
+        nv, n0 = nrm(dv_c, dv_f), nrm(d0_c, d0_f)
+        both = nv + n0
+        dg["tfg_d0_frac"] = torch.where(both > 0, n0 / both.clamp(min=1e-300),
+                                        torch.zeros_like(both))
+        dg["tfg_corr_over_v"] = nrm(C_c, C_f) / nrm(base_c, base_f).clamp(min=1e-12)
+        dg.update({"tfg_rho_i": rho_i, "tfg_mu_i": mu_i, "tfg_std_i": std_i})
+        self.last_diag = dg
+        self._accumulate_diag(dg)
+        return C_c, C_f
+
+    def _log_velocity(self, t_scalar, v_c, v_f, Cd_c, Cd_f, mult):
+        """Record how much the update rule changes the ACTUAL sampling step.
+
+        `Cd` is the correction already applied (conversion, strength, clip).
+        The raw direction stashed by `_guide` is pushed through the identical
+        conversion and clip to give `Cg`, so the only difference between the
+        two total velocities is the rule.
+
+        r_t = |C(D)| / |V| answers whether guidance is a small perturbation of
+        the base velocity; the total-velocity angle answers whether a large
+        rotation in guidance space survives into the trajectory.
+        """
+        rg_c, rg_f = self._raw_dir
+        Cg_c, Cg_f = mult * rg_c, mult * rg_f
+        if self.clip is not None:
+            Cg_c, Cg_f = _clip_to_velocity(Cg_c, Cg_f, v_c, v_f, self.mask,
+                                           self.clip)
+
+        def _n(a, b):
+            return torch.sqrt((a ** 2).sum((1, 2)) + (b ** 2).sum((1, 2))
+                              + 1e-30)
+
+        def _cos(a1, b1, a2, b2):
+            dot = (a1 * a2).sum((1, 2)) + (b1 * b2).sum((1, 2))
+            return dot / (_n(a1, b1) * _n(a2, b2))
+
+        vn = _n(v_c, v_f)
+        tot_g = _cos(v_c + Cg_c, v_f + Cg_f, v_c + Cd_c, v_f + Cd_f)
+        gspace = _cos(Cg_c, Cg_f, Cd_c, Cd_f)
+        deg = lambda x: float(torch.rad2deg(torch.acos(x.clamp(-1, 1))).mean())
+        self.vel_rows.append({
+            "t": float(t_scalar),
+            "r_t": float((_n(Cd_c, Cd_f) / vn).mean()),
+            "r_t_raw": float((_n(Cg_c, Cg_f) / vn).mean()),
+            "total_vel_cos": float(tot_g.mean()),
+            "total_vel_angle_deg": deg(tot_g),
+            "guidance_cos": float(gspace.mean()),
+            "guidance_angle_deg": deg(gspace),
+        })
+        self._raw_dir = None
+
+    def _guide(self, coords, feats, t, post_fn, mode=None, t_scalar=None):
+        G_c, G_f, diag = guidance_field(
+            self.f_net, post_fn, coords, feats, self.mask, self.y, self.s,
+            mode or self.mode, self.n_probe, self.probe_gen, self.cost,
+            self.n_mc, self.sigma_mc, want_kappa3=self.want_kappa3,
+            rch=self.rch, band_tau=self.band_tau, band_eta=self.band_eta,
+            band_radius=self.band_radius, t_scalar=t,
+            tau=self.tau, spbc_eta=self.spbc_eta, spbc_radius=self.spbc_radius,
+            bdg_eta=self.bdg_eta, bdg_tau=self.bdg_tau,
+            bdg_onesided=self.bdg_onesided,
+            bdg_e_override=self.bdg_e_override)
+        self.last_diag = diag
+        self._accumulate_diag(diag)
+        if self.want_kappa3 and "kappa3_skew" in diag:
+            self.kappa3_log.append(diag["kappa3_skew"].detach().cpu())
+        # THE ONE PLACE THE GUIDANCE DIRECTION BECOMES AN UPDATE. Everything
+        # downstream -- the (1-t)/t conversion, the strength w, the
+        # velocity-relative clip -- is unchanged and sees a direction of the
+        # same per-sample norm, so only the DIRECTION is under test.
+        if self.log_velocity:
+            self._raw_dir = (zero_com(G_c, self.mask),
+                             G_f * self.mask.unsqueeze(-1))
+        G_c, G_f = self.updater.apply(G_c, G_f, self.mask, t_scalar=t_scalar,
+                                      update_state=self._primary_stage)
+        return zero_com(G_c, self.mask), G_f * self.mask.unsqueeze(-1)
+
+
+class FlowSampler(_Base):
+    def __init__(self, net, mask, t_min_guide=0.05, **kw):
+        super().__init__(net, mask, **kw)
+        self.t_min_guide = t_min_guide
+
+    def time_grid(self, n_steps, span=None):
+        a, b = (0.0, 1.0) if span is None else span
+        return torch.linspace(a, b, n_steps + 1)
+
+    @staticmethod
+    def _tfg_abar(ts):
+        """The flow path x_t = t x_1 + (1-t) eps is a VP path rescaled by
+        c_t = sqrt(t^2 + (1-t)^2): x_t / c_t has signal sqrt(abar) = t / c_t."""
+        return ts ** 2 / (ts ** 2 + (1.0 - ts) ** 2)
+
+    @staticmethod
+    def _tfg_geometry(t, t1, ab_cur, ab_nxt, alpha):
+        """(var_scale, k_var, k_0): TFG's VP displacements on this flow state.
+
+        With x_vp = x / c_t, TFG's gradient is c_t times ours (var_scale, so
+        rescale_grad sees TFG's numbers), and a VP displacement at the next
+        point maps back by x c_{t1}. Then
+          rho G_vp / sqrt(alpha)   ->  rho (t1 c_t / t) * G_vp
+          sqrt(abar_next) D0       ->  t1 * D0
+        (sqrt(alpha) = t c_{t1} / (t1 c_t)). Checked numerically against
+        TFG's own VP formula in test_tfg.py. At t = 0 alpha = 0 and TFG's
+        variance step is undefined; it is switched off there.
+        """
+        c_t = (t * t + (1.0 - t) ** 2) ** 0.5
+        k_var = t1 * c_t / t if t > 0.0 else 0.0
+        return c_t, k_var, t1
+
+    def field(self, coords, feats, t_scalar):
+        self.n_field += 1
+        B = coords.shape[0]
+        t = torch.full((B,), float(t_scalar), device=coords.device)
+        with torch.no_grad():
+            v_c, v_f = self.net(coords, feats, self.mask, t)
+        self.cost.gen_fwd += 1
+        mode, w = self.active(t_scalar)
+        if (self.f_net is None or mode is None or t_scalar < self.t_min_guide
+                or t_scalar >= 1.0):
+            return v_c, v_f
+
+        self.n_guided += 1
+        self.note_guided(mode)
+        post_fn = lambda c, f: fm_posterior(self.net, c, f, self.mask, t)  # noqa: E731
+        if mode == "tfg":
+            # TFG builds a velocity directly (its displacements over h); no
+            # score conversion, no update rule. The clip below still applies.
+            G_c, G_f = self._tfg_step(coords, feats, t_scalar, post_fn, w,
+                                      v_c, v_f)
+            mult = 1.0
+        else:
+            G_c, G_f = self._guide(coords, feats, t, post_fn, mode,
+                                   t_scalar=t_scalar)
+            if mode in DISPLACEMENT_MODES:
+                # Already a state displacement. Converting it again through the
+                # score-to-velocity factor (1-t)/t would apply that factor twice
+                # and make the edit scale wrongly in t.
+                mult = w
+            else:
+                mult = w * (1.0 - t_scalar) / t_scalar
+            G_c, G_f = mult * G_c, mult * G_f
+        if self.clip is not None:
+            gn = torch.sqrt((G_c ** 2).sum((1, 2)) + (G_f ** 2).sum((1, 2)))
+            vn = torch.sqrt((v_c ** 2).sum((1, 2)) + (v_f ** 2).sum((1, 2)))
+            self.n_clipped += int((gn > self.clip * vn).sum().item())
+            G_c, G_f = _clip_to_velocity(G_c, G_f, v_c, v_f, self.mask, self.clip)
+        if self.log_velocity and self._raw_dir is not None:
+            self._log_velocity(t_scalar, v_c, v_f, G_c, G_f, mult)
+        return v_c + G_c, v_f + G_f
+
+    @torch.no_grad()
+    def terminal(self, coords, feats, t_scalar):
+        return coords, feats            # t = 1: m = x
+
+
+class VPSampler(_Base):
+    """Probability-flow ODE for a VP diffusion model.
+
+    `noise_schedule` selects which VP schedule the checkpoint was trained
+    under. The default is `diffusion.py`'s linear-beta schedule, which is what
+    OUR diffusion generator uses. A borrowed checkpoint trained under a
+    different schedule must pass its own (see
+    `external/edm_schedule.EDMSchedule`): sampling EDM under the linear-beta
+    schedule does not give a weaker EDM, it gives a different model, and the
+    failure is silent -- samples still come out, they are just not draws from
+    the trained distribution.
+
+    `tau_max_guide` is the VP counterpart of `FlowSampler.t_min_guide`: guidance
+    is skipped while `tau > tau_max_guide`, i.e. in the noisy part of the
+    trajectory. The two are the SAME window under the time convention of each
+    family -- flow time runs 0 (noise) -> 1 (data) and VP time runs 1 (noise)
+    -> 0 (data), so `t_min_guide = w` corresponds to `tau_max_guide = 1 - w`.
+
+    It defaults to `None` (guide everywhere), which is what this class did
+    before the parameter existed, so nothing already measured changes. But
+    `None` is not a neutral choice and a caller should not take it as one: the
+    guidance window is the largest single effect measured anywhere in this
+    project -- alpha MAE 10.02 -> 5.32 as `t_min_guide` goes 0.05 -> 0.5,
+    bigger than every arm difference combined -- and guiding at tau near 1 asks
+    the guide to read a property off a posterior mean formed by dividing by
+    alpha(1) ~ 0.003, which amplifies any epsilon error by ~300x. A sweep that
+    leaves this at `None` is measuring arms at the bad end of that curve and
+    must say so.
+    """
+
+    def __init__(self, net, mask, tau_min=1e-3, noise_schedule=None,
+                 tau_max_guide=None, grid="uniform", **kw):
+        super().__init__(net, mask, **kw)
+        self.tau_min = tau_min
+        self.tau_max_guide = tau_max_guide
+        self.noise_schedule = noise_schedule
+        self.grid = grid
+        if grid == "gamma" and noise_schedule is None:
+            raise ValueError("grid='gamma' needs a noise_schedule to invert")
+        self.alpha_sigma = (noise_schedule.alpha_sigma if noise_schedule
+                            else alpha_sigma)
+        self.beta = noise_schedule.beta if noise_schedule else beta
+
+    def time_grid(self, n_steps, span=None):
+        """Decreasing tau grid, uniform in tau or uniform in gamma.
+
+        `grid="gamma"` spaces the steps evenly in log-SNR instead of evenly in
+        time. It is the same trajectory -- the ODE is unchanged and the
+        endpoints are identical -- integrated on a grid that puts its steps
+        where the distribution is moving. For a schedule whose stiffness is
+        uniform, the two are nearly the same and "uniform" stays the default;
+        for EDM's polynomial_2 they are not, and a uniform-in-tau grid spends
+        its first step crossing 3.7 nats of log-SNR.
+        """
+        a, b = (1.0, self.tau_min) if span is None else span
+        if self.grid == "uniform":
+            return torch.linspace(a, b, n_steps + 1)              # decreasing
+        if self.grid != "gamma":
+            raise ValueError("grid must be 'uniform' or 'gamma'")
+        sch = self.noise_schedule
+        ga = float(sch.gamma_at(torch.tensor(float(a))).reshape(-1)[0])
+        gb = float(sch.gamma_at(torch.tensor(float(b))).reshape(-1)[0])
+        return sch.tau_of_gamma(torch.linspace(ga, gb, n_steps + 1))
+
+    def _tfg_abar(self, ts):
+        """abar = alpha(tau)^2 under THIS sampler's schedule (the borrowed
+        checkpoint's own, when one is passed)."""
+        # the dtype `field` builds its own tau with, so the schedule and the
+        # step read the same alpha
+        a, _ = self.alpha_sigma(ts.to(self.mask.device, torch.get_default_dtype()))
+        return (a.reshape(-1).double() ** 2).cpu()
+
+    @staticmethod
+    def _tfg_geometry(t, t1, ab_cur, ab_nxt, alpha):
+        """(var_scale, k_var, k_0): TFG's formula verbatim -- the VP state IS
+        TFG's state, so rho G / sqrt(alpha) and sqrt(abar_next) D0."""
+        return 1.0, 1.0 / max(alpha, 1e-300) ** 0.5, ab_nxt ** 0.5
+
+    def field(self, coords, feats, tau_scalar):
+        self.n_field += 1
+        B = coords.shape[0]
+        tau = torch.full((B,), float(tau_scalar), device=coords.device)
+        a, s = self.alpha_sigma(tau)
+        b = self.beta(tau).view(-1, 1, 1)
+        sb = s.view(-1, 1, 1)
+        with torch.no_grad():
+            e_c, e_f = self.net(coords, feats, self.mask, tau)
+        self.cost.gen_fwd += 1
+        score_c = -e_c / sb
+        score_f = -e_f / sb
+        base_c = -0.5 * b * coords - 0.5 * b * score_c
+        base_f = -0.5 * b * feats - 0.5 * b * score_f
+        mode, w = self.active(tau_scalar)
+        if (self.tau_max_guide is not None
+                and tau_scalar > self.tau_max_guide):
+            mode = None
+        if self.f_net is not None and mode is not None:
+            self.n_guided += 1
+            self.note_guided(mode)
+            post_fn = lambda c, f: vp_posterior(self.net, c, f, self.mask, tau, a, s)  # noqa: E731
+            if mode == "tfg":
+                # a velocity already (TFG's displacements over the negative
+                # step h); not a score, so no -1/2 beta conversion
+                G_c, G_f = self._tfg_step(coords, feats, tau_scalar, post_fn,
+                                          w, base_c, base_f)
+            else:
+                G_c, G_f = self._guide(coords, feats, tau, post_fn, mode,
+                                       t_scalar=tau_scalar)
+                # Same units rule as the flow sampler: a displacement arm must
+                # not be pushed through the score-to-drift conversion. Without
+                # this, every SHG cell on a diffusion checkpoint would hand a
+                # schedule NAME into guidance_field and raise.
+                if mode in DISPLACEMENT_MODES:
+                    G_c, G_f = w * G_c, w * G_f
+                else:
+                    G_c, G_f = -0.5 * b * w * G_c, -0.5 * b * w * G_f
+            if self.clip is not None:
+                gn = torch.sqrt((G_c ** 2).sum((1, 2)) + (G_f ** 2).sum((1, 2)))
+                vn = torch.sqrt((base_c ** 2).sum((1, 2)) + (base_f ** 2).sum((1, 2)))
+                self.n_clipped += int((gn > self.clip * vn).sum().item())
+                G_c, G_f = _clip_to_velocity(G_c, G_f, base_c, base_f, self.mask, self.clip)
+            base_c, base_f = base_c + G_c, base_f + G_f
+        m = self.mask.unsqueeze(-1)
+        return zero_com(base_c, self.mask), base_f * m
+
+    @torch.no_grad()
+    def terminal(self, coords, feats, tau_scalar):
+        B = coords.shape[0]
+        tau = torch.full((B,), float(tau_scalar), device=coords.device)
+        p = vp_posterior(self.net, coords, feats, self.mask, tau,
+                         *self.alpha_sigma(tau))
+        self.cost.gen_fwd += 1
+        return zero_com(p.mean_coords, self.mask), p.mean_feats * self.mask.unsqueeze(-1)
+
+
+def integrate(sampler, coords, feats, n_steps, solver="euler", span=None,
+              terminal=True):
+    """Run the declared ODE. Returns (coords, feats, n_field_evals); the full
+    cost breakdown is in sampler.cost afterwards.
+
+    span=(a, b) integrates an interior interval; terminal=False skips the
+    endpoint policy. Both exist for the same-field convergence check, which
+    needs a smooth field away from the endpoints and the guidance switch-on."""
+    sampler.reset_counts()
+    ts = sampler.time_grid(n_steps, span)
+    # The grid, for arms that need more than the current time: `tfg`
+    # normalises its schedules over every step and needs the next time point.
+    sampler._grid_ts = ts
+    for i in range(n_steps):
+        t0, t1 = float(ts[i]), float(ts[i + 1])
+        h = t1 - t0
+        sampler._grid_i = i
+        k1_c, k1_f = sampler.field(coords, feats, t0)
+        if solver == "euler":
+            coords = coords + h * k1_c
+            feats = feats + h * k1_f
+        elif solver == "heun":
+            xt_c = coords + h * k1_c
+            xt_f = feats + h * k1_f
+            # The second stage reads the moment buffers but must not write to
+            # them, or one ODE step would take two optimiser steps and Heun
+            # would no longer be a controlled comparison against Euler.
+            sampler._primary_stage = False
+            k2_c, k2_f = sampler.field(xt_c, xt_f, t1)
+            sampler._primary_stage = True
+            coords = coords + 0.5 * h * (k1_c + k2_c)
+            feats = feats + 0.5 * h * (k1_f + k2_f)
+        else:
+            raise ValueError(solver)
+    if terminal:
+        coords, feats = sampler.terminal(coords, feats, float(ts[-1]))
+    return coords, feats, sampler.n_field
+
+
+def initial_noise(mask, n_types, generator=None):
+    """x at t = 0 (flow) or tau = 1 (diffusion): N(0, I) on the zero-CoM
+    subspace for coordinates, N(0, I) masked for atom types."""
+    B, N = mask.shape
+    c = torch.randn(B, N, 3, generator=generator, device=mask.device)
+    f = torch.randn(B, N, n_types, generator=generator, device=mask.device)
+    return zero_com(c, mask), f * mask.unsqueeze(-1)
