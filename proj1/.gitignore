@@ -6,6 +6,14 @@ data/
 *.npz
 *.h5
 
+# Two exceptions, both ours, both small, both needed by the submission folder.
+# They were caught by this rule, so they lived only on the machine that trained
+# them: the build copies proj1/m2/, found nothing, and the folder shipped without
+# them. enhancer_gate.pt then survived only inside an older commit of the folder
+# itself, and weights/README.md documented a file no clone had.
+!m2/enhancer_gate.pt
+!m2/blade_bundle/*.pt
+
 # results (large); keep tables/ and figures/ tracked once they exist
 results/raw/
 

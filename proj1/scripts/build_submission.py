@@ -121,6 +121,14 @@ REQUIRED = [
     # script restores -- listed here because excluding them looked reasonable once
     "audit/fa_fb_search/PROVENANCE.md",
     "audit/fa_fb_search/TFG/tf_predict_mu/model_ema_2000.npy",
+    # Modality 2 has to be runnable from the folder, and all three of these were
+    # caught by proj1/.gitignore's *.pt / *.npz rules, so they existed only on the
+    # machine that made them. The folder shipped without enhancer_gate.pt for two
+    # builds while weights/README.md documented its md5. A missing checkpoint is
+    # not a thinner folder, it is a Modality 2 nobody else can run.
+    "proj1/m2/enhancer_gate.pt",
+    "proj1/m2/blade_bundle/fm_m2_dfb500.pt",
+    "proj1/m2/blade_bundle/dfb500.npz",
 ]
 
 # Run inside the built folder. Each is a command a grader could plausibly type in

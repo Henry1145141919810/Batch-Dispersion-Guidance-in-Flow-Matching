@@ -1711,9 +1711,18 @@ def guidance_field(f_net, post_fn, coords, feats, mask, y, s,
         # the gain does not scale with B. Both terms multiply the SAME g_i, so
         # the arm shares plug's single backward pass and costs zero extra NFE.
         #
-        # THE BATCH IS THE ESTIMATOR. V_b is computed over whatever tensor the
-        # sampler hands in, so running n in several batches runs several
-        # independent controllers. The sweep must use one batch per cell.
+        # THE BATCH IS THE ESTIMATOR, not a speed knob. V_b is computed over
+        # whatever tensor the sampler hands in, so n split into k batches runs k
+        # independent controllers, each estimating V_b from `batch` samples.
+        #
+        # THAT IS WHAT THE SHIPPED RUNS DO. v3 samples n = 2000 per cell in
+        # batches of 500, i.e. four controllers per cell (transfer_sweep.py
+        # section 2.4; v3_sanity.PINNED pins n = 2000 AND batch = 500). An
+        # earlier version of this comment said the sweep "must use one batch per
+        # cell", which no cell in results/ has ever satisfied. Two consequences
+        # that follow from the real setting: `batch` must divide n, and `batch`
+        # is part of a cell's identity, so eta is comparable only at equal batch
+        # (see the note on the absorbed 2/(B-1) above).
         #
         # WHAT THIS IS NOT. num_i is affine in F_i, so it factors exactly as
         # (1 + eta e)(y_eff - F_i) with y_eff = (y + eta e F_bar)/(1 + eta e):

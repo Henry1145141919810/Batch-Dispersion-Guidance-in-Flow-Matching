@@ -206,8 +206,10 @@ def part_a():
     chk("A12 equivariant under batch permutation", perr < 1e-12,
         "max err %.2e" % perr)
 
-    # THE BATCH IS THE ESTIMATOR -- this is a property, not a bug, and the
-    # gate records it so the sweep's batch==n rule has a test behind it.
+    # THE BATCH IS THE ESTIMATOR -- this is a property, not a bug. The gate
+    # records it so the batch-dependence is asserted rather than assumed: a cell
+    # run at a different `batch` is a different controller, which is why v3 pins
+    # batch = 500 alongside n = 2000 instead of leaving it to the operator.
     def sub(j):
         """The same problem restricted to the first j trajectories."""
         fq = Quad(f_net.a_c[:j], f_net.a_f[:j], f_net.b_c[:j], f_net.b_f[:j])

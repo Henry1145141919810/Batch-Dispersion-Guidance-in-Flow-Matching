@@ -20,8 +20,11 @@ with G in score units from guidance.py and s_theta = -eps_theta / sigma.
 GUIDANCE CLIP. The (1 - t)/t conversion factor is 19 at t = 0.05 and the raw
 property gradient is several Debye per angstrom, so an unclipped correction
 dwarfs the base velocity early in the trajectory and throws the sample off the
-data manifold (measured: molecule stability 0.16 -> 0.02, a third of
-trajectories non-finite). The correction is therefore capped at `clip` times
+data manifold. MEASURED, in docs/results/CLIP_PILOT.md: removing the clip
+produced 222 non-finite samples across 4 of the 12 guided no-clip cells, against
+0 in all 13 clipped cells, and the worst cell (btvg at w = 16) lost 187 of its
+256 samples and held 0.031 molecule stability. The clip is load-bearing, not
+defensive. The correction is therefore capped at `clip` times
 the base velocity norm, per sample. This is the velocity-relative trust region
 of OSCAR (component A in our catalogue) -- prior work, adopted, not claimed.
 `clip=None` disables it for the ablation that shows why it is needed.
@@ -96,8 +99,10 @@ class _Base:
         #
         # THE BATCH IS THE ESTIMATOR for this arm: V_b is taken over the tensor
         # the sampler hands to guidance_field, which is one batch. Splitting n
-        # across batches runs that many independent controllers, so a BDG cell
-        # must be run with batch == n.
+        # across batches runs that many independent controllers, so `batch` is
+        # part of a BDG cell's identity and must divide n. The shipped v3 cells
+        # run n = 2000 in batches of 500 -- four controllers each. (This used to
+        # read "must be run with batch == n", which no committed cell does.)
         self.bdg_eta, self.bdg_tau = bdg_eta, bdg_tau
         self.bdg_onesided = bdg_onesided
         # None = the live controller. A float replays that value for this

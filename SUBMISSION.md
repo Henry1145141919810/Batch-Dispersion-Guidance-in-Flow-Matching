@@ -191,7 +191,9 @@ before any sweep.
 
 The non-obvious parts carry comments where they are: why `eta` defaults to 0
 rather than 1, why the batch is the estimator rather than a speed knob, and why
-the clip is load-bearing (removing it produced 222 non-finite samples against 0).
+the clip is load-bearing (removing it produced 222 non-finite samples across 4 of
+12 guided cells against 0 in all 13 clipped ones, cited to
+[CLIP_PILOT.md](docs/results/CLIP_PILOT.md) at the comment).
 
 ### Experiment settings
 
@@ -204,9 +206,11 @@ per concern, and every result cell records the settings it ran under:
 | which backends the cluster chain submits | `transfer_sweep.V3_CHAIN_BACKENDS` |
 | seeds, target, strength, guidance window | `transfer_sweep.V3_SEEDS`, `V3_TARGET`, `V3_W`, `V3_T_START` |
 | what a valid v3 cell must record | `v3_sanity.PINNED` |
-| the ablation grid | `v3_final_summary.ABL_ARMS` |
+| the ablation grid | `transfer_sweep.V3_ABL_ETAS` × `V3_ABL_TAU_MULTS` × `V3_ABL_WS`, expanded by `transfer_sweep.v3_arms()`. `v3_final_summary.ABL_ARMS` is the reporting-side list built from it, not the declaration |
 
-A cell that disagrees with `PINNED` is rejected by `v3_sanity.py`, so a stray
+A cell that disagrees with `PINNED`, **or omits one of its keys**, is rejected by
+`v3_sanity.py` (the key-presence half was added after an audit found that a cell
+simply not recording `batch` was silently exempt), so a stray
 setting cannot reach a table quietly.
 
 ---

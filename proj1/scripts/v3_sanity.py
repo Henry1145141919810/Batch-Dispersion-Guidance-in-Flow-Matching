@@ -114,7 +114,14 @@ def main():
         c = cellname(r)
         for k, v in PINNED.items():
             CHECKS += 1
-            if k in r and r[k] != v:
+            # A key the cell does not record used to be exempt: `if k in r and
+            # ...` passed a cell that simply omitted `batch` or `target_name`, so
+            # a hand-edited or older-path cell could carry any setting at all and
+            # still be certified as pinned. All 918 v3 cells record all seven
+            # keys, so requiring them costs nothing and closes the hole.
+            if k not in r:
+                fail(c, "does not record %r, which v3 pins to %r" % (k, v))
+            elif r[k] != v:
                 fail(c, "%s is %r, v3 pre-registers %r" % (k, r[k], v))
         CHECKS += 1
         if r.get("arm") != "unguided" and r.get("w") != 1.0 \
