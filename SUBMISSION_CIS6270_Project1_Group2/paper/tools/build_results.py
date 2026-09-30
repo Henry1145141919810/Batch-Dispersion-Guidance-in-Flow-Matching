@@ -34,7 +34,7 @@ NAMES = {'unguided': 'Unguided', 'plug': 'DPS-style plug-in',
          'bdg_e4t1': r'BDG, $\tau_m=1$'}
 PL = {'mu': r'$\mu$', 'alpha': r'$\alpha$', 'gap': 'gap', 'gc': 'GC', 'cpg': 'CpG'}
 KEY = 'in_band_fraction_dec'
-VERSION = 9
+VERSION = 10
 # The older summary module predates arrival of the VP benchmark. Reuse its
 # strict cell validation with the protocol's two VP arms explicitly registered.
 V.BACKEND_ARMS['vp'] = ('unguided', 'plug')
@@ -46,6 +46,19 @@ winrows=[]
 for path in sorted((ROOT/'results/m2/m2win/n2000').rglob('*.json')):
     r=json.loads(path.read_text()); r.update(_path=str(path),_stage='m2win',_base=path.name)
     winrows.append(r)
+
+taurows=[]
+for path in sorted((ROOT/'results/m2/m2tau/n2000').rglob('*.json')):
+    r=json.loads(path.read_text()); r.update(_path=str(path),_stage='m2tau',_base=path.name)
+    taurows.append(r)
+
+def tau(a, prop='cpg', w=4., tmin=.3, seeds=3):
+    """Setpoint probe cells. Outside the registered grid, so seeds may be 1."""
+    rows=[r for r in taurows
+          if (r['prop'],M.arm_key(r),r['w'],r['t_min_guide'])==(prop,a,w,tmin)]
+    assert len(rows)==seeds, (a,prop,w,tmin,len(rows))
+    M.check_pinned(rows,'%s tau probe %s'%(prop.upper(),a))
+    return sorted(rows,key=lambda r:r['seed'])
 
 def win(a, tmin=.3, prop='gc', w=4.):
     rows=[r for r in winrows if (r['prop'],M.arm_key(r),r['w'],r['t_min_guide'])==(prop,a,w,tmin)]
@@ -155,6 +168,23 @@ def decorate(rows, cols, better='max', skip=()):
     return rows
 
 
+def decorate_panels(rows, cols, better='max', skip=()):
+    """decorate() one \\midrule-separated block at a time.
+
+    A table whose panels are different properties must not be ranked as one
+    list: GC and CpG coverage sit at different absolute levels for reasons of
+    band width alone (Appendix A.9 says so explicitly), so a global best marks
+    the property with the looser band instead of the better method.
+    """
+    out, block = [], []
+    for r in rows + [r'\midrule']:
+        if r.strip() == r'\midrule':
+            out.extend(decorate(block, cols, better, skip)); out.append(r); block = []
+        else:
+            block.append(r)
+    return out[:-1]
+
+
 def latex_table(caption,label,cols,header,rows):
     return '\n'.join([r'\begin{table}[!htbp]',r'\centering\small',r'\caption{'+caption+'}',r'\label{'+label+'}',r'\begin{tabular}{'+cols+'}',r'\toprule',header+r'\\',r'\midrule',*rows,r'\bottomrule',r'\end{tabular}',r'\end{table}'])
 
@@ -212,8 +242,32 @@ def tables():
             rs=win(a,prop=prop); c=contrast(rs,win('plug',prop=prop),'in_band_fraction')
             name=r'BDG $\eta=0$' if a=='bdg_e0t1' else NAMES[a]
             rows.append(f'{PL[prop]} & '+name+' & '+pm(rs,'in_band_fraction')+f' & {c["delta_pp"]:+.2f} & {st.stdev(c["seed_deltas_pp"]):.2f} & {1e4*avg(rs,"kmer_js"):.2f} & {avg(rs,"diversity"):.4f} & {100*M.pooled(rs)["clip_frac"]:.2f} & {duration(rs,True):.3f}'+r'\\')
-    rows=decorate(rows,[2],'max',skip=(r'\eta=0',))
+    rows=decorate_panels(rows,[2],'max',skip=(r'\eta=0',))
     out['M2-WINDOW']=latex_table('Window follow-up on both properties, $t\\ge0.3$, $w=4$, three seeds of 2,000. IB is percent mean $\\pm$ seed sd; differences and paired SD are percentage points against plug-in. JSD is $\\times10^{-4}$, Clip is percent of guided sample-steps. This exploratory follow-up was added after diagnosing the original late window; the sign of the BDG effect differs between the two properties. Bold marks the best entry in each marked column and underline the runner-up; coverage alone is not a quality ranking, and the quality columns show what each arm spent to reach it.','tab:m2-window','llccccccc',r'Prop. & Method & IB$\uparrow$ & $\Delta$IB & SD$(\Delta)$ & JSD$\downarrow$ & Hamming & Clip & s/seq.',rows)
+    # The setpoint probe. BDG's sign rule says a setpoint BELOW the baseline's
+    # achieved spread should contract and gain; on CpG plug-in already sits at
+    # 0.37s, inside the registered tau_m=0.5, which is why the registered rung
+    # widens. These cells test the rule at tau_m=0.25 and 0.15. They are outside
+    # the pre-registered grid, so they are exploratory, and only tau_m=0.25
+    # carries three seeds.
+    rows=[]
+    pl=win('plug',prop='cpg')
+    for lab,rs,c in (('DPS-style plug-in',pl,None),
+                     (r'BDG, $\tau_m=0.5$',win('bdg_e4t0.5',prop='cpg'),None),
+                     (r'BDG, $\tau_m=0.25$',tau('bdg_e4t0.25'),None),
+                     (r'BDG, $\tau_m=0.25$, $\eta=8$',tau('bdg_e8t0.25',seeds=1),None),
+                     (r'BDG, $\tau_m=0.15$',tau('bdg_e4t0.15',seeds=1),None)):
+        ib=pm(rs,'in_band_fraction') if len(rs)>2 else '$%.2f$'%(100*avg(rs,'in_band_fraction'))
+        if len(rs)==len(pl) and [r['seed'] for r in rs]==[r['seed'] for r in pl]:
+            c=contrast(rs,pl,'in_band_fraction')
+            dd='%+.2f'%c['delta_pp']; sd='%.2f'%st.stdev(c['seed_deltas_pp'])
+        else:
+            dd='%+.2f'%(100*(avg(rs,'in_band_fraction')-avg(pl,'in_band_fraction'))); sd='--'
+        if lab=='DPS-style plug-in': dd,sd='+0.00','0.00'
+        rows.append(lab+' & %d & '%len(rs)+ib+f' & {dd} & {sd} & {avg(rs,"gc_sd")/avg(rs,"s"):.3f}'
+                    +f' & {1e4*avg(rs,"kmer_js"):.2f} & {avg(rs,"decode_conf"):.3f}'
+                    +f' & {100*M.pooled(rs)["clip_frac"]:.2f}'+r'\\')
+    out['SETPOINT']=latex_table('Exploratory setpoint probe on CpG, $t\\ge0.3$, $w=4$, $n=2{,}000$ per seed. BDG contracts only a batch wider than $\\tau$, and plug-in already reaches $0.372s$ here, inside the registered $\\tau_m=0.5$. Lowering the setpoint below the achieved spread restores contraction and coverage, which is the prediction the sign rule makes. Seeds gives the number of seeds; only $\\tau_m=0.25$ has the full three, so the one-seed rows are directional and their paired SD is omitted. These setpoints are outside the pre-registered grid and are reported as exploratory, not as headline results.','tab:setpoint','lcccccccc',r'Method & Seeds & IB$\uparrow$ & $\Delta$IB & SD$(\Delta)$ & $\sigma/s$ & JSD$\downarrow$ & Conf. & Clip',rows).replace(r'\centering\small',r'\centering\small\setlength{\tabcolsep}{4pt}')
     rows=[]
     for be,lab in (('fm','FM, ours'),('vp','VP diffusion, ours')):
         if rows: rows.append(r'\midrule')
@@ -225,7 +279,9 @@ def tables():
                         +f'{100*avg(g,"mol_stability"):.1f} & {100*avg(u,"validity"):.1f} & '
                         +f'{100*avg(g,"validity"):.1f}'+r'\\')
     rows=decorate(rows,[4],'max')
-    out['GUIDANCE']=latex_table('Guided versus unguided under matched settings, $w=1$, $t\\ge0.5$, three seeds of 2,000. Plug-in guidance is compared with the same frozen backbone and sampler. IB is decoded coverage (percent mean $\\pm$ seed sd); $\\Delta$ is percentage points. Stability and validity are reported so guidance is not judged by coverage alone. Bold marks the largest coverage gain.','tab:guidance','llccccccc',r'Backend & Prop. & IB unguided & IB guided & $\\Delta$IB & Stab. un. & Stab. g. & Val. un. & Val. g.',rows)
+    out['GUIDANCE']=latex_table('Guided versus unguided under matched settings, $w=1$, $t\\ge0.5$, three seeds of 2,000. Plug-in guidance is compared with the same frozen backbone and sampler. IB is decoded coverage (percent mean $\\pm$ seed sd); $\\Delta$ is percentage points. Stability and validity are reported so guidance is not judged by coverage alone. Bold marks the largest coverage gain and underline the runner-up.','tab:guidance','llccccccc',r'Backend & Prop. & IB un. & IB g. & $\Delta$IB & Stab. un. & Stab. g. & Val. un. & Val. g.',rows)
+    # 9 columns overran the text block by 12.4pt at the default tabcolsep.
+    out['GUIDANCE']=out['GUIDANCE'].replace(r'\centering\small',r'\centering\small\setlength{\tabcolsep}{4pt}')
     for be in ('fm','equifm','edm','vp'):
         rows=[]
         for p in PROPS:
