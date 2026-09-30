@@ -150,7 +150,8 @@ The panel now plots BDG minus plug-in at t >= 0.3 for GC and CpG at w = 1 and
 4, for both registered setpoints, with the same paired-seed error bars. GC
 gains +8.43 / +7.08 and CpG loses -1.73 / -4.88 at tau_m = 0.5; tau_m = 1 loses
 on both (-10.70 / -14.67 GC, -35.08 / -37.20 CpG). The y-axis is set from the
-data so the tau_m = 1 losses are drawn at full size. The caption points to
+data so the tau_m = 1 losses are drawn at full size, and both setpoints sit
+on the same column above each condition; no pair is close enough to overlap. The caption points to
 Table S18 for the registered t >= 0.5 window.
 
 Table blocks, the manifest and every other figure are unchanged;
