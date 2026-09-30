@@ -134,6 +134,17 @@ class _Base:
         self.diag_acc = {}
         self.cost = Cost()
         self.n_field = 0
+        # THESE TWO ARE IN DIFFERENT UNITS, and the sweep's names say so:
+        # n_guided counts GUIDED STEPS (one per guidance_field call, so one per
+        # step in the window), while n_clipped sums a per-sample boolean over the
+        # batch, so it counts (sample, step) PAIRS. The clip fraction is therefore
+        # n_clipped / (n_guided * batch), not n_clipped / n_guided -- the latter
+        # can exceed 1 by up to `batch` while still looking like a fraction.
+        # transfer_sweep.py records them as `clipped_sample_steps` and
+        # `guided_steps`, and both accumulate across a cell's four batches. This
+        # matters because the clip fraction is the first thing the protocol asks
+        # you to read when a BDG rung shows no gain (transfer_sweep.py, section
+        # on strength), so it is the number most likely to be recomputed.
         self.n_clipped = 0
         self.n_guided = 0
         self.probe_gen = torch.Generator(device=mask.device).manual_seed(probe_seed)

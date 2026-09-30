@@ -1735,6 +1735,18 @@ def guidance_field(f_net, post_fn, coords, feats, mask, y, s,
         if not bool((tau_b > 0).all()):
             raise ValueError("bdg_tau must be > 0, got %r" % (bdg_tau,))
         B = fval.shape[0]
+        # THE ONLY ARM WHOSE FAILURE MODE IS BATCH-WIDE. F_bar and V_b couple the
+        # whole batch, and there is no isfinite guard anywhere on this path, so a
+        # single non-finite F_i -- one trajectory whose geometry diverged -- makes
+        # F_bar and V_b non-finite and therefore poisons num_i for every sample in
+        # the batch. Under plug a diverged trajectory stays local to itself.
+        # Deliberately not guarded: masking the offender would let a cell report a
+        # clean mean over a silently shrunken batch, and v3_sanity.py fails on
+        # n_nonfinite, so the cell is rejected rather than quietly reweighted. The
+        # cost of that choice is diagnostic, and it is the trap to know about: the
+        # sampler's diagnostics drop non-finite rows (see the `x != x` skip in
+        # sampling.py), so 500 dead samples look like 500 diverged trajectories
+        # when the cause was one.
         F_bar = fval.mean()
         # B < 2: the unbiased variance is undefined (nan). One trajectory has
         # no dispersion to control, so the arm degrades to plug rather than
@@ -1784,6 +1796,15 @@ def guidance_field(f_net, post_fn, coords, feats, mask, y, s,
             "bdg_V_b": V_b.detach().expand_as(fval).clone(),
             "bdg_V_over_tau2": (V_b / tau_b ** 2).detach().expand_as(fval).clone(),
             "bdg_tau": tau_b.detach().expand_as(fval).clone(),
+            # EVERY bdg_* KEY BELOW IS MEASURED PRE-CLIP. It describes what the
+            # controller REQUESTED, in score units, before w is applied, before the
+            # (1-t)/t conversion to velocity units, and before the sampler's
+            # velocity-relative clip truncates it (see the clip in sampling.py's
+            # step). At the top ablation rungs, where w_eff runs to order 1e3, the
+            # request and what reached the sample differ by orders of magnitude.
+            # So a rung that shows no gain may be clip-limited rather than
+            # controller-limited, and these keys cannot tell the two apart: pair
+            # every one of them with `clipped_sample_steps` from the cell.
             "bdg_dev_rms": rms_dev.detach().expand_as(fval).clone(),
             "bdg_disp_rms": rms_disp.detach().expand_as(fval).clone(),
             "bdg_w_eff": (1.0 + bdg_eta * e).detach().expand_as(fval).clone(),
