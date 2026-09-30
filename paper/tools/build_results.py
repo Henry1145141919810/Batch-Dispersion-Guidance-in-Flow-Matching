@@ -30,8 +30,8 @@ PROPS = ('mu', 'alpha', 'gap')
 ARMS = V.HEAD_ARMS
 NAMES = {'unguided': 'Unguided', 'plug': 'DPS-style plug-in',
          'tmpd': 'TMPD-inspired', 'lgd_mc': 'LGD-MC', 'tfg': 'TFG',
-         'tfg_mc': 'TFG-MC adaptation', 'bdg_e4t0.5': r'\textbf{BDG, $\tau_m=0.5$}',
-         'bdg_e4t1': r'\textbf{BDG, $\tau_m=1$}'}
+         'tfg_mc': 'TFG-MC adaptation', 'bdg_e4t0.5': r'BDG, $\tau_m=0.5$',
+         'bdg_e4t1': r'BDG, $\tau_m=1$'}
 PL = {'mu': r'$\mu$', 'alpha': r'$\alpha$', 'gap': 'gap', 'gc': 'GC', 'cpg': 'CpG'}
 KEY = 'in_band_fraction_dec'
 VERSION = 9
@@ -47,10 +47,10 @@ for path in sorted((ROOT/'results/m2/m2win/n2000').rglob('*.json')):
     r=json.loads(path.read_text()); r.update(_path=str(path),_stage='m2win',_base=path.name)
     winrows.append(r)
 
-def win(a, tmin=.3):
-    rows=[r for r in winrows if (r['prop'],M.arm_key(r),r['w'],r['t_min_guide'])==('gc',a,4.,tmin)]
-    assert [r['seed'] for r in rows]==[20260921,20260922,20260923],a
-    M.check_pinned(rows,'GC t>=0.3 '+a)
+def win(a, tmin=.3, prop='gc', w=4.):
+    rows=[r for r in winrows if (r['prop'],M.arm_key(r),r['w'],r['t_min_guide'])==(prop,a,w,tmin)]
+    assert sorted(r['seed'] for r in rows)==[20260921,20260922,20260923],(prop,a,w,tmin)
+    M.check_pinned(rows,'%s t>=%g %s'%(prop.upper(),tmin,a))
     return rows
 
 def seq(p,a,w,stage='m2',tmin=.5):
@@ -101,6 +101,60 @@ def diagnostics():
     for be in ('fm','vp'):
         for p in PROPS: out['guided_contrasts'][f'{be}/{p}']=contrast(heads[be][p,'plug'],heads[be][p,'unguided'])
     return out
+_NUM = re.compile(r'-?\d+\.?\d*')
+
+def _cellnum(c):
+    """Leading number of a cell, or None when the cell has no single value.
+
+    Cells like '12.3 / 45.6' carry two properties at once and are skipped on
+    purpose: there is no one 'best' to mark.
+    """
+    c = c.strip().removesuffix(r'\\').strip()
+    if '/' in c or c in ('--', ''):
+        return None
+    m = _NUM.search(c.replace(r'\pm', ' '))
+    return float(m.group()) if m else None
+
+def decorate(rows, cols, better='max', skip=()):
+    """Bold the best entry of each given column and underline the runner-up.
+
+    `cols` are 0-based indices into the &-separated cells. `skip` names row
+    labels left out of the ranking: the zero-gain control is BDG with its
+    feedback switched off, i.e. plug-in under another name, so ranking it as a
+    separate method would enter one arm twice.
+    """
+    for ci in cols:
+        vals = {}
+        for i, r in enumerate(rows):
+            if r.strip() == r'\midrule':
+                continue
+            cells = r.split('&')
+            if ci >= len(cells) or any(k in cells[0] for k in skip):
+                continue
+            v = _cellnum(cells[ci])
+            if v is not None:
+                vals[i] = v
+        if len(vals) < 2:
+            continue
+        order = sorted(vals, key=lambda i: vals[i], reverse=(better == 'max'))
+        best, second = order[0], order[1]
+        if vals[best] == vals[second]:
+            continue          # a tie for first: marking one would invent a winner
+        for rank, i in ((0, best), (1, second)):
+            cells = rows[i].split('&')
+            raw = cells[ci]
+            end = r'\\' if raw.rstrip().endswith(r'\\') else ''
+            c = raw.strip().removesuffix(r'\\').strip()
+            if c.startswith('$') and c.endswith('$'):
+                inner = c[1:-1]
+                new = '$' + ((r'\mathbf{%s}' if rank == 0 else r'\underline{%s}') % inner) + '$'
+            else:
+                new = (r'\textbf{%s}' if rank == 0 else r'\underline{%s}') % c
+            cells[ci] = ' ' + new + end
+            rows[i] = '&'.join(cells)
+    return rows
+
+
 def latex_table(caption,label,cols,header,rows):
     return '\n'.join([r'\begin{table}[!htbp]',r'\centering\small',r'\caption{'+caption+'}',r'\label{'+label+'}',r'\begin{tabular}{'+cols+'}',r'\toprule',header+r'\\',r'\midrule',*rows,r'\bottomrule',r'\end{tabular}',r'\end{table}'])
 
@@ -119,36 +173,59 @@ def tables():
         e,t=a.removeprefix('bdg_e').split('t')
         if e=='0': t='--'
         rows.append(f'{w} & {e} & {t} & '+pm(rs,KEY)+f' & {avg(rs,"prop_mae_eval_dec"):.3f} & {avg(rs,"f_B_dec_mean"):.3f} & {spread(rs):.3f} & {100*avg(rs,"mol_stability"):.1f}'+r'\\')
-    out['ABLATION']=latex_table('Dipole ablation on our FM: q50 $y=2.4932$ D, band $\\pm0.17541$ D. IB is percent mean $\\pm$ seed sd; stability is percent mean. Decoded MAE, mean and spread $\\sigma$ are in D. Zero gain is plug-in; its $w=4$ row tests stronger guidance.','tab:ablation','cccccccc',r'$w$ & $\eta$ & $\tau_m$ & IB$\uparrow$ & MAE$\downarrow$ & Mean & $\sigma$ & Stable$\uparrow$',rows)
+    rows=decorate(rows,[3],'max'); rows=decorate(rows,[4],'min')
+    out['ABLATION']=latex_table('Dipole ablation on our FM: q50 $y=2.4932$ D, band $\\pm0.17541$ D. IB is percent mean $\\pm$ seed sd; stability is percent mean. Decoded MAE, mean and spread $\\sigma$ are in D. Zero gain is plug-in; its $w=4$ row tests stronger guidance. $\\tau_m$ is written -- at $\\eta=0$, where $w_{\\mathrm{eff}}=1$ and the setpoint has no effect. Bold marks the best entry in each marked column and underline the runner-up; coverage alone is not a quality ranking, and the quality columns show what each arm spent to reach it.','tab:ablation','cccccccc',r'$w$ & $\eta$ & $\tau_m$ & IB$\uparrow$ & MAE$\downarrow$ & Mean & $\sigma$ & Stable$\uparrow$',rows)
     rows=[]
     for a in ARMS:
         name=r'Plug-in ($\eta=0$)' if a=='plug' else NAMES[a]
         rs=heads['fm']['mu',a]
         rows.append(name+' & '+' & '.join(pm(heads['fm'][(p,a)],KEY) for p in PROPS)+' & '+' / '.join(f'{100*avg(heads["fm"][(p,a)],"mol_stability"):.1f}' for p in PROPS)+f' & {100*avg(rs,"unique_valid_per_sample"):.1f} & {duration(rs):.3f}'+r'\\')
-    out['M1']=latex_table('Our FM, $w=1$: decoded IB, percent mean $\\pm$ seed sd; stability means in $\\mu/\\alpha/\\mathrm{gap}$ order. DV is distinct-valid yield (\\%), and time is s/sample, both for $\\mu$. Plug-in is $\\eta=0$; BDG uses $\\eta=4$. Rows are matched-backbone adaptations.','tab:recent','lcccccc',r'Method & IB $\mu\uparrow$ & IB $\alpha\uparrow$ & IB gap$\uparrow$ & Stable$\uparrow$ & DV$\uparrow$ & Time',rows)
+    rows=decorate(rows,[1,2,3],'max')
+    out['M1']=latex_table('Our FM, $w=1$: decoded IB, percent mean $\\pm$ seed sd; stability means in $\\mu/\\alpha/\\mathrm{gap}$ order. DV is distinct-valid yield (\\%), and time is s/sample, both for $\\mu$. Plug-in is $\\eta=0$; BDG uses $\\eta=4$. Rows are matched-backbone adaptations. Bold marks the best entry in each marked column and underline the runner-up; coverage alone is not a quality ranking, and the quality columns show what each arm spent to reach it.','tab:recent','lcccccc',r'Method & IB $\mu\uparrow$ & IB $\alpha\uparrow$ & IB gap$\uparrow$ & Stable$\uparrow$ & DV$\uparrow$ & Time',rows)
     rows=[]
     for a in M.HEADLINE_ARMS:
         # Keep all adaptations visible and report fidelity at the same strength.
         gc,cp=seq('gc',a,4),seq('cpg',a,4)
         rows.append(NAMES[a]+' & '+pm(gc,'in_band_fraction')+' & '+pm(cp,'in_band_fraction')+' & '+f'{1e4*avg(gc,"kmer_js"):.2f} / {1e4*avg(cp,"kmer_js"):.2f} & {avg(gc,"diversity"):.4f} / {avg(cp,"diversity"):.4f} & {duration(cp,True):.3f}'+r'\\')
-    out['M2']=latex_table('DNA, $w=4$, $t\\ge0.5$: decoded IB (percent mean $\\pm$ seed sd); JSD ($\\times10^{-4}$) and Hamming diversity in GC/CpG order. Time is recorded s/sequence for CpG. TFG-MC is a restricted adaptation. Full results: Table~\\ref{tab:full-m2}.','tab:m2','lccccc',r'Method & GC IB$\uparrow$ & CpG IB$\uparrow$ & JSD$\downarrow$ & Hamming & Time',rows)
+    rows=decorate(rows,[1,2],'max')
+    out['M2']=latex_table('DNA, $w=4$, $t\\ge0.5$: decoded IB (percent mean $\\pm$ seed sd); JSD ($\\times10^{-4}$) and Hamming diversity in GC/CpG order. Time is recorded s/sequence for CpG. TFG-MC is a restricted adaptation. Full results: Table~\\ref{tab:full-m2}. Bold marks the best entry in each marked column and underline the runner-up; coverage alone is not a quality ranking, and the quality columns show what each arm spent to reach it.','tab:m2','lccccc',r'Method & GC IB$\uparrow$ & CpG IB$\uparrow$ & JSD$\downarrow$ & Hamming & Time',rows)
     out['M2']=out['M2'].replace(r'\centering\small',r'\centering\small\setlength{\tabcolsep}{4pt}')
     # Preserve the original window in the appendix; show the complete new GC
     # comparison beside the still-late CpG comparison, with windows in headers.
     out['M2-LATE']=out['M2'].replace('tab:m2','tab:m2-late')
     rows=[]
     for a in M.HEADLINE_ARMS:
-        gc=seq('gc',a,4) if a=='unguided' else (None if a=='bdg_e4t1' else win(a))
-        cp=seq('cpg',a,4)
-        g=lambda k,scale=1,d=2: '--' if gc is None else f'{scale*avg(gc,k):.{d}f}'
-        rows.append(NAMES[a]+' & '+('--' if gc is None else pm(gc,'in_band_fraction'))+' & '+pm(cp,'in_band_fraction')+' & '+g('kmer_js',1e4)+f' / {1e4*avg(cp,"kmer_js"):.2f} & '+g('diversity',1,4)+f' / {avg(cp,"diversity"):.4f} & '+('--' if gc is None else f'{duration(gc,True):.3f}')+f' / {duration(cp,True):.3f}'+r'\\')
-    out['M2']=latex_table('DNA, $w=4$: new GC window $t\\ge0.3$; CpG remains $t\\ge0.5$. IB is percent mean $\\pm$ seed sd; JSD ($\\times10^{-4}$), Hamming and s/sequence are GC/CpG. Dashes denote an unrun GC arm. Original matched-window results: Table~\\ref{tab:m2-late}.','tab:m2','lccccc',r'Method & GC IB$\uparrow$ & CpG IB$\uparrow$ & JSD$\downarrow$ & Hamming & Time',rows).replace(r'\centering\small',r'\centering\small\setlength{\tabcolsep}{3pt}')
+        # Both properties now sit at t >= 0.3. The late window left tmpd and
+        # lgd_mc numerically identical to plug-in, so it could not separate the
+        # comparators; every arm and both properties have been rerun here.
+        gc, cp = win(a), win(a, prop='cpg')
+        rows.append(NAMES[a]+' & '+pm(gc,'in_band_fraction')+' & '+pm(cp,'in_band_fraction')
+                    +f' & {1e4*avg(gc,"kmer_js"):.2f} / {1e4*avg(cp,"kmer_js"):.2f}'
+                    +f' & {avg(gc,"diversity"):.4f} / {avg(cp,"diversity"):.4f}'
+                    +f' & {duration(gc,True):.3f} / {duration(cp,True):.3f}'+r'\\')
+    rows=decorate(rows,[1,2],'max')
+    out['M2']=latex_table('DNA, $w=4$, $t\\ge0.3$ for both properties. IB is percent mean $\\pm$ seed sd; JSD ($\\times10^{-4}$), Hamming and s/sequence are GC/CpG. The original $t\\ge0.5$ window, where the three uncertainty-based comparators are numerically indistinguishable from plug-in, is Table~\\ref{tab:m2-late}. Bold marks the best entry in each marked column and underline the runner-up; coverage alone is not a quality ranking, and the quality columns show what each arm spent to reach it.','tab:m2','lccccc',r'Method & GC IB$\uparrow$ & CpG IB$\uparrow$ & JSD$\downarrow$ & Hamming & Time',rows).replace(r'\centering\small',r'\centering\small\setlength{\tabcolsep}{3pt}')
     rows=[]
-    for a in ('plug','tmpd','lgd_mc','tfg_mc','bdg_e4t0.5','bdg_e0t1'):
-        rs=win(a); c=contrast(rs,win('plug'),'in_band_fraction')
-        name=r'BDG $\eta=0$' if a=='bdg_e0t1' else NAMES[a]
-        rows.append(name+' & '+pm(rs,'in_band_fraction')+f' & {c["delta_pp"]:+.2f} & {st.stdev(c["seed_deltas_pp"]):.2f} & {1e4*avg(rs,"kmer_js"):.2f} & {avg(rs,"diversity"):.4f} & {100*M.pooled(rs)["clip_frac"]:.2f} & {duration(rs,True):.3f}'+r'\\')
-    out['M2-WINDOW']=latex_table('New GC window follow-up, $t\\ge0.3$, $w=4$, three seeds of 2,000. IB is percent mean $\\pm$ seed sd; differences and paired SD are percentage points against plug-in. JSD is $\\times10^{-4}$, Clip is percent of guided sample-steps. This exploratory follow-up was added after diagnosing the original late window.','tab:m2-window','lccccccc',r'Method & IB$\uparrow$ & $\Delta$IB & SD$(\Delta)$ & JSD$\downarrow$ & Hamming & Clip & s/seq.',rows)
+    for prop in ('gc','cpg'):
+        if rows: rows.append(r'\midrule')
+        for a in ('plug','tmpd','lgd_mc','tfg_mc','bdg_e4t0.5','bdg_e0t1'):
+            rs=win(a,prop=prop); c=contrast(rs,win('plug',prop=prop),'in_band_fraction')
+            name=r'BDG $\eta=0$' if a=='bdg_e0t1' else NAMES[a]
+            rows.append(f'{PL[prop]} & '+name+' & '+pm(rs,'in_band_fraction')+f' & {c["delta_pp"]:+.2f} & {st.stdev(c["seed_deltas_pp"]):.2f} & {1e4*avg(rs,"kmer_js"):.2f} & {avg(rs,"diversity"):.4f} & {100*M.pooled(rs)["clip_frac"]:.2f} & {duration(rs,True):.3f}'+r'\\')
+    rows=decorate(rows,[2],'max',skip=(r'\eta=0',))
+    out['M2-WINDOW']=latex_table('Window follow-up on both properties, $t\\ge0.3$, $w=4$, three seeds of 2,000. IB is percent mean $\\pm$ seed sd; differences and paired SD are percentage points against plug-in. JSD is $\\times10^{-4}$, Clip is percent of guided sample-steps. This exploratory follow-up was added after diagnosing the original late window; the sign of the BDG effect differs between the two properties. Bold marks the best entry in each marked column and underline the runner-up; coverage alone is not a quality ranking, and the quality columns show what each arm spent to reach it.','tab:m2-window','llccccccc',r'Prop. & Method & IB$\uparrow$ & $\Delta$IB & SD$(\Delta)$ & JSD$\downarrow$ & Hamming & Clip & s/seq.',rows)
+    rows=[]
+    for be,lab in (('fm','FM, ours'),('vp','VP diffusion, ours')):
+        if rows: rows.append(r'\midrule')
+        for p in PROPS:
+            u,g=heads[be][(p,'unguided')],heads[be][(p,'plug')]
+            c=contrast(g,u,KEY)
+            rows.append(f'{lab} & '+PL[p]+' & '+pm(u,KEY)+' & '+pm(g,KEY)
+                        +f' & {c["delta_pp"]:+.2f} & {100*avg(u,"mol_stability"):.1f} & '
+                        +f'{100*avg(g,"mol_stability"):.1f} & {100*avg(u,"validity"):.1f} & '
+                        +f'{100*avg(g,"validity"):.1f}'+r'\\')
+    rows=decorate(rows,[4],'max')
+    out['GUIDANCE']=latex_table('Guided versus unguided under matched settings, $w=1$, $t\\ge0.5$, three seeds of 2,000. Plug-in guidance is compared with the same frozen backbone and sampler. IB is decoded coverage (percent mean $\\pm$ seed sd); $\\Delta$ is percentage points. Stability and validity are reported so guidance is not judged by coverage alone. Bold marks the largest coverage gain.','tab:guidance','llccccccc',r'Backend & Prop. & IB unguided & IB guided & $\\Delta$IB & Stab. un. & Stab. g. & Val. un. & Val. g.',rows)
     for be in ('fm','equifm','edm','vp'):
         rows=[]
         for p in PROPS:
@@ -188,7 +265,18 @@ def tables():
             for a in ('unguided','plug','tmpd','lgd_mc','tfg_mc','bdg_e4t0.5','bdg_e4t1'):
                 rs=seq(p,a,w); pooled=M.pooled(rs)
                 rows.append(f'{PL[p]}, {w} & '+NAMES[a]+' & '+pm(rs,'in_band_fraction')+f' & {1e4*avg(rs,"kmer_js"):.2f} & {avg(rs,"decode_conf"):.3f} & {avg(rs,"diversity"):.4f} & {100*pooled["clip_frac"]:.2f} & {duration(rs,True):.3f}'+r'\\')
-    out['FULL-M2']=latex_table('All DNA headline settings. IB is percent mean $\\pm$ seed sd; JSD is multiplied by $10^4$; Conf. is decoding confidence; Div. is normalized Hamming distance; Clip is percent of guided sample-steps. Unguided rows repeat a common reference and are never pooled twice.','tab:full-m2','llcccccc',r'Prop., $w$ & Method & IB$\uparrow$ & JSD$\downarrow$ & Conf. & Div. & Clip & s/seq.',rows)
+    out['FULL-M2']=latex_table('All DNA headline settings at the pre-registered window $t\\ge0.5$; the same grid at $t\\ge0.3$ is Table~\\ref{tab:full-m2-early}. IB is percent mean $\\pm$ seed sd; JSD is multiplied by $10^4$; Conf. is decoding confidence; Div. is normalized Hamming distance; Clip is percent of guided sample-steps. Unguided rows repeat a common reference and are never pooled twice.','tab:full-m2','llcccccc',r'Prop., $w$ & Method & IB$\uparrow$ & JSD$\downarrow$ & Conf. & Div. & Clip & s/seq.',rows)
+    # The same grid at the window the headline table uses, so every number in
+    # tab:m2 and tab:m2-window can be traced to a cell. Both w rungs are here:
+    # w=1 is the pre-registered strength, w=4 the ablation rung.
+    rows=[]
+    for prop in ('gc','cpg'):
+        for w in (1.,4.):
+            if rows: rows.append(r'\midrule')
+            for a in ('unguided','plug','tmpd','lgd_mc','tfg_mc','bdg_e4t0.5','bdg_e4t1'):
+                rs=win(a,prop=prop,w=w); pooled=M.pooled(rs)
+                rows.append(f'{PL[prop]}, {w:g} & '+NAMES[a]+' & '+pm(rs,'in_band_fraction')+f' & {1e4*avg(rs,"kmer_js"):.2f} & {avg(rs,"decode_conf"):.3f} & {avg(rs,"diversity"):.4f} & {100*pooled["clip_frac"]:.2f} & {duration(rs,True):.3f}'+r'\\')
+    out['FULL-M2-EARLY']=latex_table('All DNA headline settings at $t\\ge0.3$, the window the main-text DNA tables use. Columns match Table~\\ref{tab:full-m2}. IB is percent mean $\\pm$ seed sd; JSD is multiplied by $10^4$; Conf. is decoding confidence; Div. is normalized Hamming distance; Clip is percent of guided sample-steps. Unguided rows repeat a common reference and are never pooled twice.','tab:full-m2-early','llcccccc',r'Prop., $w$ & Method & IB$\uparrow$ & JSD$\downarrow$ & Conf. & Div. & Clip & s/seq.',rows)
     rows=[]
     for a in ARMS:
         rs=heads['fm']['mu',a]; counts=rs[0]['cost']

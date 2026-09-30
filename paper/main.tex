@@ -17,14 +17,14 @@
 \newcommand{\IB}{\mathrm{IB}}
 \newcommand{\sg}{\operatorname{stopgrad}}
 \title{BDG: Batch-Dispersion Guidance for\\Property-Band Generation}
-\author{Bobo Li, Henry Huang, Idea Idehpour\\
+\author{Bobo Li, Henry Huang\\
 Department of Computer and Information Science, University of Pennsylvania\\
 \small Manuscript v9 \quad 29 September 2026}
 \begin{document}
 % MAIN_TEXT_START
 \maketitle
 \begin{abstract}
-Property-targeted generation must satisfy a tolerance band while preserving quality. Standard gradient guidance scales target centering and distribution contraction together. We introduce Batch-Dispersion Guidance (BDG), which adjusts the deviation coefficient using batch endpoint variance relative to a requested variance, retaining the centering coefficient. BDG requires the same neural calls as plug-in guidance. We study QM9 molecules in Euclidean coordinates and DeepFlyBrain DNA on a probability simplex. Our trained flow-matching model achieves 39.7 percent molecular stability versus 28.8 percent for our variance-preserving diffusion model, supporting the choice of flow matching. Plug-in guidance improves dipole and gap coverage on both trained models. Across two flow backbones and three molecular properties, contracting BDG raises mean decoded coverage by 0.45--1.52 percentage points over plug-in and reduces mean absolute target error in all six comparisons. The coverage gains remain below the protocol threshold and have greater seed variability on our model. A 612-cell ablation demonstrates monotone spread adjustment across four setpoints, from 0.67--0.77 to 1.15--1.25 times unguided spread at fixed strength and gain. On DNA, CpG gains reach 4.82 and 16.83 points at strengths one and four. A follow-up GC window starting at $t=0.3$ separates the baselines and yields a 7.08-point BDG gain at strength four. Hamming diversity changes little; fidelity costs depend on property and window. Four recent guidance adaptations contextualize the concentration--spread trade-off and its property-dependent quality costs.
+Property-targeted generation must land inside a tolerance band while preserving sample quality. Standard gradient guidance scales target centering and distribution contraction together through a single strength. We introduce Batch-Dispersion Guidance (BDG), which sets the deviation coefficient from the batch endpoint variance relative to a requested variance while retaining the centering coefficient, at the same neural cost as plug-in guidance. We study two state spaces: QM9 molecules in Euclidean coordinates and DeepFlyBrain regulatory DNA on a probability simplex. A trained flow-matching model reaches 39.7 percent molecular stability against 28.8 for our variance-preserving diffusion model, so we carry flow matching forward, and plug-in guidance raises dipole coverage by 2.75 points on it. Across two flow backbones and three molecular properties, contracting BDG raises mean decoded coverage over plug-in by 0.45 to 1.52 points in all six comparisons and lowers mean absolute target error in every one, though the gains stay below our pre-registered threshold. A 612-cell ablation isolates gain, setpoint and strength, and shows monotone spread adjustment with a sign reversal about the setpoint. Transfer to DNA is property-dependent rather than uniform: BDG gains 7.08 points on GC once the guidance window starts early enough to separate the baselines, while on CpG the plug-in baseline already contracts past the tightest setpoint our pre-registered grid offers. Hamming diversity changes little throughout; fidelity costs depend on the property and the window.
 \end{abstract}
 
 \section{Introduction}
@@ -32,7 +32,8 @@ Diffusion and flow matching generate structured samples by reversing corruption 
 
 Gradient guidance moves properties toward a target, but its strength also contracts their spread \citep{chung2023dps,song2023lgd}. Batch interactions and moment constraints motivate a separate dispersion setting \citep{corso2024particle,mgd2026moment}. Can this setting improve band coverage at an acceptable quality cost?
 
-We compare linear FM and VP diffusion on QM9, then test BDG against plug-in and recent adaptations before transfer to DeepFlyBrain DNA. Our hypothesis is that a scalar property-dispersion rule adjusts coverage across different state spaces. Our contributions are summarized as follows.
+We compare linear FM and VP diffusion on QM9, then test BDG against plug-in and recent adaptations before transfer to DeepFlyBrain DNA. Our hypothesis is that a scalar property-dispersion rule adjusts coverage across different state spaces.\footnote{Code, evaluation cells and the scripts that regenerate every table: \url{https://github.com/Henry1145141919810/cis6270-project1-group2}}
+Our contributions are summarized as follows.
 \begin{itemize}
 \item We select FM from a trained-model quality comparison.
 \item We derive BDG's zero-gain limit and expansion condition.
@@ -44,13 +45,21 @@ We compare linear FM and VP diffusion on QM9, then test BDG against plug-in and 
 
 \textbf{Dispersion and guidance.} Particle Guidance introduces batch interactions \citep{corso2024particle}; Moment Guided Diffusion imposes moment constraints \citep{mgd2026moment}; variance tilting favors feature spread \citep{vtd2026variance}. BDG adds a batch variance residual to endpoint guidance, distinct from per-sample, uncertainty and Monte Carlo corrections. We claim this composition without distributional guarantees.
 
-\textbf{Molecules.} Equivariant diffusion and EquiFM model molecular geometry \citep{hoogeboom2022equivariant,song2023equifm}. We compare DPS-style plug-in, TMPD-inspired guidance, LGD-MC and TFG adaptations on common frozen backbones \citep{chung2023dps,boys2024tmpd,song2023lgd,ye2024tfg}.
+\textbf{Molecules.} Equivariant diffusion and EquiFM model molecular geometry \citep{hoogeboom2022equivariant,song2023equifm}.
+
+\textbf{The comparators we measure.} All arms share one frozen backbone, sampler, seed set and evaluator, so only the steering rule varies. \emph{Plug-in} (DPS) differentiates a Gaussian likelihood at the endpoint estimate and is the common ancestor of the rest \citep{chung2023dps}. \emph{TMPD} divides it by an uncertainty denominator $s^2+v_f$ \citep{boys2024tmpd}; \emph{LGD-MC} averages plug-in gradients over draws scaled by the same variance \citep{song2023lgd}; \emph{TFG-MC} keeps TFG's Monte Carlo smoothing with a tuned scale and is not the full update \citep{ye2024tfg}. BDG instead reads a \emph{batch} statistic: the two uncertainty-based rules collapse to plug-in wherever residual endpoint variance vanishes, and BDG does not.
 
 \textbf{Sequences.} Dirichlet FM and Fisher Flow model simplex-valued sequences; MOG-DFM guides discrete biological sequences \citep{stark2024dirichlet,davis2024fisher,chen2025multi}. Our measured sequence comparators are ports of the guidance rules above, not reproductions of these three generators.
 
 \section{Methods}
-\subsection{Modalities, Data, and Preprocessing}\label{sec:data}
-QM9 \citep{ramakrishnan2014qm9} uses centered coordinates and one-hot H/C/N/O/F. Generator/guide $f_A$ and evaluator $f_B$ use disjoint 51,527-molecule halves; validation/test have 17,748/13,083. Targets are dipole $\mu$, polarizability $\alpha$, and HOMO--LUMO gap. DeepFlyBrain has 83,722/10,505/10,434 train/validation/test 500-bp sequences on $(\Delta^3)^{500}$. Generators are property-unconditional; molecules use atom-count mask $M$ (Appendix~\ref{app:data}).
+\subsection{The Two Modalities, and How We Model Each}\label{sec:data}
+The two state spaces are genuinely different, which is what makes transfer a test rather than a change of dataset.
+
+\textbf{QM9 molecules} are unordered atom sets: continuous coordinates in $\mathbb R^3$ plus one-hot H/C/N/O/F, padded with an atom-count mask $M$, and invariant to rotation and translation. We model them with an E(3)-equivariant graph network so that symmetry holds by construction. Decoding reads atom types and infers bonds from distances, so samples can be chemically \emph{invalid} --- which we measure. Targets are $\mu$, $\alpha$ and the HOMO--LUMO gap.
+
+\textbf{DeepFlyBrain DNA} is a 500-bp sequence written as 500 points on $\Delta^3$, so the state $(\Delta^3)^{500}$ is bounded and convex with data at its vertices; the relaxation adds an interior to move through. We model it with a dilated 1-D CNN and project back to the simplex at every Euler step. Decoding is per-position $\arg\max$, so \emph{every} sample is a legal sequence and quality must be judged by sequence statistics rather than validity. Targets are GC, affine in the relaxed state, and CpG, quadratic.
+
+Both generators are property-unconditional, so all targeting happens at sampling time. Splits, preprocessing and predictor pairs are in Appendix~\ref{app:data}; architectures and training in Appendix~\ref{app:training}.
 
 \subsection{Continuous Flow Matching Baseline}\label{sec:fm}
 With Gaussian source $x_0$, data $x_1$ and uniform $t\in[0,1]$, we train
@@ -88,7 +97,7 @@ e&=(\Vb-\tau^2)/\tau^2,\qquad \weff=1+\eta e.
 BDG retains the centering coefficient and detaches $n_i/s^2$ before pullback. \textbf{At $\eta=0$, BDG equals plug-in}; $\tau=0$ is undefined. Since $V_b\ge0$, $\weff\ge1-\eta$. Negative $e$ weakens contraction; expansion requires $\weff<0$, hence $\eta>1$. Terminal spread is not guaranteed (Algorithm~\ref{alg:bdg}).
 
 \subsection{Transfer to Modality 2}\label{sec:transfer}
-A ten-layer, width-128 CNN learns a Dirichlet$(1,1,1,1)$-to-one-hot linear path. Training ran 1,500 epochs; validation selected epoch 1,450. BDG uses analytic soft GC/CpG properties. Euler steps clamp and renormalize; final decoding uses $\arg\max$ (Appendix~\ref{app:m2}).
+The sequence generator learns a linear path from Dirichlet$(1,1,1,1)$ noise to one-hot data, and BDG reads analytic soft GC and CpG properties rather than a learned predictor, so the guided and scored quantities differ only by decoding. The dispersion rule itself is unchanged from Modality 1: only the state, the property and the decoder differ. Architecture, training length and checkpoint selection are in Appendix~\ref{app:training}; the simplex sampler and its soft/decoded property gap are in Appendix~\ref{app:m2}.
 
 \subsection{Model Overview}\label{sec:overview}
 Figure~\ref{fig:overview} separates training, frozen guidance and decoding across the two state spaces.
@@ -146,24 +155,45 @@ EDMsecond (diffusion) & $67.2\pm1.3$ & $86.0\pm1.3$ & 99.8 & 101 & 0.087\\
 % END DATA BASE
 
 \subsection{Modality 1: Guided versus Unguided Generation}\label{sec:guidworks}
-Plug-in raises decoded dipole/gap coverage by 2.75/2.35 points on FM and 2.13/2.60 on VP, all above threshold; both $\alpha$ changes remain unresolved. Stability falls by 4.08/6.15 points on FM and 2.68/5.65 on VP (Tables~\ref{tab:recent}, \ref{tab:full-vp}). Guidance therefore improves targeting on both families with a chemistry cost.
+Plug-in raises decoded dipole/gap coverage by 2.75/2.35 points on FM and 2.13/2.60 on VP, all above threshold; both $\alpha$ changes remain unresolved. Stability falls by 4.08/6.15 points on FM and 2.68/5.65 on VP (Tables~\ref{tab:recent}, \ref{tab:full-vp}). Guidance therefore improves targeting on both families with a chemistry cost (Table~\ref{tab:guidance}).
+
+% BEGIN DATA GUIDANCE
+\begin{table}[!htbp]
+\centering\small
+\caption{Guided versus unguided under matched settings, $w=1$, $t\ge0.5$, three seeds of 2,000. Plug-in guidance is compared with the same frozen backbone and sampler. IB is decoded coverage (percent mean $\pm$ seed sd); $\Delta$ is percentage points. Stability and validity are reported so guidance is not judged by coverage alone. Bold marks the largest coverage gain.}
+\label{tab:guidance}
+\begin{tabular}{llccccccc}
+\toprule
+Backend & Prop. & IB unguided & IB guided & $\\Delta$IB & Stab. un. & Stab. g. & Val. un. & Val. g.\\
+\midrule
+FM, ours & $\mu$ & $7.8\pm0.1$ & $10.6\pm0.4$ & \textbf{+2.75}& 39.7 & 35.6 & 75.6 & 72.5\\
+FM, ours & $\alpha$ & $5.0\pm0.3$ & $6.1\pm0.3$ & +1.07 & 39.7 & 37.2 & 75.6 & 73.7\\
+FM, ours & gap & $10.3\pm1.0$ & $12.6\pm0.7$ & +2.35 & 39.7 & 33.6 & 75.6 & 69.9\\
+\midrule
+VP diffusion, ours & $\mu$ & $8.7\pm0.8$ & $10.8\pm0.4$ & +2.13 & 28.8 & 26.2 & 66.2 & 61.8\\
+VP diffusion, ours & $\alpha$ & $5.2\pm0.6$ & $5.4\pm0.4$ & +0.15 & 28.8 & 25.2 & 66.2 & 58.7\\
+VP diffusion, ours & gap & $9.8\pm0.6$ & $12.4\pm1.2$ & \underline{+2.60}& 28.8 & 23.2 & 66.2 & 57.3\\
+\bottomrule
+\end{tabular}
+\end{table}
+% END DATA GUIDANCE
 
 \subsection{Modality 1: Innovation Ablations}\label{sec:ablations}
 Table~\ref{tab:ablation} removes BDG's residual ($\eta=0$), changes its setpoint and increases plug-in strength. Contracting BDG improves dipole target concentration; increasing $\tau_m$ widens spread past unguided, which neither tested plug-in strength reaches (Figure~\ref{fig:results}a). The 612-cell grid and descriptive quality-cost comparisons appear in Appendix~\ref{app:ablations} and Table~\ref{tab:exchange}.
 % BEGIN DATA ABLATION
 \begin{table}[!htbp]
 \centering\small
-\caption{Dipole ablation on our FM: q50 $y=2.4932$ D, band $\pm0.17541$ D. IB is percent mean $\pm$ seed sd; stability is percent mean. Decoded MAE, mean and spread $\sigma$ are in D. Zero gain is plug-in; its $w=4$ row tests stronger guidance.}
+\caption{Dipole ablation on our FM: q50 $y=2.4932$ D, band $\pm0.17541$ D. IB is percent mean $\pm$ seed sd; stability is percent mean. Decoded MAE, mean and spread $\sigma$ are in D. Zero gain is plug-in; its $w=4$ row tests stronger guidance. $\tau_m$ is written -- at $\eta=0$, where $w_{\mathrm{eff}}=1$ and the setpoint has no effect. Bold marks the best entry in each marked column and underline the runner-up; coverage alone is not a quality ranking, and the quality columns show what each arm spent to reach it.}
 \label{tab:ablation}
 \begin{tabular}{cccccccc}
 \toprule
 $w$ & $\eta$ & $\tau_m$ & IB$\uparrow$ & MAE$\downarrow$ & Mean & $\sigma$ & Stable$\uparrow$\\
 \midrule
 1 & 0 & -- & $10.6\pm0.4$ & 0.969 & 2.615 & 1.209 & 35.6\\
-4 & 0 & -- & $13.4\pm0.4$ & 0.812 & 2.548 & 1.024 & 30.3\\
+4 & 0 & -- & $\mathbf{13.4\pm0.4}$& \textbf{0.812}& 2.548 & 1.024 & 30.3\\
 1 & 4 & 0.5 & $11.2\pm1.1$ & 0.903 & 2.609 & 1.113 & 35.1\\
 1 & 4 & 1 & $8.9\pm0.2$ & 1.133 & 2.714 & 1.434 & 40.5\\
-1 & 8 & 0.5 & $11.9\pm0.3$ & 0.861 & 2.603 & 1.064 & 34.0\\
+1 & 8 & 0.5 & $\underline{11.9\pm0.3}$& \underline{0.861}& 2.603 & 1.064 & 34.0\\
 1 & 8 & 1.5 & $7.6\pm0.2$ & 1.377 & 2.858 & 1.922 & 37.6\\
 \bottomrule
 \end{tabular}
@@ -175,7 +205,7 @@ At $\tau_m=0.5$, BDG improves mean coverage and MAE in all six flow/property com
 % BEGIN DATA M1
 \begin{table}[!htbp]
 \centering\small
-\caption{Our FM, $w=1$: decoded IB, percent mean $\pm$ seed sd; stability means in $\mu/\alpha/\mathrm{gap}$ order. DV is distinct-valid yield (\%), and time is s/sample, both for $\mu$. Plug-in is $\eta=0$; BDG uses $\eta=4$. Rows are matched-backbone adaptations.}
+\caption{Our FM, $w=1$: decoded IB, percent mean $\pm$ seed sd; stability means in $\mu/\alpha/\mathrm{gap}$ order. DV is distinct-valid yield (\%), and time is s/sample, both for $\mu$. Plug-in is $\eta=0$; BDG uses $\eta=4$. Rows are matched-backbone adaptations. Bold marks the best entry in each marked column and underline the runner-up; coverage alone is not a quality ranking, and the quality columns show what each arm spent to reach it.}
 \label{tab:recent}
 \begin{tabular}{lcccccc}
 \toprule
@@ -185,32 +215,32 @@ Unguided & $7.8\pm0.1$ & $5.0\pm0.3$ & $10.3\pm1.0$ & 39.7 / 39.7 / 39.7 & 75.5 
 Plug-in ($\eta=0$) & $10.6\pm0.4$ & $6.1\pm0.3$ & $12.6\pm0.7$ & 35.6 / 37.2 / 33.6 & 72.4 & 0.119\\
 TMPD-inspired & $9.0\pm0.6$ & $6.1\pm0.4$ & $11.6\pm0.9$ & 38.4 / 38.9 / 37.3 & 74.7 & 0.255\\
 LGD-MC & $9.6\pm0.8$ & $5.2\pm0.4$ & $10.8\pm0.7$ & 39.9 / 39.2 / 39.5 & 75.4 & 0.229\\
-TFG & $28.8\pm1.6$ & $10.5\pm0.3$ & $27.5\pm0.3$ & 24.5 / 26.8 / 14.4 & 62.7 & 0.122\\
-\textbf{BDG, $\tau_m=0.5$} & $11.2\pm1.1$ & $7.0\pm0.5$ & $14.2\pm0.8$ & 35.1 / 36.4 / 30.0 & 71.2 & 0.119\\
-\textbf{BDG, $\tau_m=1$} & $8.9\pm0.2$ & $5.6\pm0.5$ & $10.6\pm0.2$ & 40.5 / 37.9 / 37.6 & 76.3 & 0.119\\
+TFG & $\mathbf{28.8\pm1.6}$& $\mathbf{10.5\pm0.3}$& $\mathbf{27.5\pm0.3}$& 24.5 / 26.8 / 14.4 & 62.7 & 0.122\\
+BDG, $\tau_m=0.5$ & $\underline{11.2\pm1.1}$& $\underline{7.0\pm0.5}$& $\underline{14.2\pm0.8}$& 35.1 / 36.4 / 30.0 & 71.2 & 0.119\\
+BDG, $\tau_m=1$ & $8.9\pm0.2$ & $5.6\pm0.5$ & $10.6\pm0.2$ & 40.5 / 37.9 / 37.6 & 76.3 & 0.119\\
 \bottomrule
 \end{tabular}
 \end{table}
 % END DATA M1
 
 \subsection{Modality 2: Transfer of the Innovation}\label{sec:m2}
-The new GC follow-up starts guidance at $t=0.3$: at $w=4$, contracting BDG raises coverage from 30.25\% to 37.33\% (+7.08 points); the four baselines now differ. Its JSD is below unguided but above plug-in. CpG remains at $t\ge0.5$, with a +16.83-point gain and higher JSD (Table~\ref{tab:m2}). Hamming diversity changes little. Original $t\ge0.5$ GC/CpG results remain in Table~\ref{tab:m2-late}; only that late window gives identical plug-in/TMPD/LGD coverage on both properties.
+Both properties now start guidance at $t=0.3$, where the four baselines separate; the original $t\ge0.5$ window, the only one giving identical plug-in/TMPD/LGD coverage, remains in Table~\ref{tab:m2-late}. At $w=4$ contracting BDG raises GC coverage from 30.25\% to 37.33\% (+7.08 points) but lowers CpG coverage from 91.51\% to 86.63\% ($-4.88$ points, Table~\ref{tab:m2}). One rule gives both signs. BDG servos batch spread to $\tau$, so it contracts only a batch wider than $\tau$: plug-in reaches $0.62s$ on GC, outside the $\tau_m=0.5$ setpoint, and $0.37s$ on CpG, already inside it, and BDG accordingly tightens GC to $0.59s$ and relaxes CpG to $0.45s$. Widening an over-contracted batch is the specified response, not a failed update, and $\tau_m=1$ relaxes both properties further (15.6\% and 54.3\%). What transfers is therefore the mechanism and its sign rule rather than a coverage gain: the setpoint must sit below the baseline's achieved spread, and $\tau_m=0.5$ does so for only one of the two properties. Hamming diversity changes little.
 % BEGIN DATA M2
 \begin{table}[!htbp]
 \centering\small\setlength{\tabcolsep}{3pt}
-\caption{DNA, $w=4$: new GC window $t\ge0.3$; CpG remains $t\ge0.5$. IB is percent mean $\pm$ seed sd; JSD ($\times10^{-4}$), Hamming and s/sequence are GC/CpG. Dashes denote an unrun GC arm. Original matched-window results: Table~\ref{tab:m2-late}.}
+\caption{DNA, $w=4$, $t\ge0.3$ for both properties. IB is percent mean $\pm$ seed sd; JSD ($\times10^{-4}$), Hamming and s/sequence are GC/CpG. The original $t\ge0.5$ window, where the three uncertainty-based comparators are numerically indistinguishable from plug-in, is Table~\ref{tab:m2-late}. Bold marks the best entry in each marked column and underline the runner-up; coverage alone is not a quality ranking, and the quality columns show what each arm spent to reach it.}
 \label{tab:m2}
 \begin{tabular}{lccccc}
 \toprule
 Method & GC IB$\uparrow$ & CpG IB$\uparrow$ & JSD$\downarrow$ & Hamming & Time\\
 \midrule
-Unguided & $14.0\pm1.0$ & $50.2\pm1.6$ & 4.53 / 4.53 & 0.7456 / 0.7456 & 0.021 / 0.049\\
-DPS-style plug-in & $30.3\pm2.0$ & $51.6\pm1.4$ & 3.64 / 4.63 & 0.7456 / 0.7456 & 0.124 / 0.096\\
-TMPD-inspired & $29.2\pm2.1$ & $51.6\pm1.4$ & 3.66 / 4.63 & 0.7455 / 0.7456 & 0.145 / 0.124\\
-LGD-MC & $30.0\pm1.3$ & $51.6\pm1.4$ & 3.61 / 4.63 & 0.7455 / 0.7456 & 0.131 / 0.102\\
-TFG-MC adaptation & $29.8\pm1.8$ & $51.1\pm1.7$ & 3.57 / 4.58 & 0.7455 / 0.7456 & 0.109 / 0.084\\
-\textbf{BDG, $\tau_m=0.5$} & $37.3\pm6.5$ & $68.5\pm1.2$ & 4.24 / 7.73 & 0.7455 / 0.7457 & 0.122 / 0.076\\
-\textbf{BDG, $\tau_m=1$} & -- & $50.3\pm1.5$ & -- / 4.52 & -- / 0.7456 & -- / 0.076\\
+Unguided & $14.0\pm1.0$ & $50.2\pm1.6$ & 4.53 / 4.53 & 0.7456 / 0.7456 & 0.050 / 0.052\\
+DPS-style plug-in & $\underline{30.3\pm2.0}$& $\mathbf{91.5\pm0.5}$& 3.64 / 4.37 & 0.7456 / 0.7455 & 0.124 / 0.072\\
+TMPD-inspired & $29.2\pm2.1$ & $\underline{91.4\pm1.4}$& 3.66 / 4.36 & 0.7455 / 0.7455 & 0.145 / 0.076\\
+LGD-MC & $30.0\pm1.3$ & $90.7\pm0.6$ & 3.61 / 4.02 & 0.7455 / 0.7454 & 0.131 / 0.109\\
+TFG-MC adaptation & $29.8\pm1.8$ & $85.1\pm0.7$ & 3.57 / 3.56 & 0.7455 / 0.7454 & 0.109 / 0.122\\
+BDG, $\tau_m=0.5$ & $\mathbf{37.3\pm6.5}$& $86.6\pm0.9$ & 4.24 / 3.94 & 0.7455 / 0.7455 & 0.122 / 0.117\\
+BDG, $\tau_m=1$ & $15.6\pm0.8$ & $54.3\pm0.6$ & 3.59 / 3.62 & 0.7455 / 0.7454 & 0.075 / 0.115\\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -223,14 +253,14 @@ TFG-MC adaptation & $29.8\pm1.8$ & $51.1\pm1.7$ & 3.57 / 4.58 & 0.7455 / 0.7456 
 \end{figure}
 
 \subsection{Cross-Modality Analysis and Failure Modes}\label{sec:failure}
-BDG adjusts spread in both modalities. GC baselines separate with earlier guidance, supporting a timing explanation for their late-window overlap. Different bands, windows and clipping prevent a curvature-only explanation for GC/CpG gains (Appendix~\ref{app:m2}).
+BDG adjusts spread in both modalities, and on DNA the sign of its coverage effect is recovered from the setpoint alone: it helps where plug-in leaves the batch wider than $\tau$ and hurts where plug-in has already contracted past it (Appendix~\ref{app:m2}). GC baselines separate with earlier guidance, supporting a timing explanation for their late-window overlap.
 
 \section{Discussion}
 FM provides the stronger QM9 starting point; guidance improves targeting on both families. BDG adds adjustable spread and higher mean target concentration at plug-in's neural cost. TFG achieves more coverage with greater chemistry loss. GC and CpG gains extend BDG to a second state space.
 
 The zero-gain and setpoint ablations connect BDG's added coefficient to decoded spread and occupancy. Retaining the centering term lets dispersion change without rescaling that coefficient; this does not imply independent mean dynamics or faster convergence.
 
-Batch-aware intervals and joint in-band-and-stable yield would strengthen evaluation; fidelity-matched DNA comparisons would quantify the cost of CpG gains. Matched-force comparisons and open-loop replay would test whether feedback itself is necessary. Next, control molecular atom counts more closely and define evaluation goals around the local property distribution near each target range, to address size and target-density confounding.
+Batch-aware intervals and joint in-band-and-stable yield would strengthen evaluation; fidelity-matched DNA comparisons would quantify the cost of the coverage each setpoint buys, and a setpoint below $0.37s$ would test the sign rule on CpG directly. Matched-force comparisons and open-loop replay would test whether feedback itself is necessary. Next, control molecular atom counts more closely and define evaluation goals around the local property distribution near each target range, to address size and target-density confounding.
 % MAIN_TEXT_END
 \clearpage
 \bibliographystyle{ieeetr}
@@ -367,8 +397,8 @@ DPS-style plug-in & 800 & 200 & 0 & 200 & 200\\
 TMPD-inspired & 800 & 200 & 200 & 200 & 200\\
 LGD-MC & 800 & 200 & 200 & 1000 & 1000\\
 TFG & 600 & 200 & 0 & 1000 & 1000\\
-\textbf{BDG, $\tau_m=0.5$} & 800 & 200 & 0 & 200 & 200\\
-\textbf{BDG, $\tau_m=1$} & 800 & 200 & 0 & 200 & 200\\
+BDG, $\tau_m=0.5$ & 800 & 200 & 0 & 200 & 200\\
+BDG, $\tau_m=1$ & 800 & 200 & 0 & 200 & 200\\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -392,24 +422,24 @@ $\mu$ & DPS-style plug-in & $10.6\pm0.4$ & $35.6\pm0.3$ & 72.5 & 72.4 & 0.119\\
 $\mu$ & TMPD-inspired & $9.0\pm0.6$ & $38.4\pm0.6$ & 74.8 & 74.7 & 0.255\\
 $\mu$ & LGD-MC & $9.6\pm0.8$ & $39.9\pm0.3$ & 75.5 & 75.4 & 0.229\\
 $\mu$ & TFG & $28.8\pm1.6$ & $24.5\pm1.0$ & 62.8 & 62.7 & 0.122\\
-$\mu$ & \textbf{BDG, $\tau_m=0.5$} & $11.2\pm1.1$ & $35.1\pm1.1$ & 71.4 & 71.2 & 0.119\\
-$\mu$ & \textbf{BDG, $\tau_m=1$} & $8.9\pm0.2$ & $40.5\pm0.8$ & 76.5 & 76.3 & 0.119\\
+$\mu$ & BDG, $\tau_m=0.5$ & $11.2\pm1.1$ & $35.1\pm1.1$ & 71.4 & 71.2 & 0.119\\
+$\mu$ & BDG, $\tau_m=1$ & $8.9\pm0.2$ & $40.5\pm0.8$ & 76.5 & 76.3 & 0.119\\
 \midrule
 $\alpha$ & Unguided & $5.0\pm0.3$ & $39.7\pm0.6$ & 75.6 & 75.5 & 0.050\\
 $\alpha$ & DPS-style plug-in & $6.1\pm0.3$ & $37.2\pm1.6$ & 73.7 & 73.6 & 0.118\\
 $\alpha$ & TMPD-inspired & $6.1\pm0.4$ & $38.9\pm1.1$ & 75.1 & 75.0 & 0.200\\
 $\alpha$ & LGD-MC & $5.2\pm0.4$ & $39.2\pm1.3$ & 74.9 & 74.9 & 0.224\\
 $\alpha$ & TFG & $10.5\pm0.3$ & $26.8\pm0.8$ & 61.2 & 61.1 & 0.121\\
-$\alpha$ & \textbf{BDG, $\tau_m=0.5$} & $7.0\pm0.5$ & $36.4\pm1.0$ & 72.2 & 72.1 & 0.118\\
-$\alpha$ & \textbf{BDG, $\tau_m=1$} & $5.6\pm0.5$ & $37.9\pm1.1$ & 75.1 & 75.1 & 0.118\\
+$\alpha$ & BDG, $\tau_m=0.5$ & $7.0\pm0.5$ & $36.4\pm1.0$ & 72.2 & 72.1 & 0.118\\
+$\alpha$ & BDG, $\tau_m=1$ & $5.6\pm0.5$ & $37.9\pm1.1$ & 75.1 & 75.1 & 0.118\\
 \midrule
 gap & Unguided & $10.3\pm1.0$ & $39.7\pm0.6$ & 75.6 & 75.5 & 0.051\\
 gap & DPS-style plug-in & $12.6\pm0.7$ & $33.6\pm0.8$ & 69.9 & 69.8 & 0.119\\
 gap & TMPD-inspired & $11.6\pm0.9$ & $37.3\pm0.7$ & 73.8 & 73.7 & 0.201\\
 gap & LGD-MC & $10.8\pm0.7$ & $39.5\pm0.8$ & 75.2 & 75.1 & 0.225\\
 gap & TFG & $27.5\pm0.3$ & $14.4\pm0.8$ & 45.5 & 45.5 & 0.122\\
-gap & \textbf{BDG, $\tau_m=0.5$} & $14.2\pm0.8$ & $30.0\pm0.4$ & 65.8 & 65.7 & 0.119\\
-gap & \textbf{BDG, $\tau_m=1$} & $10.6\pm0.2$ & $37.6\pm0.8$ & 74.3 & 74.2 & 0.119\\
+gap & BDG, $\tau_m=0.5$ & $14.2\pm0.8$ & $30.0\pm0.4$ & 65.8 & 65.7 & 0.119\\
+gap & BDG, $\tau_m=1$ & $10.6\pm0.2$ & $37.6\pm0.8$ & 74.3 & 74.2 & 0.119\\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -429,24 +459,24 @@ $\mu$ & DPS-style plug-in & $10.9\pm0.9$ & $82.1\pm0.7$ & 91.9 & 91.6 & 0.231\\
 $\mu$ & TMPD-inspired & $9.0\pm0.3$ & $85.3\pm0.4$ & 93.5 & 93.2 & 0.366\\
 $\mu$ & LGD-MC & $9.7\pm0.3$ & $85.5\pm0.4$ & 93.3 & 93.1 & 0.474\\
 $\mu$ & TFG & $11.9\pm0.3$ & $74.0\pm0.7$ & 86.5 & 86.2 & 0.301\\
-$\mu$ & \textbf{BDG, $\tau_m=0.5$} & $12.1\pm0.5$ & $79.3\pm0.7$ & 90.9 & 90.6 & 0.232\\
-$\mu$ & \textbf{BDG, $\tau_m=1$} & $8.9\pm0.7$ & $85.8\pm0.3$ & 93.6 & 93.3 & 0.232\\
+$\mu$ & BDG, $\tau_m=0.5$ & $12.1\pm0.5$ & $79.3\pm0.7$ & 90.9 & 90.6 & 0.232\\
+$\mu$ & BDG, $\tau_m=1$ & $8.9\pm0.7$ & $85.8\pm0.3$ & 93.6 & 93.3 & 0.232\\
 \midrule
 $\alpha$ & Unguided & $2.1\pm0.1$ & $86.2\pm0.3$ & 93.8 & 93.5 & 0.087\\
 $\alpha$ & DPS-style plug-in & $2.1\pm0.2$ & $82.9\pm0.4$ & 91.9 & 91.7 & 0.233\\
 $\alpha$ & TMPD-inspired & $2.1\pm0.3$ & $84.8\pm0.3$ & 93.3 & 93.0 & 0.368\\
 $\alpha$ & LGD-MC & $2.1\pm0.1$ & $85.5\pm0.9$ & 93.3 & 93.0 & 0.476\\
 $\alpha$ & TFG & $3.4\pm0.5$ & $64.5\pm0.5$ & 84.5 & 84.4 & 0.302\\
-$\alpha$ & \textbf{BDG, $\tau_m=0.5$} & $2.5\pm0.2$ & $76.6\pm0.5$ & 89.5 & 89.2 & 0.233\\
-$\alpha$ & \textbf{BDG, $\tau_m=1$} & $2.0\pm0.1$ & $84.8\pm0.5$ & 92.8 & 92.6 & 0.233\\
+$\alpha$ & BDG, $\tau_m=0.5$ & $2.5\pm0.2$ & $76.6\pm0.5$ & 89.5 & 89.2 & 0.233\\
+$\alpha$ & BDG, $\tau_m=1$ & $2.0\pm0.1$ & $84.8\pm0.5$ & 92.8 & 92.6 & 0.233\\
 \midrule
 gap & Unguided & $4.9\pm0.2$ & $86.2\pm0.3$ & 93.8 & 93.5 & 0.086\\
 gap & DPS-style plug-in & $5.9\pm0.3$ & $82.7\pm0.4$ & 91.9 & 91.7 & 0.231\\
 gap & TMPD-inspired & $5.1\pm0.3$ & $84.6\pm0.7$ & 92.7 & 92.4 & 0.365\\
 gap & LGD-MC & $5.1\pm0.4$ & $86.1\pm0.2$ & 93.5 & 93.3 & 0.473\\
 gap & TFG & $10.9\pm0.2$ & $55.5\pm1.4$ & 76.4 & 76.2 & 0.300\\
-gap & \textbf{BDG, $\tau_m=0.5$} & $6.8\pm0.8$ & $77.4\pm1.1$ & 90.1 & 90.0 & 0.231\\
-gap & \textbf{BDG, $\tau_m=1$} & $5.0\pm0.4$ & $85.6\pm0.3$ & 93.4 & 93.1 & 0.231\\
+gap & BDG, $\tau_m=0.5$ & $6.8\pm0.8$ & $77.4\pm1.1$ & 90.1 & 90.0 & 0.231\\
+gap & BDG, $\tau_m=1$ & $5.0\pm0.4$ & $85.6\pm0.3$ & 93.4 & 93.1 & 0.231\\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -867,29 +897,36 @@ Table~\ref{tab:full-m2} gives all recent-method adaptations, both registered BDG
 
 We checked the late-window comparison separately for GC and CpG, at $w=1$ and $4$, for every seed. Plug-in, TMPD and LGD-MC have exactly equal decoded coverage in all these cells. Across property means, standard deviations, JSD and Hamming diversity, their differences from plug-in are bounded by $4.22\times10^{-6}$ for GC and $3.40\times10^{-6}$ for CpG. TFG-MC remains distinct, with single-seed coverage differences from plug-in up to 0.05 points for GC and 0.75 for CpG. Thus the numerical overlap is specific to three adaptations under this window, not a claim that all methods or all DNA guidance settings coincide. Measured endpoint uncertainty declines about 38,000-fold before $t=0.5$, consistent with suppression of the corrections that distinguish TMPD and LGD-MC. Dirichlet FM, Fisher Flow and MOG-DFM were not evaluated under these GC/CpG bands.
 
-For GC in the original $t\ge0.5$ window at $w=4$, contracting BDG increases coverage while the normalized bias worsens from +0.997 to +1.231. Its clipping fraction rises to 9.24\% from plug-in's 0.079\%; CpG clipping is 7.41\% versus 0.21\%. Thus equal nominal strength does not equalize applied correction. A GC-only window diagnostic at $w=1$ increased plug-in coverage by 22.82 points when guidance began at zero. BDG at $\tau_m=0.5$ was 2.33 points below that plug-in result; $\tau_m=1$ was 20.80 points below. About a third of early-window steps clip. The ratio of window gain to the best late-window GC gain is about 5.4, and no corresponding CpG early-window result was run.
+For GC in the original $t\ge0.5$ window at $w=4$, contracting BDG increases coverage while the normalized bias worsens from +0.997 to +1.231. Its clipping fraction rises to 9.24\% from plug-in's 0.079\%; CpG clipping is 7.41\% versus 0.21\%. Thus equal nominal strength does not equalize applied correction. A GC-only window diagnostic at $w=1$ increased plug-in coverage by 22.82 points when guidance began at zero. BDG at $\tau_m=0.5$ was 2.33 points below that plug-in result; $\tau_m=1$ was 20.80 points below. About a third of early-window steps clip. The ratio of window gain to the best late-window GC gain is about 5.4. The CpG early-window cells have since been run and are reported with GC in Tables~\ref{tab:m2-window} and \ref{tab:full-m2-early}.
 
 A separate frozen DeepFlyBrain predictor diagnostic exists in \path{results/m2_dfb_activity.json}. Its port was not verified numerically against the published Keras model in the committed evidence, so we do not claim published-oracle equivalence or biological function from these scores. Base composition, low-order k-mers and Hamming diversity cannot establish enhancer activity or cell-type specificity.
 
-\paragraph{New window follow-up.} Commits \texttt{cfc5d64} and \texttt{f568f68} (28 September, 22:47) add the GC $t\ge0.3$ comparison and diagnostic reports. At $w=4$, plug-in/TMPD/LGD-MC/TFG-MC mean coverage is 30.25/29.18/29.97/29.77\%; BDG ($\eta=4,\tau_m=0.5$) reaches 37.33\%, a +7.08-point gain over plug-in (Table~\ref{tab:m2-window}). Thus late-window numerical overlap is not an intrinsic GC or CpG property. This is an exploratory follow-up chosen after diagnosing endpoint uncertainty; it is separate from the original $t\ge0.5$ protocol comparison. No three-seed CpG $t\ge0.3$ or GC $\tau_m=1$ follow-up was supplied.
+\paragraph{New window follow-up.} Commits \texttt{cfc5d64} and \texttt{f568f68} (28 September, 22:47) add the GC $t\ge0.3$ comparison and diagnostic reports. At $w=4$, plug-in/TMPD/LGD-MC/TFG-MC mean coverage is 30.25/29.18/29.97/29.77\%; BDG ($\eta=4,\tau_m=0.5$) reaches 37.33\%, a +7.08-point gain over plug-in (Table~\ref{tab:m2-window}). Thus late-window numerical overlap is not an intrinsic GC or CpG property. This is an exploratory follow-up chosen after diagnosing endpoint uncertainty; it is separate from the original $t\ge0.5$ protocol comparison. The three-seed CpG $t\ge0.3$ and GC $\tau_m=1$ cells have since been run at both strength rungs (Table~\ref{tab:full-m2-early}). On CpG the ordering reverses: plug-in reaches 91.51\% and BDG 86.63\%, because plug-in already contracts CpG to $0.37s$, tighter than the $\tau_m=0.5$ setpoint, so every registered BDG rung acts in its widening regime on that property. TFG-MC loses more ground there ($-6.33$ points) than BDG does.
 
-At $t\ge0.3$, GC JSD improves relative to unguided for all measured methods, although BDG's JSD remains higher than plug-in's. Clipping is about 20.8\% for BDG versus 14.9\% for plug-in. The $\eta=0$ coefficient is algebraically identical to plug-in; same-seed reruns now differ numerically, and the implementation checks continuous metrics to $10^{-5}$ tolerance. The separate $n=500$ window and strength diagnostics use different settings and do not replace the $n=2000,w=4$ comparison. In particular, the strength diagnostic identifies $w=16$ at $t\ge0.5$; it is not the strength used in Table~\ref{tab:m2}.
+At $t\ge0.3$, GC JSD improves relative to unguided for all measured methods, although BDG's JSD remains higher than plug-in's. Clipping is about 20.8\% for BDG versus 14.9\% for plug-in. The $\eta=0$ coefficient is algebraically identical to plug-in; same-seed reruns differ only numerically, and \path{proj1/m2/m2_sanity.py} gates continuous metrics at $10^{-4}$ against a measured $8.5\times10^{-6}$ float-noise floor, and in-band coverage at ten sequences, since that counter is quantised at $1/499$ and single lattice sequences flip across the band edge. The separate $n=500$ window and strength diagnostics use different settings and do not replace the $n=2000,w=4$ comparison. In particular, the strength diagnostic identifies $w=16$ at $t\ge0.5$; it is not the strength used in Table~\ref{tab:m2}.
 
 % BEGIN DATA M2-WINDOW
 \begin{table}[!htbp]
 \centering\small
-\caption{New GC window follow-up, $t\ge0.3$, $w=4$, three seeds of 2,000. IB is percent mean $\pm$ seed sd; differences and paired SD are percentage points against plug-in. JSD is $\times10^{-4}$, Clip is percent of guided sample-steps. This exploratory follow-up was added after diagnosing the original late window.}
+\caption{Window follow-up on both properties, $t\ge0.3$, $w=4$, three seeds of 2,000. IB is percent mean $\pm$ seed sd; differences and paired SD are percentage points against plug-in. JSD is $\times10^{-4}$, Clip is percent of guided sample-steps. This exploratory follow-up was added after diagnosing the original late window; the sign of the BDG effect differs between the two properties. Bold marks the best entry in each marked column and underline the runner-up; coverage alone is not a quality ranking, and the quality columns show what each arm spent to reach it.}
 \label{tab:m2-window}
-\begin{tabular}{lccccccc}
+\begin{tabular}{llccccccc}
 \toprule
-Method & IB$\uparrow$ & $\Delta$IB & SD$(\Delta)$ & JSD$\downarrow$ & Hamming & Clip & s/seq.\\
+Prop. & Method & IB$\uparrow$ & $\Delta$IB & SD$(\Delta)$ & JSD$\downarrow$ & Hamming & Clip & s/seq.\\
 \midrule
-DPS-style plug-in & $30.3\pm2.0$ & +0.00 & 0.00 & 3.64 & 0.7456 & 14.94 & 0.124\\
-TMPD-inspired & $29.2\pm2.1$ & -1.07 & 0.57 & 3.66 & 0.7455 & 14.89 & 0.145\\
-LGD-MC & $30.0\pm1.3$ & -0.28 & 1.14 & 3.61 & 0.7455 & 15.13 & 0.131\\
-TFG-MC adaptation & $29.8\pm1.8$ & -0.48 & 1.06 & 3.57 & 0.7455 & 15.17 & 0.109\\
-\textbf{BDG, $\tau_m=0.5$} & $37.3\pm6.5$ & +7.08 & 4.53 & 4.24 & 0.7455 & 20.75 & 0.122\\
-BDG $\eta=0$ & $30.3\pm2.0$ & +0.00 & 0.00 & 3.63 & 0.7456 & 14.94 & 0.059\\
+GC & DPS-style plug-in & $30.3\pm2.0$ & +0.00 & 0.00 & 3.64 & 0.7456 & 14.94 & 0.124\\
+GC & TMPD-inspired & $29.2\pm2.1$ & -1.07 & 0.57 & 3.66 & 0.7455 & 14.89 & 0.145\\
+GC & LGD-MC & $30.0\pm1.3$ & -0.28 & 1.14 & 3.61 & 0.7455 & 15.13 & 0.131\\
+GC & TFG-MC adaptation & $29.8\pm1.8$ & -0.48 & 1.06 & 3.57 & 0.7455 & 15.17 & 0.109\\
+GC & BDG, $\tau_m=0.5$ & $37.3\pm6.5$ & +7.08 & 4.53 & 4.24 & 0.7455 & 20.75 & 0.122\\
+GC & BDG $\eta=0$ & $30.3\pm2.0$ & +0.00 & 0.00 & 3.63 & 0.7456 & 14.94 & 0.059\\
+\midrule
+CpG & DPS-style plug-in & $\mathbf{91.5\pm0.5}$& +0.00 & 0.00 & 4.37 & 0.7455 & 12.74 & 0.072\\
+CpG & TMPD-inspired & $\underline{91.4\pm1.4}$& -0.02 & 1.14 & 4.36 & 0.7455 & 12.47 & 0.076\\
+CpG & LGD-MC & $90.7\pm0.6$ & -0.72 & 0.83 & 4.02 & 0.7454 & 14.31 & 0.109\\
+CpG & TFG-MC adaptation & $85.1\pm0.7$ & -6.33 & 0.33 & 3.56 & 0.7454 & 17.36 & 0.122\\
+CpG & BDG, $\tau_m=0.5$ & $86.6\pm0.9$ & -4.88 & 1.33 & 3.94 & 0.7455 & 13.26 & 0.117\\
+CpG & BDG $\eta=0$ & $91.4\pm0.4$ & -0.05 & 0.17 & 4.38 & 0.7455 & 12.74 & 0.103\\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -897,19 +934,19 @@ BDG $\eta=0$ & $30.3\pm2.0$ & +0.00 & 0.00 & 3.63 & 0.7456 & 14.94 & 0.059\\
 % BEGIN DATA M2-LATE
 \begin{table}[!htbp]
 \centering\small\setlength{\tabcolsep}{4pt}
-\caption{DNA, $w=4$, $t\ge0.5$: decoded IB (percent mean $\pm$ seed sd); JSD ($\times10^{-4}$) and Hamming diversity in GC/CpG order. Time is recorded s/sequence for CpG. TFG-MC is a restricted adaptation. Full results: Table~\ref{tab:full-m2}.}
+\caption{DNA, $w=4$, $t\ge0.5$: decoded IB (percent mean $\pm$ seed sd); JSD ($\times10^{-4}$) and Hamming diversity in GC/CpG order. Time is recorded s/sequence for CpG. TFG-MC is a restricted adaptation. Full results: Table~\ref{tab:full-m2}. Bold marks the best entry in each marked column and underline the runner-up; coverage alone is not a quality ranking, and the quality columns show what each arm spent to reach it.}
 \label{tab:m2-late}
 \begin{tabular}{lccccc}
 \toprule
 Method & GC IB$\uparrow$ & CpG IB$\uparrow$ & JSD$\downarrow$ & Hamming & Time\\
 \midrule
 Unguided & $14.0\pm1.0$ & $50.2\pm1.6$ & 4.53 / 4.53 & 0.7456 / 0.7456 & 0.049\\
-DPS-style plug-in & $14.1\pm1.0$ & $51.6\pm1.4$ & 4.61 / 4.63 & 0.7456 / 0.7456 & 0.096\\
+DPS-style plug-in & $\underline{14.1\pm1.0}$& $\underline{51.6\pm1.4}$& 4.61 / 4.63 & 0.7456 / 0.7456 & 0.096\\
 TMPD-inspired & $14.1\pm1.0$ & $51.6\pm1.4$ & 4.61 / 4.63 & 0.7456 / 0.7456 & 0.124\\
 LGD-MC & $14.1\pm1.0$ & $51.6\pm1.4$ & 4.61 / 4.63 & 0.7456 / 0.7456 & 0.102\\
 TFG-MC adaptation & $14.1\pm1.0$ & $51.1\pm1.7$ & 4.59 / 4.58 & 0.7456 / 0.7456 & 0.084\\
-\textbf{BDG, $\tau_m=0.5$} & $16.4\pm1.2$ & $68.5\pm1.2$ & 5.93 / 7.73 & 0.7457 / 0.7457 & 0.076\\
-\textbf{BDG, $\tau_m=1$} & $14.1\pm1.0$ & $50.3\pm1.5$ & 4.54 / 4.52 & 0.7456 / 0.7456 & 0.076\\
+BDG, $\tau_m=0.5$ & $\mathbf{16.4\pm1.2}$& $\mathbf{68.5\pm1.2}$& 5.93 / 7.73 & 0.7457 / 0.7457 & 0.076\\
+BDG, $\tau_m=1$ & $14.1\pm1.0$ & $50.3\pm1.5$ & 4.54 / 4.52 & 0.7456 / 0.7456 & 0.076\\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -918,7 +955,7 @@ TFG-MC adaptation & $14.1\pm1.0$ & $51.1\pm1.7$ & 4.59 / 4.58 & 0.7456 / 0.7456 
 % BEGIN DATA FULL-M2
 \begin{table}[!htbp]
 \centering\small
-\caption{All DNA headline settings. IB is percent mean $\pm$ seed sd; JSD is multiplied by $10^4$; Conf. is decoding confidence; Div. is normalized Hamming distance; Clip is percent of guided sample-steps. Unguided rows repeat a common reference and are never pooled twice.}
+\caption{All DNA headline settings at the pre-registered window $t\ge0.5$; the same grid at $t\ge0.3$ is Table~\ref{tab:full-m2-early}. IB is percent mean $\pm$ seed sd; JSD is multiplied by $10^4$; Conf. is decoding confidence; Div. is normalized Hamming distance; Clip is percent of guided sample-steps. Unguided rows repeat a common reference and are never pooled twice.}
 \label{tab:full-m2}
 \begin{tabular}{llcccccc}
 \toprule
@@ -929,36 +966,81 @@ GC, 1 & DPS-style plug-in & $14.0\pm0.9$ & 4.53 & 0.958 & 0.7456 & 0.00 & 0.042\
 GC, 1 & TMPD-inspired & $14.0\pm0.9$ & 4.53 & 0.958 & 0.7456 & 0.00 & 0.045\\
 GC, 1 & LGD-MC & $14.0\pm0.9$ & 4.53 & 0.958 & 0.7456 & 0.00 & 0.035\\
 GC, 1 & TFG-MC adaptation & $14.1\pm1.0$ & 4.53 & 0.958 & 0.7456 & 0.00 & 0.047\\
-GC, 1 & \textbf{BDG, $\tau_m=0.5$} & $14.5\pm1.0$ & 4.95 & 0.956 & 0.7456 & 0.56 & 0.042\\
-GC, 1 & \textbf{BDG, $\tau_m=1$} & $14.0\pm1.0$ & 4.53 & 0.958 & 0.7456 & 0.00 & 0.042\\
+GC, 1 & BDG, $\tau_m=0.5$ & $14.5\pm1.0$ & 4.95 & 0.956 & 0.7456 & 0.56 & 0.042\\
+GC, 1 & BDG, $\tau_m=1$ & $14.0\pm1.0$ & 4.53 & 0.958 & 0.7456 & 0.00 & 0.042\\
 \midrule
 GC, 4 & Unguided & $14.0\pm1.0$ & 4.53 & 0.958 & 0.7456 & 0.00 & 0.021\\
 GC, 4 & DPS-style plug-in & $14.1\pm1.0$ & 4.61 & 0.958 & 0.7456 & 0.08 & 0.040\\
 GC, 4 & TMPD-inspired & $14.1\pm1.0$ & 4.61 & 0.958 & 0.7456 & 0.08 & 0.051\\
 GC, 4 & LGD-MC & $14.1\pm1.0$ & 4.61 & 0.958 & 0.7456 & 0.08 & 0.047\\
 GC, 4 & TFG-MC adaptation & $14.1\pm1.0$ & 4.59 & 0.958 & 0.7456 & 0.06 & 0.043\\
-GC, 4 & \textbf{BDG, $\tau_m=0.5$} & $16.4\pm1.2$ & 5.93 & 0.947 & 0.7457 & 9.24 & 0.028\\
-GC, 4 & \textbf{BDG, $\tau_m=1$} & $14.1\pm1.0$ & 4.54 & 0.958 & 0.7456 & 0.01 & 0.028\\
+GC, 4 & BDG, $\tau_m=0.5$ & $16.4\pm1.2$ & 5.93 & 0.947 & 0.7457 & 9.24 & 0.028\\
+GC, 4 & BDG, $\tau_m=1$ & $14.1\pm1.0$ & 4.54 & 0.958 & 0.7456 & 0.01 & 0.028\\
 \midrule
 CpG, 1 & Unguided & $50.2\pm1.6$ & 4.53 & 0.958 & 0.7456 & 0.00 & 0.036\\
 CpG, 1 & DPS-style plug-in & $50.5\pm1.8$ & 4.53 & 0.958 & 0.7456 & 0.02 & 0.074\\
 CpG, 1 & TMPD-inspired & $50.5\pm1.8$ & 4.53 & 0.958 & 0.7456 & 0.02 & 0.120\\
 CpG, 1 & LGD-MC & $50.5\pm1.8$ & 4.53 & 0.958 & 0.7456 & 0.02 & 0.102\\
 CpG, 1 & TFG-MC adaptation & $50.4\pm1.7$ & 4.54 & 0.958 & 0.7456 & 0.01 & 0.089\\
-CpG, 1 & \textbf{BDG, $\tau_m=0.5$} & $55.3\pm0.8$ & 5.26 & 0.956 & 0.7456 & 0.98 & 0.073\\
-CpG, 1 & \textbf{BDG, $\tau_m=1$} & $50.2\pm1.6$ & 4.53 & 0.958 & 0.7456 & 0.00 & 0.061\\
+CpG, 1 & BDG, $\tau_m=0.5$ & $55.3\pm0.8$ & 5.26 & 0.956 & 0.7456 & 0.98 & 0.073\\
+CpG, 1 & BDG, $\tau_m=1$ & $50.2\pm1.6$ & 4.53 & 0.958 & 0.7456 & 0.00 & 0.061\\
 \midrule
 CpG, 4 & Unguided & $50.2\pm1.6$ & 4.53 & 0.958 & 0.7456 & 0.00 & 0.049\\
 CpG, 4 & DPS-style plug-in & $51.6\pm1.4$ & 4.63 & 0.958 & 0.7456 & 0.21 & 0.096\\
 CpG, 4 & TMPD-inspired & $51.6\pm1.4$ & 4.63 & 0.958 & 0.7456 & 0.21 & 0.124\\
 CpG, 4 & LGD-MC & $51.6\pm1.4$ & 4.63 & 0.958 & 0.7456 & 0.21 & 0.102\\
 CpG, 4 & TFG-MC adaptation & $51.1\pm1.7$ & 4.58 & 0.958 & 0.7456 & 0.10 & 0.084\\
-CpG, 4 & \textbf{BDG, $\tau_m=0.5$} & $68.5\pm1.2$ & 7.73 & 0.950 & 0.7457 & 7.41 & 0.076\\
-CpG, 4 & \textbf{BDG, $\tau_m=1$} & $50.3\pm1.5$ & 4.52 & 0.959 & 0.7456 & 0.03 & 0.076\\
+CpG, 4 & BDG, $\tau_m=0.5$ & $68.5\pm1.2$ & 7.73 & 0.950 & 0.7457 & 7.41 & 0.076\\
+CpG, 4 & BDG, $\tau_m=1$ & $50.3\pm1.5$ & 4.52 & 0.959 & 0.7456 & 0.03 & 0.076\\
 \bottomrule
 \end{tabular}
 \end{table}
 % END DATA FULL-M2
+
+% BEGIN DATA FULL-M2-EARLY
+\begin{table}[!htbp]
+\centering\small
+\caption{All DNA headline settings at $t\ge0.3$, the window the main-text DNA tables use. Columns match Table~\ref{tab:full-m2}. IB is percent mean $\pm$ seed sd; JSD is multiplied by $10^4$; Conf. is decoding confidence; Div. is normalized Hamming distance; Clip is percent of guided sample-steps. Unguided rows repeat a common reference and are never pooled twice.}
+\label{tab:full-m2-early}
+\begin{tabular}{llcccccc}
+\toprule
+Prop., $w$ & Method & IB$\uparrow$ & JSD$\downarrow$ & Conf. & Div. & Clip & s/seq.\\
+\midrule
+GC, 1 & Unguided & $14.0\pm1.0$ & 4.53 & 0.958 & 0.7456 & 0.00 & 0.048\\
+GC, 1 & DPS-style plug-in & $25.5\pm2.6$ & 3.40 & 0.960 & 0.7456 & 8.70 & 0.088\\
+GC, 1 & TMPD-inspired & $25.1\pm2.2$ & 3.40 & 0.960 & 0.7456 & 8.63 & 0.100\\
+GC, 1 & LGD-MC & $25.1\pm1.8$ & 3.40 & 0.960 & 0.7455 & 8.68 & 0.100\\
+GC, 1 & TFG-MC adaptation & $24.6\pm1.4$ & 3.39 & 0.960 & 0.7455 & 8.35 & 0.110\\
+GC, 1 & BDG, $\tau_m=0.5$ & $34.0\pm4.6$ & 3.48 & 0.959 & 0.7455 & 15.92 & 0.093\\
+GC, 1 & BDG, $\tau_m=1$ & $14.8\pm1.0$ & 4.04 & 0.960 & 0.7456 & 0.91 & 0.098\\
+\midrule
+GC, 4 & Unguided & $14.0\pm1.0$ & 4.53 & 0.958 & 0.7456 & 0.00 & 0.050\\
+GC, 4 & DPS-style plug-in & $30.3\pm2.0$ & 3.64 & 0.959 & 0.7456 & 14.94 & 0.124\\
+GC, 4 & TMPD-inspired & $29.2\pm2.1$ & 3.66 & 0.959 & 0.7455 & 14.89 & 0.145\\
+GC, 4 & LGD-MC & $30.0\pm1.3$ & 3.61 & 0.959 & 0.7455 & 15.13 & 0.131\\
+GC, 4 & TFG-MC adaptation & $29.8\pm1.8$ & 3.57 & 0.959 & 0.7455 & 15.17 & 0.109\\
+GC, 4 & BDG, $\tau_m=0.5$ & $37.3\pm6.5$ & 4.24 & 0.957 & 0.7455 & 20.75 & 0.122\\
+GC, 4 & BDG, $\tau_m=1$ & $15.6\pm0.8$ & 3.59 & 0.961 & 0.7455 & 4.12 & 0.075\\
+\midrule
+CpG, 1 & Unguided & $50.2\pm1.6$ & 4.53 & 0.958 & 0.7456 & 0.00 & 0.039\\
+CpG, 1 & DPS-style plug-in & $86.9\pm0.6$ & 4.21 & 0.957 & 0.7455 & 7.11 & 0.115\\
+CpG, 1 & TMPD-inspired & $86.7\pm0.4$ & 4.23 & 0.957 & 0.7455 & 6.69 & 0.135\\
+CpG, 1 & LGD-MC & $85.9\pm1.0$ & 3.87 & 0.958 & 0.7454 & 7.83 & 0.115\\
+CpG, 1 & TFG-MC adaptation & $80.0\pm0.8$ & 3.36 & 0.959 & 0.7454 & 9.11 & 0.094\\
+CpG, 1 & BDG, $\tau_m=0.5$ & $85.2\pm0.6$ & 3.91 & 0.958 & 0.7455 & 9.81 & 0.117\\
+CpG, 1 & BDG, $\tau_m=1$ & $51.8\pm0.6$ & 4.01 & 0.959 & 0.7455 & 2.23 & 0.118\\
+\midrule
+CpG, 4 & Unguided & $50.2\pm1.6$ & 4.53 & 0.958 & 0.7456 & 0.00 & 0.052\\
+CpG, 4 & DPS-style plug-in & $91.5\pm0.5$ & 4.37 & 0.957 & 0.7455 & 12.74 & 0.072\\
+CpG, 4 & TMPD-inspired & $91.4\pm1.4$ & 4.36 & 0.957 & 0.7455 & 12.47 & 0.076\\
+CpG, 4 & LGD-MC & $90.7\pm0.6$ & 4.02 & 0.957 & 0.7454 & 14.31 & 0.109\\
+CpG, 4 & TFG-MC adaptation & $85.1\pm0.7$ & 3.56 & 0.957 & 0.7454 & 17.36 & 0.122\\
+CpG, 4 & BDG, $\tau_m=0.5$ & $86.6\pm0.9$ & 3.94 & 0.958 & 0.7455 & 13.26 & 0.117\\
+CpG, 4 & BDG, $\tau_m=1$ & $54.3\pm0.6$ & 3.62 & 0.960 & 0.7454 & 6.87 & 0.115\\
+\bottomrule
+\end{tabular}
+\end{table}
+% END DATA FULL-M2-EARLY
 \clearpage
 
 \subsection{Algorithm and Algebraic Limits}\label{app:algebra}
