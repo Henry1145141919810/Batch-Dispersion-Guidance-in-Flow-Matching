@@ -227,7 +227,10 @@ how the models were trained and which artifacts were evaluated.
 |---|---|---|
 | `tab:fmvd` (FM vs VP vs external) | `paper/tools/build_results.py` | `results/v3/{fm,vp,equifm,edm}/v3/n2000/` |
 | `tab:ablation`, `fig:abl-fm`, `fig:abl-equifm` | `paper/tools/build_results.py` | `results/v3/{fm,equifm}/v3abl/n2000/` |
-| `tab:recent`, `fig:results` | `paper/tools/build_results.py` | `results/v3/*/v3/n2000/` |
+| `tab:recent` | `paper/tools/build_results.py` | `results/v3/fm/v3/n2000/` (our FM only) |
+| `fig:results` | `paper/tools/build_results.py` | panel (a) `results/v3/{fm,equifm}/{v3,v3abl}/n2000/`; panel (b) `results/m2/m2win/n2000/` |
+| `tab:guidance`, `tab:cost`, `tab:exchange`, `tab:setpoint`, `tab:m2-window`, `tab:m2-late`, `tab:full-m2-early` | `paper/tools/build_results.py` | the same cell trees. These seven were missing from this table; the paper has 23 generated blocks and the script emits exactly 23 keys |
+| `fig:distributions` | `paper/tools/distributions.py` | `data/qm9.pt` plus one `plug` cell per property, recorded in `paper/property_distributions.json`. The only data float not built by `build_results.py` |
 | `tab:m2`, `tab:full-m2` | `paper/tools/build_results.py` | `results/m2/` |
 | `tab:full-{fm,equifm,edm,vp}`, `tab:grid-*`, `tab:contrasts` | `paper/tools/build_results.py` | the same cells, per backend |
 | `tab:training`, `tab:hashes`, `tab:provenance` | **hand-written** in `main.tex` | checkpoint metadata + cell `prov`, cross-checked by `paper_fill_v3.py --latex-check` |
@@ -240,11 +243,24 @@ how the models were trained and which artifacts were evaluated.
 | 4.2 FM vs diffusion | both generators, unguided, matched | `train_fm.py`, `train_diffusion.py` → `transfer_sweep.py --stage v3` |
 | 4.3 Guidance | guided vs unguided, matched | `transfer_sweep.py --stage v3`, arms `unguided` / `plug` |
 | 4.4 Innovation ablations | the η × τ_mult grid | `transfer_sweep.py --stage v3abl`, driven by `proj1/cluster/v3_run.slurm` |
-| 4.5 Recent methods | TMPD, LGD-MC, TFG | the same sweep; external guides via `proj1/src/external/` |
+| 4.5 Recent methods | TMPD, LGD-MC, TFG | the same sweep. The arms `tmpd`, `lgd_mc` and `tfg` are **our re-implementations** in `proj1/src/guidance.py`, not vendored code; `proj1/src/external/` supplies only the borrowed backbones and TFG's guide/oracle networks |
 | 4.6 Modality 2 transfer | BDG on the simplex | `proj1/m2/m2_sweep.py --prop <gc\|cpg> --arm <arm>` |
+| 4.7 Cross-modality and failure modes | the DNA window follow-up and the setpoint probe | `m2_sweep.py --stage m2win` and `--stage m2tau`, read by `proj1/m2/m2_window_compare.py` |
 
-**Cross-check.** This recomputes every number the paper's tables print from the
-cells and reports any that disagree (currently 28 of 28 match):
+**Cross-check.** The drift guard is `build_results.py --check`. It recomputes all
+23 generated table blocks from the shipped cells, verifies every cell against
+`paper/results_manifest.json` by hash, and asserts the paper's substantive claims
+(the BDG-minus-plug contrasts, the monotone spread curves, the DNA deltas). It
+passes: 23 tables, 1,073 hashes.
+
+```bash
+python paper/tools/build_results.py --check
+```
+
+A second, narrower audit maps the live text back to the cells. Read it for what
+it is: **28 numbers, all of them `tab:fmvd`**, compared against the `v4`
+snapshot, with the other tables' rows recorded as unparsed. It is a snapshot,
+not a gate, and it needs re-running after each revision:
 
 ```bash
 python proj1/scripts/paper_fill_v3.py --md-out docs/results/PAPER_TABLE_FILL_V3.md --latex-check
@@ -256,15 +272,18 @@ It is the reason the tables and the data cannot drift apart silently.
 
 ## 7. External code and models we did not write
 
-Origin, commit and licence for TFG and OC-Flow:
-[audit/fa_fb_search/PROVENANCE.md](audit/fa_fb_search/PROVENANCE.md). For
-EquiFM: [docs/protocol/EQUIFM_USABILITY_AUDIT.md](docs/protocol/EQUIFM_USABILITY_AUDIT.md).
+Origin, commit and licence for TFG (MIT) and OC-Flow (licence not stated
+upstream; the argument for its provenance is written out rather than assumed):
+[audit/fa_fb_search/PROVENANCE.md](audit/fa_fb_search/PROVENANCE.md). For EquiFM,
+origin, commit and SHA-256 — **no licence is recorded upstream**:
+[docs/protocol/EQUIFM_USABILITY_AUDIT.md](docs/protocol/EQUIFM_USABILITY_AUDIT.md).
 
 **The load-bearing part of `audit/` IS in the submission folder.**
 `audit/fa_fb_search/` (TFG and OC-Flow, vendored unmodified, 29.9 MB) ships
 because our code imports it: `proj1/src/external/tfg_assets.py` loads TFG's model
 definitions from `audit/fa_fb_search/TFG/`, and the borrowed `f_A`/`f_B` property
-networks that score the `equifm` and `edm` backends are checkpoints inside it.
+networks that score the `equifm` backend are checkpoints inside it. (`edm` scores
+with our own pair; what it needs from that tree is TFG's EGNN model definitions.)
 
 Those checkpoints look like third-party weights we should link rather than ship,
 and an earlier build excluded them on that reasoning. That was wrong, and
@@ -299,7 +318,8 @@ rebuild need no download beyond QM9.
 | **EquiFM** checkpoint (`equifm` backend) | Song et al. | a *borrowed* flow-matching baseline, frozen |
 | **TFG** property predictors | TFG release | the external guide/oracle pair used to score `equifm` |
 | TFG / OC-Flow model definitions | their repos, vendored unmodified | loaded, never edited |
-| E(3)-EDM noise schedule | Hoogeboom et al. | re-implemented in `proj1/src/external/edm_schedule.py` to sample their checkpoint under its own schedule |
+| E(3)-EDM noise schedule, bond-length tables, stability definition and sampling protocol | Hoogeboom et al. | the schedule is re-implemented in `proj1/src/external/edm_schedule.py` to sample their checkpoint under its own schedule; `proj1/src/evaluation.py` uses their bond-length tables and stability definition, and `proj1/src/dist_metrics.py` follows their sampling protocol, so **every stability and validity number in the paper is on their definition** |
+| **DeepFlyBrain** enhancer classifier (Modality 2) | Janssens et al., Nature 2022 | the published Keras architecture, **ported to PyTorch by hand** in `proj1/m2/deepflybrain.py`. Its released weights (`DeepFlyBrain.hdf5`, zenodo.org/record/5153337) are downloaded by hand, not by script; the md5 is in that file's docstring. It scores DNA samples for `results/m2_dfb_activity.json`, quoted in the Modality-2 pages |
 
 ⚠️ **`edm` and `vp` are both diffusion baselines and only `vp` is ours.** `edm`
 is TFG's released EDMsecond. The paper labels every borrowed row as borrowed.
@@ -351,7 +371,8 @@ was broken, and it shipped that way. Do not rename them.
 |---|---|
 | `data/` (430 MB) | QM9 itself; rebuilt by `prepare_qm9.py`, seeded and reproducible |
 | `*.permol.pt` sidecars (500 MB) | per-molecule samples. No paper table or figure reads one — `build_results.py` works from the seed-level cell JSONs. See limit 2 |
-| third-party **released** weights: `weights/EDMsecond/`, `audit/equifm_20260922/`, `DeepFlyBrain.hdf5` | ours to link, not to redistribute. Fetched and hash-checked by script (§7). TFG's property networks are a different case and do ship — see the row above |
+| third-party **released** weights: `weights/EDMsecond/`, `audit/equifm_20260922/` | ours to link, not to redistribute. Fetched and hash-checked by script (§7) |
+| `DeepFlyBrain.hdf5` | also a third party's released weights, but **no script fetches it** — the source and md5 are recorded in `proj1/m2/deepflybrain.py` and it is downloaded by hand (§7). `DeepFlyBrain.json`, the architecture rather than the weights, does ship |
 | `audit/fa_fb_search/TFG-Flow/` | a reference clone nothing in `proj1/` imports; its two checkpoint zips alone are 40 MB |
 | `audit/.../TFG/tf_predict_mu/logs.txt` (79 MB) | a third party's training log. A 20 MB per-file cap on the vendored tree drops it while keeping the 6.7 MB property nets; it was half the weight of the first build |
 | versioned drafts: `figs/*_v9.pdf`, `results_manifest_v*.json`, `paper/versions/`, `paper/tmp/` | superseded. The folder shows one version of the work, not its history |

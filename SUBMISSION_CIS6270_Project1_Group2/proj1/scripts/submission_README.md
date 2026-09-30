@@ -3,9 +3,9 @@
 Bobo Li, Henry Huang
 Department of Computer and Information Science, University of Pennsylvania
 
-**The paper is [`paper/main.pdf`](paper/main.pdf)**, manuscript v10: main text,
+**The paper is [`paper/main.pdf`](paper/main.pdf)**: main text,
 then references, then the appendix. Everything else in this folder exists to
-support it. Table, figure and section numbers below are v10's.
+support it. Table, figure and section numbers below are the paper's.
 
 ---
 
@@ -114,28 +114,35 @@ Every number above is regenerated from the result cells by a script; see
 
 ```
 paper/                     the submission itself
-  main.pdf                 THE PAPER (v10)
+  main.pdf                 THE PAPER
   main.tex                 the whole manuscript; body.tex is only a pointer
   figs/  tools/            figure sources; table generator, page and rubric checks
-  CHANGELOG.md             what changed between drafts and why
+  results_manifest.json    every generated table block and its source hashes
 
-code/                      everything that produced a number (proj1/ in the repository)
+proj1/                     ALL OUR CODE
   src/                     models, guidance rules, samplers, evaluation
-  scripts/                 training, sweeps, table generation
+  scripts/                 training, sweeps, table generation, audits
   tests/                   gate suites, including test_bdg.py for BDG
   m2/                      Modality 2, the DNA simplex
     blade_bundle/          the M2 generator checkpoint and the DNA dataset
   cluster/                 SLURM submission scripts
+blade_runs/                drivers for the off-cluster GPU box
 
-results_and_docs/
-  results/                 53 script-generated result documents
+results/                   the recorded cells, one JSON each: v3/, m2/, bdg_port/
+docs/
+  results/                 script-generated result pages, and DATA_INDEX.md
   protocol/                the pre-registrations, written before the runs,
                            and the dated addendum for the DNA window follow-up
   methods/                 method derivations and the prior-art audit
   status/                  project status and run logs (historical)
 
-weights/                   checkpoints plus README.md, the weight protocol
-assignment_and_rubric/     the course assignment and paper template
+weights/                   our checkpoints plus README.md, the weight protocol
+audit/fa_fb_search/        TFG and OC-Flow, vendored unmodified: our external
+                           backends import their model definitions from here
+course/                    the course assignment and paper template
+
+SUBMISSION.md              the code entry point: structure, setup, script-to-number map
+requirements.txt           the pinned environment
 MANIFEST.md                file count, sizes, SHA-256 of the graded artefacts
 ```
 
@@ -143,25 +150,34 @@ MANIFEST.md                file count, sizes, SHA-256 of the graded artefacts
 
 ## Environment and setup
 
-Python 3.12, PyTorch with CUDA for anything that samples.
+Python 3.12.14, PyTorch with CUDA for anything that samples. Everything runs on
+CPU, but CPU is about 26x slower, which turns a 10-minute sampling cell into four
+hours.
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate          # Windows: .venv\Scripts\activate
-pip install torch rdkit numpy scipy pandas matplotlib pymupdf
+pip install -r requirements.txt    # pinned to what produced the results
 ```
 
-`rdkit` is required for validity scoring; `pymupdf` only for the paper checks.
+`requirements.txt` carries the exact versions, and `torch` is the one line to get
+right -- it explains the CUDA variants. `rdkit` is required for validity scoring;
+`scipy` only for the table and figure generator, `pypdf` only for the page check.
 
-**One step before running anything.** The scripts import from the repository
-layout, where `code/` is named `proj1/`. From the root of this folder:
+**Two things before running anything.** Run every command from the root of this
+folder: the scripts resolve their imports and default paths against it. Then fetch
+the borrowed property networks, which **every** QM9 sampling cell needs --
+including our own `fm` and `vp` backends, because each cell is also scored by a
+second, independently trained oracle (OC-Flow's property EGNN):
 
 ```bash
-ln -s code proj1                   # Windows: mklink /D proj1 code
+python proj1/scripts/fetch_equifm_assets.py   # 30 MB -> audit/equifm_20260922/
+python proj1/scripts/fetch_tfg_assets.py      # 21 MB -> weights/EDMsecond/, only for --backend edm
 ```
 
-Without it, the training and sampling scripts stop with
-`ModuleNotFoundError`. The commands below use the `proj1/` paths.
+Without the first, every sweep below stops at `FileNotFoundError` on
+`.../exp_class_mu/args.pickle`. Rebuilding the tables and figures, Modality 2 and
+the gate suites need neither download.
 
 ---
 
@@ -181,7 +197,7 @@ One seeded permutation gives four disjoint splits: `train_a` and `train_b`
 that scores a sample was trained on what steered it.
 
 The DeepFlyBrain 500-bp split used for Modality 2 ships as
-`code/m2/blade_bundle/dfb500.npz` (83,722 / 10,505 / 10,434
+`proj1/m2/blade_bundle/dfb500.npz` (83,722 / 10,505 / 10,434
 train / validation / test).
 
 **2. Train**, or skip this and use the shipped checkpoints:
@@ -204,6 +220,9 @@ Molecules, the headline stage and the ablation grid, per backend `fm`, `vp`,
 `equifm`, `edm`, property and seed:
 
 ```bash
+# always first: one throwaway cell per arm, writes nothing, ~15 s
+python proj1/scripts/transfer_sweep.py --stage v3 --backend fm --props mu     --arms unguided,plug --n 2000 --batch 500 --seed 20261001 --preflight
+
 V3_ARMS=unguided,plug,tmpd,lgd_mc,tfg,bdg_e4t0.5,bdg_e4t1
 ABL_ARMS=bdg_e0t1$(for e in 1 2 4 8; do for t in 0.5 0.75 1 1.5; do printf ',bdg_e%st%s' $e $t; done; done)
 python proj1/scripts/transfer_sweep.py --stage v3    --backend fm --props mu \
@@ -212,7 +231,7 @@ python proj1/scripts/transfer_sweep.py --stage v3abl --backend fm --props mu \
     --arms $ABL_ARMS --n 2000 --batch 500 --seed 20261001 --per-mol
 ```
 
-`code/cluster/v3_run.slurm` is the exact job that tiled every cell, with the
+`proj1/cluster/v3_run.slurm` is the exact job that tiled every cell, with the
 seed list, the arm sets and the checkpoint pins. `transfer_sweep.py --help` lists
 every flag.
 
@@ -227,6 +246,22 @@ python proj1/m2/m2_sweep.py --prop cpg --arm bdg --variant e4t0.5 --w 4 \
     --t-min 0.3 --stage m2win --seed 20260921
 ```
 
+**3b. Check integrity and run the gates.** `transfer_sweep.py` samples and scores
+in one pass, so there is no separate evaluation command. These verify what it
+wrote, and what the guidance rules do:
+
+```bash
+python proj1/scripts/v3_sanity.py             # every shipped cell against the pinned settings: 0 fail
+python proj1/tests/test_bdg.py                # the innovation's gates (19 of 25 here; Part B needs QM9)
+python proj1/tests/test_v3.py                 # 106 gates
+python proj1/tests/test_transfer_backend.py   # 74 gates; 61 before fetch_tfg_assets.py
+python proj1/scripts/v3_table.py --both --stage v3 --n 2000     --seeds 20261001,20261002,20261003 --md-out docs/results/V3_RESULTS.md
+python proj1/scripts/v3_final_summary.py --md-out docs/results/V3_FINAL_SUMMARY.md
+```
+
+The first three need nothing beyond this folder. They are also the checks the
+build script runs against the folder before it will ship it.
+
 **4. Regenerate every table and figure.** The paper's tables and Figure 2 are
 written into `main.tex` by one script, which reads the result cells directly:
 
@@ -235,10 +270,15 @@ python paper/tools/build_results.py           # rebuild table blocks and figures
 python paper/tools/build_results.py --check   # read-only: every block and source hash
 ```
 
-The raw cell tree (`results/`, 619 MB) is not in this folder, so this step runs
-in the full repository. The markdown pages in `results_and_docs/results/` come
-from the scripts named at the top of each page (for example `v3_table.py`,
-`v3_blade_readout.py`, `m2_v3_results.py`, `m2_window_compare.py`).
+**Both commands run here.** Every cell they read ships under `results/` -- about
+1,300 JSON cells, 5.3 MB -- so no GPU and no download. `--check` is the drift
+guard: 23 table blocks recomputed and 1,073 source hashes verified.
+
+The markdown pages in `docs/results/` come from the scripts named at the top of
+each page (for example `v3_table.py`, `m2_v3_results.py`, `m2_window_compare.py`).
+Three of them -- `paper_fill_v3.py`, `v3_blade_readout.py`, `v3_paired.py` -- read
+the per-molecule `*.permol.pt` sidecars, which are 500 MB and not shipped; the
+pages they produced are in `docs/results/` instead.
 
 **5. Build the paper:**
 
@@ -268,8 +308,8 @@ selected, and its hash. In short:
 | `weights/diff_ema.pt` | our VP diffusion generator | same backbone, params, budget and split; validation selected epoch 1475 |
 | `weights/f_A_{mu,alpha,gap}.pt` | the guides that steer | trained on `train_a` |
 | `weights/f_B_{mu,alpha,gap}.pt` | the evaluators that score | trained on `train_b`, disjoint from the guides |
-| `code/m2/blade_bundle/fm_m2_dfb500.pt` | our DNA simplex generator | dilated CNN 128x10, 1,500 epochs, validation loss 0.0634, seed 20260921 |
-| `code/m2/enhancer_gate.pt` | our enhancer-vs-Markov discriminator | a Modality 2 diagnostic, not a headline metric |
+| `proj1/m2/blade_bundle/fm_m2_dfb500.pt` | our DNA simplex generator | dilated CNN 128x10, 1,500 epochs, validation loss 0.0634, seed 20260921 |
+| `proj1/m2/enhancer_gate.pt` | our enhancer-vs-Markov discriminator | a Modality 2 diagnostic, not a headline metric |
 | `weights/deepflybrain/DeepFlyBrain.json` | the published DeepFlyBrain architecture | weights are re-fetched, see below |
 
 **Accept a molecular generator checkpoint only if its recorded `args` show the
@@ -278,10 +318,10 @@ right family, split `train_a`, hidden 256, layers 8 and epoch 1500.** An earlier
 `train_ab` would have seen the evaluator's training data.
 
 Third-party weights are re-fetched rather than redistributed:
-**EDMsecond** by `code/scripts/fetch_tfg_assets.py` (md5 in
-`weights/tfg_manifest.json`), **EquiFM** by `code/scripts/fetch_equifm_assets.py`,
+**EDMsecond** by `proj1/scripts/fetch_tfg_assets.py` (md5 in
+`weights/tfg_manifest.json`), **EquiFM** by `proj1/scripts/fetch_equifm_assets.py`,
 and **DeepFlyBrain.hdf5** from zenodo.org/record/5153337 (md5 in
-`code/m2/deepflybrain.py`).
+`proj1/m2/deepflybrain.py`).
 
 ---
 
@@ -300,12 +340,12 @@ recorded cells:
 | Figure 2 | `build_results.py` | the ablation grid and the DNA cells |
 | Tables S3 to S20 | `build_results.py` | as above, plus `results/m2/m2/` (`t >= 0.5`) and `results/m2/m2tau/` (setpoint probe) |
 | Figure 1, the overview | `paper/figs/overview.tex` | nothing; it is a diagram |
-| BDG itself | `code/src/guidance.py`, the `mode == "bdg"` branch | |
-| Its gates | `code/tests/test_bdg.py` | eta = 0 is bit-identical to plug-in; the factorisation holds on the real field |
+| BDG itself | `proj1/src/guidance.py`, the `mode == "bdg"` branch | |
+| Its gates | `proj1/tests/test_bdg.py` | eta = 0 is bit-identical to plug-in; the factorisation holds on the real field |
 
 `build_results.py --check` is the audit that closes the loop: it recomputes every
 generated table block from the cells and verifies each source by hash against
-`paper/results_manifest_v10.json` in the repository. At the v10 build it passed:
+`paper/results_manifest.json`, which ships beside them. It passes:
 23 tables, 1,073 source hashes. Appendix A.9 of the paper is the implementation
 and evidence map.
 
@@ -316,7 +356,7 @@ and evidence map.
 | | Why |
 |---|---|
 | `data/` (430 MB) | rebuilt by `download_qm9.py` and `prepare_qm9.py`, pinned by SHA-256 |
-| the raw cell tree (619 MB) | one JSON per cell; the script-generated pages in `results_and_docs/results/` carry every number the paper uses |
+| the `*.permol.pt` per-molecule sidecars (500 MB) | no paper table or figure reads one; the cell JSONs they sit beside all ship under `results/` |
 | `weights/EDMsecond/`, EquiFM, `DeepFlyBrain.hdf5` | third parties' released weights; re-fetched, not redistributed |
 | the aborted 489-epoch DNA checkpoint | superseded by the 1,500-epoch one; shipping it invites loading the wrong file |
 | vendored reference repositories | external code we read but did not modify |
@@ -350,7 +390,7 @@ scripts already accept, so no personal or shared-filesystem path ships here.
 | 4.7 Cross-modality analysis and failure modes | §4.7, Appendix A.7 |
 | 5 Discussion, limitations, next steps | §5 |
 | Code: README and setup | this file |
-| Code: organisation and comments | `code/`, and `code/tests/` for the gates |
+| Code: organisation and comments | `proj1/`, and `proj1/tests/` for the gates. `SUBMISSION.md` is the code entry point |
 | Code: connection to the paper | the table above, and `build_results.py --check` |
 
 ---

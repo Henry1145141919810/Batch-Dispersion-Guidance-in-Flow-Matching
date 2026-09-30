@@ -510,6 +510,38 @@ def verify(out: pathlib.Path) -> list[str]:
         else:
             print(f"  ok  {what}: {tail}")
 
+    # Every in-folder path the two entry points cite must exist. README.md was in
+    # REQUIRED, so the build asserted that it was present and never that it was
+    # true: it went on naming code/ and results_and_docs/ in 15 places after the
+    # folder was reshaped, and 16 of the 21 paths it cited did not exist.
+    # DOCUMENTED_ABSENT are the ones both files explain are not shipped.
+    DOCUMENTED_ABSENT = ("data/", "weights/EDMsecond/", "audit/equifm_20260922/",
+                         "paper/versions/", "logs/", "betty_pull/", "bundles/",
+                         "archive/", "scratch_schnet/", "slides/")
+    tops = ("proj1/", "paper/", "docs/", "results/", "weights/", "audit/",
+            "blade_runs/", "course/")
+    for doc in ("README.md", "SUBMISSION.md"):
+        d = out / doc
+        if not d.exists():
+            continue
+        cited = set(re.findall(r"`([A-Za-z0-9_./{}*-]+/[A-Za-z0-9_./{}*-]+)`",
+                               d.read_text(encoding="utf-8", errors="ignore")))
+        missing = sorted(
+            c for c in cited
+            if c.startswith(tops) and not c.startswith(DOCUMENTED_ABSENT)
+            and not any(ch in c for ch in "{}*")
+            # "..." marks an elided path in prose, and anything the build
+            # deliberately drops is named in the "what is left out" table, so
+            # citing it is the documentation working, not failing
+            and "..." not in c
+            and not (set(pathlib.PurePosixPath(c).parts) & EXCLUDE_DIRS)
+            and not (out / c).exists())
+        if missing:
+            problems.append(f"{doc} cites {len(missing)} path(s) not in the folder: "
+                            + ", ".join(missing[:6]))
+        else:
+            print(f"  ok  {doc}: every in-folder path it cites exists")
+
     # every shipped shell script must parse
     scripts = sorted(p for g in SHELL_GLOBS for p in out.glob(g))
     bad = []

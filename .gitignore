@@ -186,3 +186,4 @@ weights/deepflybrain/*.hdf5
 # were superseded by slides/. Nothing here is cited and the folder name does not
 # belong in a graded repository, so `git add -A` must not pick it up.
 Claude outputs/
+SUBMISSION_CIS6270_Project1_Group2.zip
