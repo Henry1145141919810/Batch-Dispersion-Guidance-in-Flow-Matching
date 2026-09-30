@@ -1,9 +1,37 @@
 # Paper versions
 
-`v1_*` and `v2_*` preserve the earlier sources and PDFs. The live manuscript is
+In the repository, `paper/versions/` keeps every numbered snapshot; `v1_*` and
+`v2_*` there preserve the earliest sources and PDFs. The live manuscript is
 now `paper/main.tex`; `paper/body.tex` points readers there. Numbered snapshots
 are retained when the live paper changes. Paper version numbers and experiment
 protocol version numbers are independent.
+
+## v10 - 29 Sep 2026
+
+A correctness pass over v9, not a new experiment. Authors: Bobo Li, Henry Huang.
+
+- **The DNA headline reversed, and the paper now says so.** v9's table was
+  captioned "t >= 0.3 for both properties" but its CpG column still held the
+  t >= 0.5 numbers. At t >= 0.3, BDG is +7.08 points on GC and −4.88 on CpG
+  (Table 5), not +16.83. The abstract, 4.6, 4.7 and the discussion now state the
+  sign rule that explains both: BDG contracts only a batch wider than `tau`.
+- **The sign rule is tested.** The `tau_m = 0.25` CpG probe (three seeds) contracts
+  spread to 0.298 s and recovers +2.28 points, every seed agreeing in sign. It is
+  reported as exploratory in Table S17 and kept out of every contrast family.
+- **New tables.** Table 2, guided versus unguided on our FM and VP (4.3 had prose
+  and no table), and Table S20, the complete t >= 0.3 DNA grid. Table S16 gains a
+  CpG panel; Table S19 states its window, t >= 0.5.
+- **Stale claims corrected.** The follow-up covers both properties at w ∈ {1, 4};
+  the CpG t >= 0.3 and GC `tau_m = 1` cells are reported, not "not run"; the
+  `eta = 0` tolerance matches the code; the reproduction map (Table S21) adds the
+  setpoint-probe stage.
+- **Tables mark best and runner-up** wherever one direction is better, ranked
+  within each property panel, with ties left unmarked.
+- **First compiled build of this source.** 0 errors, 0 undefined references,
+  0 overfull boxes; `tools/check.py` passes. 23 generated table blocks and 1,073
+  source hashes pass `build_results.py --check`; 27 pages overall.
+
+Revision notes and frozen snapshot, in the repository: `paper/versions/v10_revision_notes.md`, `paper/versions/v10_2026-09-29/`.
 
 ## v9 - 29 Sep 2026
 
@@ -14,7 +42,7 @@ expanded EGNN/decoder explanations, fixed atom-count protocol, and next steps
 on atom-count and target-density confounding. Twenty generated table blocks,
 995 source cells; five main pages and 24 pages overall. Paper v8 is unchanged.
 
-See [revision notes](v9_revision_notes.md) and [frozen snapshot](v9_2026-09-29/README.md).
+Revision notes and frozen snapshot, in the repository: `paper/versions/v9_revision_notes.md`, `paper/versions/v9_2026-09-29/`.
 The matching defense deck is PowerPoint v4, a separate version sequence.
 
 ## v8 - 29 Sep 2026

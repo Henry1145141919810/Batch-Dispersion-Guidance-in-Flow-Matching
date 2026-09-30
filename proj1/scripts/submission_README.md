@@ -1,6 +1,6 @@
 # BDG: Batch-Dispersion Guidance — CIS 6270 Project 1, Group 2
 
-Bobo Li, Henry Huang, Idea Idehpour, Haimo Fang
+Bobo Li, Henry Huang
 Department of Computer and Information Science, University of Pennsylvania
 
 **The paper is [`paper/main.pdf`](paper/main.pdf)**, manuscript v10: main text,
