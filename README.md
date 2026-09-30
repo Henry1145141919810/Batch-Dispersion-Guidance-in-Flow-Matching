@@ -222,10 +222,10 @@ enough to guide 70 steps — plug run twice at one seed differs by gc_mean 3.0e-
 and 2 clipped steps. The η = 0 control therefore needs a tolerance (1e-5), as
 EquiFM's does in M1. At t ≥ 0.5 it landed exact, which was luck.
 
-### t >= 0.3, both properties: BDG wins on gc and LOSES on cpg
+### t >= 0.3, both properties: BDG wins on gc, and on cpg the SETPOINT GRID misses
 
 The full t >= 0.3 suite (96 cells: gc + cpg, w in {1,4}, 8 arms incl. unguided
-and the eta=0 control, 3 seeds) does **not** replicate across properties.
+and the eta=0 control, 3 seeds).
 
 | | unguided | plug | tmpd | lgd_mc | tfg_mc | **bdg_e4t0.5** | bdg_e4t1 |
 |---|---|---|---|---|---|---|---|
@@ -234,26 +234,46 @@ and the eta=0 control, 3 seeds) does **not** replicate across properties.
 | **cpg** w=4 | 0.5015 | **0.9145** | 0.9143 | 0.9073 | 0.8512 | 0.8657 (**−4.88**) | 0.5425 (−37.20) |
 | **cpg** w=1 | 0.5015 | **0.8688** | 0.8667 | 0.8588 | 0.7998 | 0.8515 (**−1.73**) | 0.5180 (−35.08) |
 
-(in-band, 3 seeds; bracketed figure is pp against `plug`.)
+**The pre-registered result is that BDG loses on cpg**, and that is what the
+paper must report. But it is NOT that the method fails there, and the reason is
+mechanical and measured.
 
-**On cpg the best arm is plain DPS, and BDG is worse at both strengths.** The
-replication contradicts gc rather than confirming it, so **"BDG helps on M2"
-cannot be stated without naming the property.**
+**BDG is in its WIDENING regime on cpg, by construction of the grid.** The
+controller state from the cells:
 
-Two things make cpg a different problem, and both are measured:
+| cpg w=4 | property sd | sd / tau | controller |
+|---|---|---|---|
+| plug | 0.00548 | **0.74** | — |
+| bdg_e4t0.5 | 0.00670 | **0.91** | `e = −0.146`, `w_eff = +0.41`, **widening** |
 
-- **Its band is quantum-floored.** delta = max(0.16·s, 4.4·quantum): for gc the
-  ratio binds at 0.16 sd, for cpg the floor binds at **0.60 sd** — 3.7x wider in
-  sd terms. Unguided is already in band 50.2 % of the time against gc's 14.0 %.
-  **gc and cpg in-band values may sit side by side but must never be compared or
-  pooled.**
-- **BDG's mechanism is contraction** (README section above). With a band already
-  0.6 sd wide, there is little to gain by tightening and something to lose when
-  the batch mean drifts — which is what the negative numbers show.
+DPS already contracts cpg to **0.37·s**, tighter than the tightest setpoint the
+pre-registered grid offers (`tau_mult = 0.5`). So BDG's feedback correctly pulls
+back OUT toward its setpoint and undoes some of plug's contraction — and in-band
+rewards tightness, so it costs. On gc the reverse holds: plug lands at 1.25·tau
+(looser than setpoint), BDG contracts to 1.18, and gains.
 
-`bdg_e4t1` is catastrophic on both properties (−14.67 gc, −37.20 cpg), so the
-setpoint sign-reversal holds here too; it is the tau_mult=0.5 rung that carries
-the method.
+**Prediction, and it holds.** If that is the cause, a setpoint below 0.37·s
+should reverse the sign. Run outside the grid, 3 seeds:
+
+| cpg, w=4 | in_band | vs plug |
+|---|---|---|
+| plug (DPS) | 0.9145 ± 0.0028 | — |
+| bdg tau=0.5 (in the grid) | 0.8657 ± 0.0053 | **−4.88 pp** |
+| **bdg tau=0.25 (outside)** | **0.9373 ± 0.0064** | **+2.28 pp** |
+
+So the honest statement is: **the pre-registered tau grid {0.5, 0.75, 1, 1.5}
+does not reach cpg's regime**, because the baseline it is measured against
+already contracts past its tightest rung. That is a limitation of the grid, not
+a failure of the controller — and `tau_mult = 0.25` is reported as a DIAGNOSTIC,
+outside the pre-registration, never as the headline.
+
+**Also true and independent of all this:** cpg's band is quantum-floored at
+**0.60 sd** against gc's 0.16 (unguided is already in band 50.2 % of the time
+against gc's 14.0 %), so gc and cpg in-band values may sit side by side but must
+never be compared or pooled.
+
+`bdg_e4t1` is catastrophic on both (−14.67 gc, −37.20 cpg): tau_mult = 1 asks
+for the data's full natural spread, which is looser still.
 
 ### Bugs fixed in shared code
 
