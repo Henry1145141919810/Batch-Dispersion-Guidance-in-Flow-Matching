@@ -1,0 +1,19 @@
+#!/bin/bash
+# Validate the ablation as it lands. Silent while healthy; exits on the first
+# real problem or on completion, so being woken means something happened.
+PROJ=$PROJECT_ROOT
+cd "$PROJ" || exit 1
+while true; do
+  N=$(find results/v3/*/v3abl -name 'tr__*.json' 2>/dev/null | wc -l)
+  if ! python proj1/scripts/v3_sanity.py --quiet > logs/blade/sanity_abl_live.txt 2>&1; then
+    echo "SANITY FAILED at $N/612 cells, $(date +%T)"
+    grep FAIL logs/blade/sanity_abl_live.txt | head -8
+    exit 1
+  fi
+  if [ "$N" -ge 612 ]; then
+    echo "ABLATION COMPLETE: $N/612 at $(date +%T), sanity clean"
+    tail -1 logs/blade/sanity_abl_live.txt
+    exit 0
+  fi
+  sleep 1800
+done

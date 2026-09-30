@@ -1,0 +1,25 @@
+{
+  "n": 3000,
+  "mae_guide": 0.00197214748475211,
+  "mae_oracle": 0.001833232164960552,
+  "fit_guide": [
+    0.03915971914382626,
+    0.252124653584526
+  ],
+  "fit_oracle": [
+    0.03921312187374728,
+    0.252128412541898
+  ],
+  "corr_abs_error": 0.4953146399403531,
+  "corr_signed_error": 0.5224156044996491,
+  "guide_2x_better_frac": 0.398333340883255,
+  "oracle_2x_better_frac": 0.3959999978542328,
+  "claimed_dataset_guide": "qm9_second_half",
+  "claimed_dataset_oracle": "qm9_second_half",
+  "heldout_mae_guide": 0.0028539871723792395,
+  "heldout_mae_oracle": 0.00274443630693532,
+  "tie_fraction": 0.2056666612625122,
+  "win_mae_gap": 10.728158290565029,
+  "verdict": "DISJOINT CONSISTENT. Observed 39.8% / 39.6% / 20.6% (guide wins / oracle wins / neither) against 37.3% / 37.3% / 25.3% predicted by a 50/50 split of EDM's train set. Same-half training cannot produce 11x MAE gaps on a third of molecules each. Circumstantial but strong; ID-level proof needs the seed-42 halves.",
+  "property": "gap"
+}

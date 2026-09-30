@@ -34,7 +34,9 @@ NAMES = {'unguided': 'Unguided', 'plug': 'DPS-style plug-in',
          'bdg_e4t1': r'BDG, $\tau_m=1$'}
 PL = {'mu': r'$\mu$', 'alpha': r'$\alpha$', 'gap': 'gap', 'gc': 'GC', 'cpg': 'CpG'}
 KEY = 'in_band_fraction_dec'
-VERSION = 10
+# No version suffix: this is the final draft. Figures and manifests are
+# written under stable names so a rebuild overwrites in place and the
+# paper's \includegraphics never has to be re-pointed.
 # The older summary module predates arrival of the VP benchmark. Reuse its
 # strict cell validation with the protocol's two VP arms explicitly registered.
 V.BACKEND_ARMS['vp'] = ('unguided', 'plug')
@@ -487,7 +489,7 @@ def figures():
     ax.set(xticks=range(len(cells)),xticklabels=[f'{PL[p]}\n$w={w}$' for p,w in cells],ylabel='IB difference vs plug-in (pp)',xlim=(-.5,len(cells)-.5),ylim=(lo-3,hi+3))
     ax.set_title(r'(b) DNA, $t\geq0.3$: sign follows setpoint',loc='left')
     ax.legend(loc='upper right',frameon=False,ncol=2)
-    fig.savefig(PAPER/f'figs/results_v{VERSION}.pdf'); fig.savefig(PAPER/f'figs/results_v{VERSION}.png',dpi=220); plt.close(fig)
+    fig.savefig(PAPER/'figs/results.pdf'); fig.savefig(PAPER/'figs/results.png',dpi=220); plt.close(fig)
     for be in ('fm','equifm'):
         fig,axs=plt.subplots(2,3,figsize=(8,5.2),layout='constrained')
         for iw,w in enumerate((1,4)):
@@ -499,7 +501,7 @@ def figures():
                     for j in range(4): ax.text(j,i,f'{mat[i,j]:+.1f}',ha='center',va='center',fontsize=9,color='white' if abs(mat[i,j])>5 else 'black')
                 ax.set(xticks=range(4),xticklabels=['.5','.75','1','1.5'],yticks=range(4),yticklabels=['1','2','4','8'],xlabel=r'$\tau_m$',ylabel=r'$\eta$',title=f'{PL[p]}, $w={w}$')
         fig.colorbar(im,ax=axs,label='Decoded IB minus zero-gain control (pp)',shrink=.85)
-        fig.savefig(PAPER/f'figs/ablation_{be}_v{VERSION}.pdf'); fig.savefig(PAPER/f'figs/ablation_{be}_v{VERSION}.png',dpi=160); plt.close(fig)
+        fig.savefig(PAPER/f'figs/ablation_{be}.pdf'); fig.savefig(PAPER/f'figs/ablation_{be}.png',dpi=160); plt.close(fig)
 
 def main():
     ap=argparse.ArgumentParser(description=__doc__)
@@ -519,7 +521,7 @@ def main():
     source_paths += [Path(r['_path']) for r in m2rows+winrows]
     sources={str(p.relative_to(ROOT)):hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(source_paths)}
     if args.check:
-        saved=json.loads((PAPER/f'results_manifest_v{VERSION}.json').read_text())
+        saved=json.loads((PAPER/'results_manifest.json').read_text())
         assert not stale, f'Stale table blocks: {stale}'
         assert saved['sources']==sources, 'Source files changed; rebuild before publication.'
         molecular=[contrast(heads[be][p,a],heads[be][p,'plug']) for be in ('fm','equifm') for p in PROPS for a in ('bdg_e4t0.5','bdg_e4t1')]
@@ -560,7 +562,7 @@ def main():
     audit['additional_diagnostics']=diagnostics()
     audit['m2_window_followup']={a:contrast(win(a),win('plug'),'in_band_fraction') for a in ('tmpd','lgd_mc','tfg_mc','bdg_e4t0.5','bdg_e0t1')}
     audit['m2_compute']={'new_files':len(winrows),'old_files':len(m2rows),'new_hours':sum(r['minutes'] for r in winrows)/60,'all_hours':sum(r['minutes'] for r in m2rows+winrows)/60}
-    (PAPER/f'results_manifest_v{VERSION}.json').write_text(json.dumps(audit,indent=2),encoding='utf8')
+    (PAPER/'results_manifest.json').write_text(json.dumps(audit,indent=2),encoding='utf8')
     print(f'Rebuilt {len(ts)} table blocks and 3 vector figures; {len(sources)} source hashes.')
 
 if __name__=='__main__': main()

@@ -1,0 +1,158 @@
+{
+  "scope": "Two real local molecules, float64 CPU. Raw normalized outputs. No held-out MAE or split-ID certification.",
+  "guide_metadata": {
+    "exp_name": "tf_predict_mu",
+    "model": "egnn_dynamics",
+    "probabilistic_model": "diffusion",
+    "diffusion_steps": 1000,
+    "diffusion_noise_schedule": "polynomial_2",
+    "diffusion_noise_precision": 1e-05,
+    "n_epochs": 3000,
+    "batch_size": 128,
+    "lr": 0.0001,
+    "weight_decay": 1e-16,
+    "brute_force": false,
+    "actnorm": true,
+    "break_train_epoch": false,
+    "dp": true,
+    "condition_time": true,
+    "clip_grad": true,
+    "trace": "hutch",
+    "n_layers": 7,
+    "inv_sublayers": 1,
+    "nf": 192,
+    "tanh": true,
+    "attention": true,
+    "norm_constant": 1,
+    "sin_embedding": false,
+    "ode_regularization": 0.001,
+    "dataset": "qm9_second_half",
+    "datadir": "qm9/temp",
+    "filter_n_atoms": null,
+    "dequantization": "deterministic",
+    "n_report_steps": 1,
+    "no_cuda": false,
+    "save_model": true,
+    "generate_epochs": 1,
+    "num_workers": 0,
+    "test_epochs": 10,
+    "data_augmentation": false,
+    "conditioning": [
+      "mu"
+    ],
+    "resume": null,
+    "start_epoch": 0,
+    "ema_decay": 0.999,
+    "augment_noise": 0,
+    "normalize_factors": [
+      1,
+      8,
+      1
+    ],
+    "remove_h": false,
+    "include_charges": false,
+    "load_charges": true,
+    "normalization_factor": 1,
+    "aggregation_method": "sum",
+    "cuda": true,
+    "context_node_nf": 0
+  },
+  "oracle_metadata": {
+    "exp_name": "exp_class_mu",
+    "batch_size": 96,
+    "epochs": 1000,
+    "no_cuda": false,
+    "seed": 1,
+    "log_interval": 20,
+    "test_interval": 1,
+    "outf": "outputs",
+    "lr": 0.0005,
+    "nf": 128,
+    "attention": 1,
+    "n_layers": 7,
+    "property": "mu",
+    "num_workers": 2,
+    "filter_n_atoms": null,
+    "charge_power": 2,
+    "dataset": "qm9_second_half",
+    "datadir": "../../qm9/temp",
+    "remove_h": false,
+    "include_charges": true,
+    "node_attr": 0,
+    "weight_decay": 1e-16,
+    "save_path": 1e-16,
+    "model_name": "egnn",
+    "save_model": true,
+    "cuda": true,
+    "device": "cuda"
+  },
+  "TFG_mu_guide": {
+    "first_and_second_finite": true,
+    "hvp_norm": [
+      52.88626233200881,
+      35.762251028445164
+    ],
+    "exact_hessian_trace_coords_and_features": [
+      44.91141845831693,
+      18.329365309230973
+    ],
+    "invariance_scaled_error": {
+      "rotation": 7.641808200397427e-16,
+      "translation": 0.0,
+      "permutation": 3.8209041001987134e-16
+    },
+    "padding_output_error": 0.0,
+    "padding_gradient_error": 0.0,
+    "padded_gradient_max": 0.0,
+    "collision_and_near_collision_finite": [
+      true,
+      true
+    ]
+  },
+  "TFG_mu_oracle": {
+    "first_and_second_finite": true,
+    "hvp_norm": [
+      4.737255307255848,
+      3.9279813827107737
+    ],
+    "exact_hessian_trace_coords_and_features": [
+      2.6147484201735343,
+      0.2707754368990476
+    ],
+    "invariance_scaled_error": {
+      "rotation": 1.939803601009193e-16,
+      "translation": 0.0,
+      "permutation": 1.939803601009193e-16
+    },
+    "padding_output_error": 0.0,
+    "padding_gradient_error": 0.0,
+    "padded_gradient_max": 0.0,
+    "collision_and_near_collision_finite": [
+      true,
+      true
+    ]
+  },
+  "TFG_Flow_mu_guide_with_linear_embedding_adapter": {
+    "first_and_second_finite": true,
+    "hvp_norm": [
+      34.40047035955047,
+      18.991779632237012
+    ],
+    "exact_hessian_trace_coords_and_features": [
+      67.44827582911705,
+      4.988152674207247
+    ],
+    "invariance_scaled_error": {
+      "rotation": 1.1180430815854796e-15,
+      "translation": 3.572151463408134e-16,
+      "permutation": 3.194408804529942e-16
+    },
+    "padding_output_error": 0.0,
+    "padding_gradient_error": 0.0,
+    "padded_gradient_max": 0.0,
+    "collision_and_near_collision_finite": [
+      true,
+      true
+    ]
+  }
+}

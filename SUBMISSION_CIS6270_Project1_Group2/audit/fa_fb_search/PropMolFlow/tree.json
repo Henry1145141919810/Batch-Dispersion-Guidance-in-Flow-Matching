@@ -1,0 +1,1825 @@
+{
+  "sha": "3c13968077f2eaf473bd34d96aaaf38441edcc07",
+  "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/trees/3c13968077f2eaf473bd34d96aaaf38441edcc07",
+  "tree": [
+    {
+      "path": "CustomDataset",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "d611b7b8c024c2ed40c4ac6b5d3cca989f19e5cc",
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/trees/d611b7b8c024c2ed40c4ac6b5d3cca989f19e5cc"
+    },
+    {
+      "path": "CustomDataset/README.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ef0b8b75af613a31464f39b41867ba70418d3d85",
+      "size": 5327,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/ef0b8b75af613a31464f39b41867ba70418d3d85"
+    },
+    {
+      "path": "CustomDataset/dataset.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ae61909663202df8dca24c8b5c1319e8eff2f925",
+      "size": 8421,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/ae61909663202df8dca24c8b5c1319e8eff2f925"
+    },
+    {
+      "path": "CustomDataset/process_qme14s_cond.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "37b617d83d6944ad46e883533b076ac781843d86",
+      "size": 14802,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/37b617d83d6944ad46e883533b076ac781843d86"
+    },
+    {
+      "path": "CustomDataset/qme14s.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d5d838959509f01437a0a3fea0ddb556e9d493d9",
+      "size": 2262,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/d5d838959509f01437a0a3fea0ddb556e9d493d9"
+    },
+    {
+      "path": "CustomDataset/regressor_qme14s.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "09f213d5bae5afd9eefe7fb4d28944d406d2044b",
+      "size": 1038,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/09f213d5bae5afd9eefe7fb4d28944d406d2044b"
+    },
+    {
+      "path": "CustomDataset/str2prop_sampler.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9776be74d951537b5622481e5adcee89e2cab808",
+      "size": 5712,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/9776be74d951537b5622481e5adcee89e2cab808"
+    },
+    {
+      "path": "CustomDataset/test_qme14s.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "26583834f6029d3e7ba1dfcba1fd99d89ca162dc",
+      "size": 480,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/26583834f6029d3e7ba1dfcba1fd99d89ca162dc"
+    },
+    {
+      "path": "CustomDataset/test_regressor.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "68505e6ad52ef9e6e28a24f08cb7c09c490249df",
+      "size": 11468,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/68505e6ad52ef9e6e28a24f08cb7c09c490249df"
+    },
+    {
+      "path": "LICENSE",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "59e908799302f98e45e9094af4a214f09259ee42",
+      "size": 1069,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/59e908799302f98e45e9094af4a214f09259ee42"
+    },
+    {
+      "path": "README.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "868ba75b8764986d50fabb6d898fd56ec0a98dc5",
+      "size": 22189,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/868ba75b8764986d50fabb6d898fd56ec0a98dc5"
+    },
+    {
+      "path": "configs",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "fda085274b310d28847b2585a80f7cf5df1390d0",
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/trees/fda085274b310d28847b2585a80f7cf5df1390d0"
+    },
+    {
+      "path": "configs/with_gaussian_expansion",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "bea47663c1fc40b415e2e20a2c73e65af7904863",
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/trees/bea47663c1fc40b415e2e20a2c73e65af7904863"
+    },
+    {
+      "path": "configs/with_gaussian_expansion/alpha_concatenate.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "45c4b17b31be6349810f7f96d2a983659cf16b1d",
+      "size": 2215,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/45c4b17b31be6349810f7f96d2a983659cf16b1d"
+    },
+    {
+      "path": "configs/with_gaussian_expansion/alpha_concatenate_multiply.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "87e0f0a92d9a02dcdfa345369851e41e41af888a",
+      "size": 2242,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/87e0f0a92d9a02dcdfa345369851e41e41af888a"
+    },
+    {
+      "path": "configs/with_gaussian_expansion/alpha_concatenate_sum.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9cb6c79de6949802d2633e6938dc1ec956729cc8",
+      "size": 2227,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/9cb6c79de6949802d2633e6938dc1ec956729cc8"
+    },
+    {
+      "path": "configs/with_gaussian_expansion/alpha_multiply.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9475b3deaf469265f8af666ab835c51bebcc99cd",
+      "size": 2206,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/9475b3deaf469265f8af666ab835c51bebcc99cd"
+    },
+    {
+      "path": "configs/with_gaussian_expansion/alpha_sum.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "15cde24ed285eb350add1c138049d7ddba3a66b0",
+      "size": 2191,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/15cde24ed285eb350add1c138049d7ddba3a66b0"
+    },
+    {
+      "path": "configs/with_gaussian_expansion/cv_concatenate.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7e8d3c8ce7c73a1d964d2dcb51249589edb72743",
+      "size": 2206,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/7e8d3c8ce7c73a1d964d2dcb51249589edb72743"
+    },
+    {
+      "path": "configs/with_gaussian_expansion/cv_concatenate_multiply.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a93048bc50c45d1e986745f8912f2fd24a785bf9",
+      "size": 2233,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/a93048bc50c45d1e986745f8912f2fd24a785bf9"
+    },
+    {
+      "path": "configs/with_gaussian_expansion/cv_concatenate_sum.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "06b2faa6c2d4a420e49e4eafaf80a64615dbd94b",
+      "size": 2218,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/06b2faa6c2d4a420e49e4eafaf80a64615dbd94b"
+    },
+    {
+      "path": "configs/with_gaussian_expansion/cv_multiply.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1972e4fa0c0a58d509fd12fa22e08a9033e37555",
+      "size": 2197,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/1972e4fa0c0a58d509fd12fa22e08a9033e37555"
+    },
+    {
+      "path": "configs/with_gaussian_expansion/cv_sum.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b0ee06b8573fe56df8da832858f7c88ef08b28ce",
+      "size": 2182,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/b0ee06b8573fe56df8da832858f7c88ef08b28ce"
+    },
+    {
+      "path": "configs/with_gaussian_expansion/gap_concatenate.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "86e56344b0e8bab664c3182aaef58bdbf2eebe0e",
+      "size": 2209,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/86e56344b0e8bab664c3182aaef58bdbf2eebe0e"
+    },
+    {
+      "path": "configs/with_gaussian_expansion/gap_concatenate_multiply.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6f46315dbfaf09fca6b667e6f862a2f661f486c5",
+      "size": 2236,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/6f46315dbfaf09fca6b667e6f862a2f661f486c5"
+    },
+    {
+      "path": "configs/with_gaussian_expansion/gap_concatenate_sum.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "56577ec088a573f71913ecf8e956869b8338fcca",
+      "size": 2221,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/56577ec088a573f71913ecf8e956869b8338fcca"
+    },
+    {
+      "path": "configs/with_gaussian_expansion/gap_multiply.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e3fb90806ff6819e0cd1f17450a4dd595b135047",
+      "size": 2200,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/e3fb90806ff6819e0cd1f17450a4dd595b135047"
+    },
+    {
+      "path": "configs/with_gaussian_expansion/gap_sum.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7b5a2379fbe85a319bdf32d3ced5808bd77acff6",
+      "size": 2185,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/7b5a2379fbe85a319bdf32d3ced5808bd77acff6"
+    },
+    {
+      "path": "configs/with_gaussian_expansion/homo_concatenate.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "cc7e50afdd2065c33ebe81223321ab81d748bca7",
+      "size": 2212,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/cc7e50afdd2065c33ebe81223321ab81d748bca7"
+    },
+    {
+      "path": "configs/with_gaussian_expansion/homo_concatenate_multiply.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "91ee18d8ece27983df9e4bd47add219945b01741",
+      "size": 2239,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/91ee18d8ece27983df9e4bd47add219945b01741"
+    },
+    {
+      "path": "configs/with_gaussian_expansion/homo_concatenate_sum.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4a10f53e0c5ce25196190988004432588ea9b9ce",
+      "size": 2224,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/4a10f53e0c5ce25196190988004432588ea9b9ce"
+    },
+    {
+      "path": "configs/with_gaussian_expansion/homo_multiply.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "af960957f6b25550e8b0dc166860ff07b38b3e93",
+      "size": 2203,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/af960957f6b25550e8b0dc166860ff07b38b3e93"
+    },
+    {
+      "path": "configs/with_gaussian_expansion/homo_sum.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "640587caa6a4c22120c12df5b49ead9ee362d141",
+      "size": 2188,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/640587caa6a4c22120c12df5b49ead9ee362d141"
+    },
+    {
+      "path": "configs/with_gaussian_expansion/lumo_concatenate.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "57ccbc2d1181bb7956909d33f5430313ef9cbfdb",
+      "size": 2212,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/57ccbc2d1181bb7956909d33f5430313ef9cbfdb"
+    },
+    {
+      "path": "configs/with_gaussian_expansion/lumo_concatenate_multiply.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f727355ce9089b082d149c74b48025d5763f8f48",
+      "size": 2239,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/f727355ce9089b082d149c74b48025d5763f8f48"
+    },
+    {
+      "path": "configs/with_gaussian_expansion/lumo_concatenate_sum.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8c48190e3da69e878153f7c3505d00e7b823a622",
+      "size": 2224,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/8c48190e3da69e878153f7c3505d00e7b823a622"
+    },
+    {
+      "path": "configs/with_gaussian_expansion/lumo_multiply.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d3e935b4242643a64060adab5d3a76e9c798fee8",
+      "size": 2203,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/d3e935b4242643a64060adab5d3a76e9c798fee8"
+    },
+    {
+      "path": "configs/with_gaussian_expansion/lumo_sum.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1ff79e0daccfd805f42ec92d553f7e754c13b2fb",
+      "size": 2188,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/1ff79e0daccfd805f42ec92d553f7e754c13b2fb"
+    },
+    {
+      "path": "configs/with_gaussian_expansion/mu_concatenate.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b7010dfbe2ae31120eb33e84ab981638263c24ce",
+      "size": 2206,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/b7010dfbe2ae31120eb33e84ab981638263c24ce"
+    },
+    {
+      "path": "configs/with_gaussian_expansion/mu_concatenate_multiply.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d4ea2937a52ec65779a242c5640cd42a8ab24c5d",
+      "size": 2233,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/d4ea2937a52ec65779a242c5640cd42a8ab24c5d"
+    },
+    {
+      "path": "configs/with_gaussian_expansion/mu_concatenate_sum.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ef1fa027e837571e4a240f50a6fb234d6f101967",
+      "size": 2218,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/ef1fa027e837571e4a240f50a6fb234d6f101967"
+    },
+    {
+      "path": "configs/with_gaussian_expansion/mu_multiply.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1aca6d2b3e39c01b5fff39e03ad9b00131231e26",
+      "size": 2197,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/1aca6d2b3e39c01b5fff39e03ad9b00131231e26"
+    },
+    {
+      "path": "configs/with_gaussian_expansion/mu_sum.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "16aa210b9e815e4437a888c6ead749b30b4ef0ce",
+      "size": 2182,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/16aa210b9e815e4437a888c6ead749b30b4ef0ce"
+    },
+    {
+      "path": "configs/without_gaussian_expansion",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "40c3657ac6d9e0550087ac1ffc92c9b712fca599",
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/trees/40c3657ac6d9e0550087ac1ffc92c9b712fca599"
+    },
+    {
+      "path": "configs/without_gaussian_expansion/alpha_concatenate.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3ea26696f492473ed09332e253bc06ad6503a9e3",
+      "size": 2221,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/3ea26696f492473ed09332e253bc06ad6503a9e3"
+    },
+    {
+      "path": "configs/without_gaussian_expansion/alpha_concatenate_multiply.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8507a90a1fd0e704fc6f5deb7d55a49c0dfb34e9",
+      "size": 2248,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/8507a90a1fd0e704fc6f5deb7d55a49c0dfb34e9"
+    },
+    {
+      "path": "configs/without_gaussian_expansion/alpha_concatenate_sum.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8722e9b70fdcba6b48ecf480ca27f5d90bc5fddf",
+      "size": 2233,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/8722e9b70fdcba6b48ecf480ca27f5d90bc5fddf"
+    },
+    {
+      "path": "configs/without_gaussian_expansion/alpha_multiply.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c3618f0e36dcbc3e69d121a2267cad0ab38f95b1",
+      "size": 2212,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/c3618f0e36dcbc3e69d121a2267cad0ab38f95b1"
+    },
+    {
+      "path": "configs/without_gaussian_expansion/alpha_sum.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ee77bbe605010f999b8e9ab47883d61cc93e847c",
+      "size": 2197,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/ee77bbe605010f999b8e9ab47883d61cc93e847c"
+    },
+    {
+      "path": "configs/without_gaussian_expansion/b200_alpha_sum.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ce6a3a819359d32118cd36fc8050ccac1eee44e5",
+      "size": 2217,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/ce6a3a819359d32118cd36fc8050ccac1eee44e5"
+    },
+    {
+      "path": "configs/without_gaussian_expansion/cv_concatenate.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d902aab115f6e050222486c149874e846bf4897d",
+      "size": 2212,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/d902aab115f6e050222486c149874e846bf4897d"
+    },
+    {
+      "path": "configs/without_gaussian_expansion/cv_concatenate_multiply.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "38793b4c43c4f48404b927a7cd8955de52ec7a77",
+      "size": 2239,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/38793b4c43c4f48404b927a7cd8955de52ec7a77"
+    },
+    {
+      "path": "configs/without_gaussian_expansion/cv_concatenate_sum.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "bb4539c043eb4b83b56346bca2442b535f3af88d",
+      "size": 2224,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/bb4539c043eb4b83b56346bca2442b535f3af88d"
+    },
+    {
+      "path": "configs/without_gaussian_expansion/cv_multiply.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9022faec3198dcce73d06015fdb3bda82b55e257",
+      "size": 2203,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/9022faec3198dcce73d06015fdb3bda82b55e257"
+    },
+    {
+      "path": "configs/without_gaussian_expansion/cv_sum.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "74978b3db5ee1243476cb3fccaf1a055b11204ba",
+      "size": 2188,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/74978b3db5ee1243476cb3fccaf1a055b11204ba"
+    },
+    {
+      "path": "configs/without_gaussian_expansion/gap_concatenate.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "efa793a976235ce354af5ec90e3356676e2977f9",
+      "size": 2215,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/efa793a976235ce354af5ec90e3356676e2977f9"
+    },
+    {
+      "path": "configs/without_gaussian_expansion/gap_concatenate_multiply.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "797acdd7a56389b95ec2bcdda94872922a65cf6b",
+      "size": 2242,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/797acdd7a56389b95ec2bcdda94872922a65cf6b"
+    },
+    {
+      "path": "configs/without_gaussian_expansion/gap_concatenate_sum.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e01dd9c48ab78d4c42619e956ca625637166fe2f",
+      "size": 2227,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/e01dd9c48ab78d4c42619e956ca625637166fe2f"
+    },
+    {
+      "path": "configs/without_gaussian_expansion/gap_multiply.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3f86176ca3fda04a486227151226b8edad318668",
+      "size": 2206,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/3f86176ca3fda04a486227151226b8edad318668"
+    },
+    {
+      "path": "configs/without_gaussian_expansion/gap_sum.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d2fcc20363ecb003aa028fe8a8e603fb0a84815f",
+      "size": 2191,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/d2fcc20363ecb003aa028fe8a8e603fb0a84815f"
+    },
+    {
+      "path": "configs/without_gaussian_expansion/homo_concatenate.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "139f52cfb0c14be94b294fd17bf3a565a5d1787c",
+      "size": 2218,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/139f52cfb0c14be94b294fd17bf3a565a5d1787c"
+    },
+    {
+      "path": "configs/without_gaussian_expansion/homo_concatenate_multiply.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7dc68b385b5fcd873c4409f7f4d766dc5fce018d",
+      "size": 2245,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/7dc68b385b5fcd873c4409f7f4d766dc5fce018d"
+    },
+    {
+      "path": "configs/without_gaussian_expansion/homo_concatenate_sum.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a94aeeea92f665aa81480f332b02c420f8a6f77d",
+      "size": 2230,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/a94aeeea92f665aa81480f332b02c420f8a6f77d"
+    },
+    {
+      "path": "configs/without_gaussian_expansion/homo_multiply.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "64a410bc3feb35fe23080183124ed156011b0564",
+      "size": 2209,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/64a410bc3feb35fe23080183124ed156011b0564"
+    },
+    {
+      "path": "configs/without_gaussian_expansion/homo_sum.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a28280f9fb0a5c44a4704d77a45ad69d172bcd23",
+      "size": 2194,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/a28280f9fb0a5c44a4704d77a45ad69d172bcd23"
+    },
+    {
+      "path": "configs/without_gaussian_expansion/lumo_concatenate.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d197b22b4b9f3f418dfa9d2efef4c7f34cff2077",
+      "size": 2218,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/d197b22b4b9f3f418dfa9d2efef4c7f34cff2077"
+    },
+    {
+      "path": "configs/without_gaussian_expansion/lumo_concatenate_multiply.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "91c7477eaf23262a3005c9ff92ab034a18f5a000",
+      "size": 2245,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/91c7477eaf23262a3005c9ff92ab034a18f5a000"
+    },
+    {
+      "path": "configs/without_gaussian_expansion/lumo_concatenate_sum.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "081c6e739e0b44aedae4fe6bcac2a3dca5859804",
+      "size": 2230,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/081c6e739e0b44aedae4fe6bcac2a3dca5859804"
+    },
+    {
+      "path": "configs/without_gaussian_expansion/lumo_multiply.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "fe5150ff53d1147a91a83cc797f26c5a510de18e",
+      "size": 2209,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/fe5150ff53d1147a91a83cc797f26c5a510de18e"
+    },
+    {
+      "path": "configs/without_gaussian_expansion/lumo_sum.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "007a3f31ed19f82027ef6877a36007d6002864bf",
+      "size": 2194,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/007a3f31ed19f82027ef6877a36007d6002864bf"
+    },
+    {
+      "path": "configs/without_gaussian_expansion/mu_concatenate.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ddd16c64119e34d9fd407f67562ccb8aaf51af03",
+      "size": 2212,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/ddd16c64119e34d9fd407f67562ccb8aaf51af03"
+    },
+    {
+      "path": "configs/without_gaussian_expansion/mu_concatenate_multiply.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9a7275c001b5fdb119de8005b441e48969bfc610",
+      "size": 2239,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/9a7275c001b5fdb119de8005b441e48969bfc610"
+    },
+    {
+      "path": "configs/without_gaussian_expansion/mu_concatenate_sum.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f910cbaa24a937e23414cb0d558f2b3caa1d5946",
+      "size": 2224,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/f910cbaa24a937e23414cb0d558f2b3caa1d5946"
+    },
+    {
+      "path": "configs/without_gaussian_expansion/mu_multiply.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2623367e9e78685bf6b01d8ea41afab5d5742944",
+      "size": 2203,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/2623367e9e78685bf6b01d8ea41afab5d5742944"
+    },
+    {
+      "path": "configs/without_gaussian_expansion/mu_sum.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "bd8fc8a2091337daa054fef3255e92a1c6ecf206",
+      "size": 2188,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/bd8fc8a2091337daa054fef3255e92a1c6ecf206"
+    },
+    {
+      "path": "data",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "ada17d538cb5145bb409e3ee3aa2cd1cfa6c7bdf",
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/trees/ada17d538cb5145bb409e3ee3aa2cd1cfa6c7bdf"
+    },
+    {
+      "path": "data/property_mae_results",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "2431afb291ada9e9f262805e7e0176a4da01f9d9",
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/trees/2431afb291ada9e9f262805e7e0176a4da01f9d9"
+    },
+    {
+      "path": "data/property_mae_results/in_distribution_best_combo.csv",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "01058d592bdc3d3c7c94368240dfd01e6d2d435f",
+      "size": 308,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/01058d592bdc3d3c7c94368240dfd01e6d2d435f"
+    },
+    {
+      "path": "data/property_mae_results/in_distribution_full_results.csv",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a1b5dac46b57b27a8f9e55bba7f56823da9c704c",
+      "size": 12243,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/a1b5dac46b57b27a8f9e55bba7f56823da9c704c"
+    },
+    {
+      "path": "data/property_mae_results/out_of_distribution_best_combo.csv",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ec3bd8585f5240565ca24e9bfeb5eac94143fc78",
+      "size": 309,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/ec3bd8585f5240565ca24e9bfeb5eac94143fc78"
+    },
+    {
+      "path": "data/property_mae_results/out_of_distribution_full_results.csv",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5aab6ad2e2d838d50d6d9126c81ec750dddf298b",
+      "size": 12341,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/5aab6ad2e2d838d50d6d9126c81ec750dddf298b"
+    },
+    {
+      "path": "data/qm9",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "7b717879742b2e399f51871d5bb6b4eb0330d7f1",
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/trees/7b717879742b2e399f51871d5bb6b4eb0330d7f1"
+    },
+    {
+      "path": "data/qm9/energy_dist.npz",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "81345728201fe1ad2c1403c176e62380bfbb28c4",
+      "size": 3688,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/81345728201fe1ad2c1403c176e62380bfbb28c4"
+    },
+    {
+      "path": "data/qm9/train_data_marginal_dists.pt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3250afe6ce00437642f4a84fa317b6a4cd2e9c41",
+      "size": 2272,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/3250afe6ce00437642f4a84fa317b6a4cd2e9c41"
+    },
+    {
+      "path": "data/qm9/train_data_n_atoms_histogram.pt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4b2e306def4cf27f61472fcf72bb2c74c9c83eba",
+      "size": 2006,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/4b2e306def4cf27f61472fcf72bb2c74c9c83eba"
+    },
+    {
+      "path": "data/qm9/train_data_property_normalization.pt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ff3cdaea4dc505a62b7e01911eb6bfcb89625b1e",
+      "size": 2036,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/ff3cdaea4dc505a62b7e01911eb6bfcb89625b1e"
+    },
+    {
+      "path": "data/qm9_raw",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "d7901724dd06173d22996688473ba143a0d38b3b",
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/trees/d7901724dd06173d22996688473ba143a0d38b3b"
+    },
+    {
+      "path": "data/qm9_raw/QM9_README",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ee266de16a75831a80af5c264b9969ad1bfc0772",
+      "size": 2078,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/ee266de16a75831a80af5c264b9969ad1bfc0772"
+    },
+    {
+      "path": "data/qm9_raw/gdb9.sdf.csv",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3e2b9a48e6a0f44a3ba6e9ce5b19fcaed324e59d",
+      "size": 27685401,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/3e2b9a48e6a0f44a3ba6e9ce5b19fcaed324e59d"
+    },
+    {
+      "path": "data/qm9_raw/gvp_rQM9_v1.npy",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5fcc78753759779d49173596b9ade77e4526c434",
+      "size": 400128,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/5fcc78753759779d49173596b9ade77e4526c434"
+    },
+    {
+      "path": "data/qm9_raw/gvp_rQM_v0.npy",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e3cee4996bdf4c81dbb8519a9d470291356e1290",
+      "size": 400128,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/e3cee4996bdf4c81dbb8519a9d470291356e1290"
+    },
+    {
+      "path": "data/qm9_raw/inchi_list.pkl",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9c09dddf528d7887d48b7e35ba9d81d6d4e6cdc2",
+      "size": 7493335,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/9c09dddf528d7887d48b7e35ba9d81d6d4e6cdc2"
+    },
+    {
+      "path": "data/qm9_raw/maynotmatch.npy",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d6602a4104fbc5e176f0c9e378f7ebcce25c47e6",
+      "size": 24560,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/d6602a4104fbc5e176f0c9e378f7ebcce25c47e6"
+    },
+    {
+      "path": "data/qm9_raw/plain_smiles_list.pkl",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5ea87a135fc1242f5a43bbb977efe03ff9fa86fb",
+      "size": 2439673,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/5ea87a135fc1242f5a43bbb977efe03ff9fa86fb"
+    },
+    {
+      "path": "data/qm9_raw/problematic_indices_v0.npy",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0e2b519c004fd36bde85bd01c02f8fa57420ff46",
+      "size": 7608,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/0e2b519c004fd36bde85bd01c02f8fa57420ff46"
+    },
+    {
+      "path": "data/qm9_raw/problematic_indices_v1.npy",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "729cc6316314181a70108bf6e327c957d2c27fae",
+      "size": 2552,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/729cc6316314181a70108bf6e327c957d2c27fae"
+    },
+    {
+      "path": "data/qm9_raw/train_rQM9_v1.npy",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2b4b45a0088b48d97f043d058b209fb89a2658d2",
+      "size": 400128,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/2b4b45a0088b48d97f043d058b209fb89a2658d2"
+    },
+    {
+      "path": "data/qm9_raw/train_rQM_v0.npy",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "36828ec83d51e4de3f6a65500e84ce248828754f",
+      "size": 400128,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/36828ec83d51e4de3f6a65500e84ce248828754f"
+    },
+    {
+      "path": "data/rQM9_v1_SDF_results",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "c85ec8b4f17d7d49c5ab7b6439cba9476216b2ec",
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/trees/c85ec8b4f17d7d49c5ab7b6439cba9476216b2ec"
+    },
+    {
+      "path": "data/rQM9_v1_SDF_results/rQM9_v1_ID_property_MAE.csv",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7740ab6589614294a9b0ae10bd05b1932da342c2",
+      "size": 809,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/7740ab6589614294a9b0ae10bd05b1932da342c2"
+    },
+    {
+      "path": "data/rQM9_v1_SDF_results/rQM9_v1_ID_structural_validity.csv",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "28540c72d4faf9424ae2f734d0e2994c4af11485",
+      "size": 1506,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/28540c72d4faf9424ae2f734d0e2994c4af11485"
+    },
+    {
+      "path": "environment.yml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b85f4bed6394da8113094ec2d3f9901aec69cc71",
+      "size": 1227,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/b85f4bed6394da8113094ec2d3f9901aec69cc71"
+    },
+    {
+      "path": "overview_page.jpg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c9cbb098161c0c743704a95747d69d7bc99201f9",
+      "size": 489833,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/c9cbb098161c0c743704a95747d69d7bc99201f9"
+    },
+    {
+      "path": "process_qm9_cond.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c9724d2a704cf22d087f82c2fd2c9bd373c55e3c",
+      "size": 15192,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/c9724d2a704cf22d087f82c2fd2c9bd373c55e3c"
+    },
+    {
+      "path": "propmolflow",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "a80ad0441f55378e2f823821cdaae86d1f7795ef",
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/trees/a80ad0441f55378e2f823821cdaae86d1f7795ef"
+    },
+    {
+      "path": "propmolflow/__init__.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8b137891791fe96927ad78e64b0aad7bded08bdc",
+      "size": 1,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/8b137891791fe96927ad78e64b0aad7bded08bdc"
+    },
+    {
+      "path": "propmolflow/analysis",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "f8b649368af2d3bb55ec0cde2db423a6db700464",
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/trees/f8b649368af2d3bb55ec0cde2db423a6db700464"
+    },
+    {
+      "path": "propmolflow/analysis/ff_energy.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1b7b9a98d5fe4af7df210af69bfb65656357168f",
+      "size": 534,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/1b7b9a98d5fe4af7df210af69bfb65656357168f"
+    },
+    {
+      "path": "propmolflow/analysis/metrics.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9c3e90d6400ca815915c92ca8c9923e0df865f52",
+      "size": 11180,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/9c3e90d6400ca815915c92ca8c9923e0df865f52"
+    },
+    {
+      "path": "propmolflow/analysis/molecule_builder.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c018e1a8521466b377f02d5d84b5960270caa6c9",
+      "size": 10868,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/c018e1a8521466b377f02d5d84b5960270caa6c9"
+    },
+    {
+      "path": "propmolflow/analysis/propmolflow_metrics.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1cc08f784e0bc69738c1f8615982006123bb7a29",
+      "size": 6421,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/1cc08f784e0bc69738c1f8615982006123bb7a29"
+    },
+    {
+      "path": "propmolflow/analysis/reos.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "16779bcdbdba598b7a09d0a52e04cd32f6f69186",
+      "size": 2059,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/16779bcdbdba598b7a09d0a52e04cd32f6f69186"
+    },
+    {
+      "path": "propmolflow/analysis/ring_systems.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d2040a02b6d9e8d841d2ff917bb5f84f6be2b411",
+      "size": 2842,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/d2040a02b6d9e8d841d2ff917bb5f84f6be2b411"
+    },
+    {
+      "path": "propmolflow/data_processing",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "e1f4b3d60d2fe9057a72525db64d2b8867533967",
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/trees/e1f4b3d60d2fe9057a72525db64d2b8867533967"
+    },
+    {
+      "path": "propmolflow/data_processing/__pycache__",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "387d29aba4c486518eb087b2bd2cdbbb83704f08",
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/trees/387d29aba4c486518eb087b2bd2cdbbb83704f08"
+    },
+    {
+      "path": "propmolflow/data_processing/__pycache__/data_module.cpython-310.pyc",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ec841c4fa45f13221f9ddb09f43e076935ad857b",
+      "size": 2354,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/ec841c4fa45f13221f9ddb09f43e076935ad857b"
+    },
+    {
+      "path": "propmolflow/data_processing/__pycache__/dataset.cpython-310.pyc",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "327ce7894163380ac9c1e373a2d85f07bd35efc4",
+      "size": 4721,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/327ce7894163380ac9c1e373a2d85f07bd35efc4"
+    },
+    {
+      "path": "propmolflow/data_processing/__pycache__/geom.cpython-310.pyc",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "aaab978003bfcc7cc5b1dfe6d51eaf67eac549a0",
+      "size": 3946,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/aaab978003bfcc7cc5b1dfe6d51eaf67eac549a0"
+    },
+    {
+      "path": "propmolflow/data_processing/__pycache__/priors.cpython-310.pyc",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e1f6cf622e7f724393c1223739d060ff8394f008",
+      "size": 6895,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/e1f6cf622e7f724393c1223739d060ff8394f008"
+    },
+    {
+      "path": "propmolflow/data_processing/__pycache__/samplers.cpython-310.pyc",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e20dd6831a2cb962412121069ae1b38bff4ebda6",
+      "size": 2990,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/e20dd6831a2cb962412121069ae1b38bff4ebda6"
+    },
+    {
+      "path": "propmolflow/data_processing/__pycache__/utils.cpython-310.pyc",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "358615a3e992a04cf67ab3b7536d62da1446dd43",
+      "size": 2103,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/358615a3e992a04cf67ab3b7536d62da1446dd43"
+    },
+    {
+      "path": "propmolflow/data_processing/data_module.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8b62700a6992d99d90f1b2aef5870f1d21a09062",
+      "size": 2520,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/8b62700a6992d99d90f1b2aef5870f1d21a09062"
+    },
+    {
+      "path": "propmolflow/data_processing/dataset.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "11f8170bb0b680b042ac851012646ce7220440b5",
+      "size": 7998,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/11f8170bb0b680b042ac851012646ce7220440b5"
+    },
+    {
+      "path": "propmolflow/data_processing/geom.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "32e667b8f75adc40427f9738dfcdbbcb83bcd047",
+      "size": 5836,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/32e667b8f75adc40427f9738dfcdbbcb83bcd047"
+    },
+    {
+      "path": "propmolflow/data_processing/prealign.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "338aa2e563e5dfbf8a5f85d2a6a84fb924d25138",
+      "size": 3143,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/338aa2e563e5dfbf8a5f85d2a6a84fb924d25138"
+    },
+    {
+      "path": "propmolflow/data_processing/priors.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3e5747fea5d1dbc1f5fdedcda5ada432f975b79e",
+      "size": 10120,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/3e5747fea5d1dbc1f5fdedcda5ada432f975b79e"
+    },
+    {
+      "path": "propmolflow/data_processing/samplers.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "da3beb3f902a087d4530386a11d05bf664e4dbc3",
+      "size": 3634,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/da3beb3f902a087d4530386a11d05bf664e4dbc3"
+    },
+    {
+      "path": "propmolflow/data_processing/utils.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b51cfb745a5ff21573013888903fc67a71b2d478",
+      "size": 2457,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/b51cfb745a5ff21573013888903fc67a71b2d478"
+    },
+    {
+      "path": "propmolflow/model_utils",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "d92b001d730431b95a4f149c9eafe30d08475f6a",
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/trees/d92b001d730431b95a4f149c9eafe30d08475f6a"
+    },
+    {
+      "path": "propmolflow/model_utils/load.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c5d20789138cc8e87355c8a417c6374cd989bdd8",
+      "size": 5426,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/c5d20789138cc8e87355c8a417c6374cd989bdd8"
+    },
+    {
+      "path": "propmolflow/model_utils/sweep_config.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7874e251e35f6578e23f783cc295949b8afb6768",
+      "size": 5512,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/7874e251e35f6578e23f783cc295949b8afb6768"
+    },
+    {
+      "path": "propmolflow/models",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "4fd123fc7e97b26a425e630979a81b448d9e0f23",
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/trees/4fd123fc7e97b26a425e630979a81b448d9e0f23"
+    },
+    {
+      "path": "propmolflow/models/ctmc_vector_field.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e65560ed649eba3bbb4212732c70f4949ed03d5c",
+      "size": 33242,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/e65560ed649eba3bbb4212732c70f4949ed03d5c"
+    },
+    {
+      "path": "propmolflow/models/flowmol.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f6c62f402c8050f556287adeceb62a9b2e0e5192",
+      "size": 29548,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/f6c62f402c8050f556287adeceb62a9b2e0e5192"
+    },
+    {
+      "path": "propmolflow/models/gvp.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "22f2a61b6f31ccaa81d7ae0c7c9a8b619b6da521",
+      "size": 14859,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/22f2a61b6f31ccaa81d7ae0c7c9a8b619b6da521"
+    },
+    {
+      "path": "propmolflow/models/interpolant_scheduler.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a17594b6f456a8cc3164f5ab205966587d28aefb",
+      "size": 5964,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/a17594b6f456a8cc3164f5ab205966587d28aefb"
+    },
+    {
+      "path": "propmolflow/models/lr_scheduler.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c2bf607b756c5deb3beecf92ac39b71886ad5997",
+      "size": 2714,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/c2bf607b756c5deb3beecf92ac39b71886ad5997"
+    },
+    {
+      "path": "propmolflow/models/property_embeddings.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1479b822ef728719fcd96a00d412218957d2d88e",
+      "size": 3520,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/1479b822ef728719fcd96a00d412218957d2d88e"
+    },
+    {
+      "path": "propmolflow/models/vector_field.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e0f47ec4f9039323cf6831cc2cecc5f84a200151",
+      "size": 31691,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/e0f47ec4f9039323cf6831cc2cecc5f84a200151"
+    },
+    {
+      "path": "propmolflow/property_regressor",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "e2c25ba7c95e85ebb9317c6c4fc4604d66650b6f",
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/trees/e2c25ba7c95e85ebb9317c6c4fc4604d66650b6f"
+    },
+    {
+      "path": "propmolflow/property_regressor/README.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "364ed89353ef5a81c12a6f43ce4df275781be68c",
+      "size": 891,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/364ed89353ef5a81c12a6f43ce4df275781be68c"
+    },
+    {
+      "path": "propmolflow/property_regressor/configs",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "1a8e5a704fb3c23903a54c418c85aaf5937abbf0",
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/trees/1a8e5a704fb3c23903a54c418c85aaf5937abbf0"
+    },
+    {
+      "path": "propmolflow/property_regressor/configs/regressor_alpha.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "137e9251a9d8141503b9816618038f0ed7e81e59",
+      "size": 939,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/137e9251a9d8141503b9816618038f0ed7e81e59"
+    },
+    {
+      "path": "propmolflow/property_regressor/configs/regressor_cv.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1604caed2bbe10e73038946ec7941ddc819ab4a0",
+      "size": 936,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/1604caed2bbe10e73038946ec7941ddc819ab4a0"
+    },
+    {
+      "path": "propmolflow/property_regressor/configs/regressor_gap.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "bf4fbead2f99ef5528a43cc90d5fc87242360eee",
+      "size": 937,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/bf4fbead2f99ef5528a43cc90d5fc87242360eee"
+    },
+    {
+      "path": "propmolflow/property_regressor/configs/regressor_homo.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "27e4037660420a860cb8c167c9fd2c3b1f85d61f",
+      "size": 938,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/27e4037660420a860cb8c167c9fd2c3b1f85d61f"
+    },
+    {
+      "path": "propmolflow/property_regressor/configs/regressor_lumo.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "fbb49a1288ab5c51c38b589565e508201941a6d6",
+      "size": 938,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/fbb49a1288ab5c51c38b589565e508201941a6d6"
+    },
+    {
+      "path": "propmolflow/property_regressor/configs/regressor_mu.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b78b857ee1452bef57312fd24612f2a93e1b5c6d",
+      "size": 936,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/b78b857ee1452bef57312fd24612f2a93e1b5c6d"
+    },
+    {
+      "path": "propmolflow/property_regressor/configs/test.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "048eead843163f88c51cf57fc0962da16103f187",
+      "size": 394,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/048eead843163f88c51cf57fc0962da16103f187"
+    },
+    {
+      "path": "propmolflow/property_regressor/gvp_regressor.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "108a3534824ff6013e91efa645e93c6623342fd3",
+      "size": 7031,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/108a3534824ff6013e91efa645e93c6623342fd3"
+    },
+    {
+      "path": "propmolflow/property_regressor/model_output",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "79910db571ab6b456c8364ab027a8259ffb02d9f",
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/trees/79910db571ab6b456c8364ab027a8259ffb02d9f"
+    },
+    {
+      "path": "propmolflow/property_regressor/model_output/alpha",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "6673e0a034a31e4a2aecb36295833a30c371d184",
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/trees/6673e0a034a31e4a2aecb36295833a30c371d184"
+    },
+    {
+      "path": "propmolflow/property_regressor/model_output/alpha/checkpoints",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "1f2e367110eaa4a0a78c2edd9e853516a9740cb0",
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/trees/1f2e367110eaa4a0a78c2edd9e853516a9740cb0"
+    },
+    {
+      "path": "propmolflow/property_regressor/model_output/alpha/checkpoints/gvp-regressor-epoch=358-val_loss=0.0061.ckpt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "78b0eef461ba48446209f0fe3c55129251cc1259",
+      "size": 12089288,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/78b0eef461ba48446209f0fe3c55129251cc1259"
+    },
+    {
+      "path": "propmolflow/property_regressor/model_output/alpha/config.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7679c41ec2c820cad851298a8d7dbdf458ef94f5",
+      "size": 925,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/7679c41ec2c820cad851298a8d7dbdf458ef94f5"
+    },
+    {
+      "path": "propmolflow/property_regressor/model_output/cv",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "c1213deeebe5e3678a08b4f02c0e4f7e05d3ceb1",
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/trees/c1213deeebe5e3678a08b4f02c0e4f7e05d3ceb1"
+    },
+    {
+      "path": "propmolflow/property_regressor/model_output/cv/checkpoints",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "d575705011f2321691adc454613ac1d576875d0b",
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/trees/d575705011f2321691adc454613ac1d576875d0b"
+    },
+    {
+      "path": "propmolflow/property_regressor/model_output/cv/checkpoints/gvp-regressor-epoch=998-val_loss=0.0027.ckpt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "bd51ab28c80adf39480695a153a9f81303b25f3d",
+      "size": 12089224,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/bd51ab28c80adf39480695a153a9f81303b25f3d"
+    },
+    {
+      "path": "propmolflow/property_regressor/model_output/cv/config.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7978b5b83ad672b9524c59afff47d7b0ae29d999",
+      "size": 922,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/7978b5b83ad672b9524c59afff47d7b0ae29d999"
+    },
+    {
+      "path": "propmolflow/property_regressor/model_output/gap",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "dfb84b2c2f196e6d3a6b145817c1f5dd8e7bad43",
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/trees/dfb84b2c2f196e6d3a6b145817c1f5dd8e7bad43"
+    },
+    {
+      "path": "propmolflow/property_regressor/model_output/gap/checkpoints",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "a22742769b288c0d5d42867fc94a81d89e6db3e0",
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/trees/a22742769b288c0d5d42867fc94a81d89e6db3e0"
+    },
+    {
+      "path": "propmolflow/property_regressor/model_output/gap/checkpoints/gvp-regressor-epoch=389-val_loss=0.0258.ckpt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "148ed5394fac53f2d2276b34170f840bb97a48bf",
+      "size": 12089288,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/148ed5394fac53f2d2276b34170f840bb97a48bf"
+    },
+    {
+      "path": "propmolflow/property_regressor/model_output/gap/config.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d66ec13fc74a068032eb16ffc6eba5ab4f29e9f6",
+      "size": 923,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/d66ec13fc74a068032eb16ffc6eba5ab4f29e9f6"
+    },
+    {
+      "path": "propmolflow/property_regressor/model_output/homo",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "17b5e2844e2c98598c073367f4beb850d7b9308f",
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/trees/17b5e2844e2c98598c073367f4beb850d7b9308f"
+    },
+    {
+      "path": "propmolflow/property_regressor/model_output/homo/checkpoints",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "47c4ceada2f14d7b8dee30cacaec633c005dbb4f",
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/trees/47c4ceada2f14d7b8dee30cacaec633c005dbb4f"
+    },
+    {
+      "path": "propmolflow/property_regressor/model_output/homo/checkpoints/gvp-regressor-epoch=439-val_loss=0.0361.ckpt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "47d2a5a7e36842db76bba95fdc9f8ee843f73073",
+      "size": 12089288,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/47d2a5a7e36842db76bba95fdc9f8ee843f73073"
+    },
+    {
+      "path": "propmolflow/property_regressor/model_output/homo/config.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e181d2f9916d98265ea589cf43a13d731cc2d070",
+      "size": 924,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/e181d2f9916d98265ea589cf43a13d731cc2d070"
+    },
+    {
+      "path": "propmolflow/property_regressor/model_output/lumo",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "90ea675b0f1ae8ca8237904e6e6de854283a931d",
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/trees/90ea675b0f1ae8ca8237904e6e6de854283a931d"
+    },
+    {
+      "path": "propmolflow/property_regressor/model_output/lumo/checkpoints",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "1efc37afd0dcd60791e6ab4e7a9a0c5fc157e418",
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/trees/1efc37afd0dcd60791e6ab4e7a9a0c5fc157e418"
+    },
+    {
+      "path": "propmolflow/property_regressor/model_output/lumo/checkpoints/gvp-regressor-epoch=410-val_loss=0.0139.ckpt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f3eeb2d9854f24a59c474cbff7f911da3907d3ad",
+      "size": 12089288,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/f3eeb2d9854f24a59c474cbff7f911da3907d3ad"
+    },
+    {
+      "path": "propmolflow/property_regressor/model_output/lumo/config.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d5766404d622b3a81daeafc22b7fc1b6ea336d2e",
+      "size": 924,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/d5766404d622b3a81daeafc22b7fc1b6ea336d2e"
+    },
+    {
+      "path": "propmolflow/property_regressor/model_output/mu",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "8e6d365dbd222bc12475067338e11fa200377225",
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/trees/8e6d365dbd222bc12475067338e11fa200377225"
+    },
+    {
+      "path": "propmolflow/property_regressor/model_output/mu/checkpoints",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "ace1c5e1f2bfd11929d133f9f038ee672f55cbb5",
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/trees/ace1c5e1f2bfd11929d133f9f038ee672f55cbb5"
+    },
+    {
+      "path": "propmolflow/property_regressor/model_output/mu/checkpoints/gvp-regressor-epoch=290-val_loss=0.0206.ckpt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "208036b294123ab488bad80ac2d4c130e38686ed",
+      "size": 12089224,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/208036b294123ab488bad80ac2d4c130e38686ed"
+    },
+    {
+      "path": "propmolflow/property_regressor/model_output/mu/config.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8209f8247f24dda0b99547fdc177b548eaa14ab1",
+      "size": 922,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/8209f8247f24dda0b99547fdc177b548eaa14ab1"
+    },
+    {
+      "path": "propmolflow/property_regressor/test_regressor.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2aebc173eeedd07b2c6caee04d3e5ebc1e132c34",
+      "size": 11120,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/2aebc173eeedd07b2c6caee04d3e5ebc1e132c34"
+    },
+    {
+      "path": "propmolflow/property_regressor/train_regressor.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "56b229f3e0cdbc3e9fce29855ae9b6935440e079",
+      "size": 6620,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/56b229f3e0cdbc3e9fce29855ae9b6935440e079"
+    },
+    {
+      "path": "propmolflow/sdf_data_fix",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "3bf7a8fcf9e2f3d4601711288921a1efe78d901b",
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/trees/3bf7a8fcf9e2f3d4601711288921a1efe78d901b"
+    },
+    {
+      "path": "propmolflow/sdf_data_fix/README.MD",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "41b51467e951c522cf12e8a80eb330ae2b83664d",
+      "size": 3028,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/41b51467e951c522cf12e8a80eb330ae2b83664d"
+    },
+    {
+      "path": "propmolflow/sdf_data_fix/__pycache__",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "e624638e6d819c1763a8db31312d6aaeb6a0f016",
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/trees/e624638e6d819c1763a8db31312d6aaeb6a0f016"
+    },
+    {
+      "path": "propmolflow/sdf_data_fix/__pycache__/utils.cpython-310.pyc",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "75ded3f89d3c0b66e6f7445167355bb11414c03f",
+      "size": 10384,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/75ded3f89d3c0b66e6f7445167355bb11414c03f"
+    },
+    {
+      "path": "propmolflow/sdf_data_fix/__pycache__/utils.cpython-311.pyc",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e41a07861ed56e628df3abb6a14f7b1ca604853a",
+      "size": 20910,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/e41a07861ed56e628df3abb6a14f7b1ca604853a"
+    },
+    {
+      "path": "propmolflow/sdf_data_fix/compare_and_replace.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e26bb1052726bcd718cf7ce6b70e56e446aa2730",
+      "size": 4540,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/e26bb1052726bcd718cf7ce6b70e56e446aa2730"
+    },
+    {
+      "path": "propmolflow/sdf_data_fix/find_problematic_mols.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6bfa499957dd74c188c121efc2d50172a3d97340",
+      "size": 2189,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/6bfa499957dd74c188c121efc2d50172a3d97340"
+    },
+    {
+      "path": "propmolflow/sdf_data_fix/qm9_bond_charge_fix.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7343c01aa8416201887a6036e7ae3144ae5a9213",
+      "size": 3728,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/7343c01aa8416201887a6036e7ae3144ae5a9213"
+    },
+    {
+      "path": "propmolflow/sdf_data_fix/utils.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "382ec454d669759f25d9d74fcaa752ae04a6f4ca",
+      "size": 12926,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/382ec454d669759f25d9d74fcaa752ae04a6f4ca"
+    },
+    {
+      "path": "propmolflow/utils",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "817cdb57738ab76fea430376245e8061003ea6e7",
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/trees/817cdb57738ab76fea430376245e8061003ea6e7"
+    },
+    {
+      "path": "propmolflow/utils/compute_molecule_stability.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4adac26798963e5ea7a61ba8b56018dd25b4f5d5",
+      "size": 2700,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/4adac26798963e5ea7a61ba8b56018dd25b4f5d5"
+    },
+    {
+      "path": "propmolflow/utils/ctmc_utils.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5702e954f9b14ec0b1051f1cf358da2e59e5c122",
+      "size": 1973,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/5702e954f9b14ec0b1051f1cf358da2e59e5c122"
+    },
+    {
+      "path": "propmolflow/utils/dataset_stats.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c5b0f946827beb1a82c15a43425d14f81056ab32",
+      "size": 1316,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/c5b0f946827beb1a82c15a43425d14f81056ab32"
+    },
+    {
+      "path": "propmolflow/utils/dirflow.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "86c02205e2a35bc8d907b6ed459b2cbd0b316d4e",
+      "size": 1956,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/86c02205e2a35bc8d907b6ed459b2cbd0b316d4e"
+    },
+    {
+      "path": "propmolflow/utils/divergences.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f5e1ff22f0a03777871167f34ecbcf955ffedd4d",
+      "size": 644,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/f5e1ff22f0a03777871167f34ecbcf955ffedd4d"
+    },
+    {
+      "path": "propmolflow/utils/generate_dft_submission.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "615ac3fe40b50061e4c1cc6447f5fb95455fc79b",
+      "size": 2570,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/615ac3fe40b50061e4c1cc6447f5fb95455fc79b"
+    },
+    {
+      "path": "propmolflow/utils/geom_utils",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "b671ee616e215f3d9a1d8116760af5de5a0cb3a2",
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/trees/b671ee616e215f3d9a1d8116760af5de5a0cb3a2"
+    },
+    {
+      "path": "propmolflow/utils/geom_utils/__init__.py",
+      "mode": "100755",
+      "type": "blob",
+      "sha": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+      "size": 0,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"
+    },
+    {
+      "path": "propmolflow/utils/geom_utils/geom_drugs_valency_table.py",
+      "mode": "100755",
+      "type": "blob",
+      "sha": "5b564b40faca093a0cfa5244a0c1328a7fdc8960",
+      "size": 3972,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/5b564b40faca093a0cfa5244a0c1328a7fdc8960"
+    },
+    {
+      "path": "propmolflow/utils/geom_utils/molecule_stability.py",
+      "mode": "100755",
+      "type": "blob",
+      "sha": "641d098690cd68f23d064b2a640adcecf8adb0bf",
+      "size": 9352,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/641d098690cd68f23d064b2a640adcecf8adb0bf"
+    },
+    {
+      "path": "propmolflow/utils/geom_utils/pair_geometry.py",
+      "mode": "100755",
+      "type": "blob",
+      "sha": "8b890afbe21dd28563d6667896016f4ad008edf6",
+      "size": 10338,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/8b890afbe21dd28563d6667896016f4ad008edf6"
+    },
+    {
+      "path": "propmolflow/utils/geom_utils/utils.py",
+      "mode": "100755",
+      "type": "blob",
+      "sha": "02b61c487f6d820b85017b05405d0c78d2bb7776",
+      "size": 6130,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/02b61c487f6d820b85017b05405d0c78d2bb7776"
+    },
+    {
+      "path": "propmolflow/utils/geom_utils/valency_loader.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "111e222efe8e86228c533f55992aeba3befa0c6a",
+      "size": 6328,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/111e222efe8e86228c533f55992aeba3befa0c6a"
+    },
+    {
+      "path": "pyproject.toml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0210b1862d2025cf1e1bf7a8ed2638179b85d00d",
+      "size": 93,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/0210b1862d2025cf1e1bf7a8ed2638179b85d00d"
+    },
+    {
+      "path": "sample_condition.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "321deebec5da4f8123726c737640fb05fb5fcee9",
+      "size": 7767,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/321deebec5da4f8123726c737640fb05fb5fcee9"
+    },
+    {
+      "path": "sampling_input",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "5af1717cc3a0dbbffcaf4f0ab899f76f2cc6c3a2",
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/trees/5af1717cc3a0dbbffcaf4f0ab899f76f2cc6c3a2"
+    },
+    {
+      "path": "sampling_input/example_sample_output",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "6b3b49c80edfe31f8757c9ac2c6de9cbfb6317e6",
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/trees/6b3b49c80edfe31f8757c9ac2c6de9cbfb6317e6"
+    },
+    {
+      "path": "sampling_input/example_sample_output/alpha_in.sdf",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "dc335d695b53c3249208a2071329c5145e8b384d",
+      "size": 15765343,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/dc335d695b53c3249208a2071329c5145e8b384d"
+    },
+    {
+      "path": "sampling_input/example_sample_output/example_alpha_in.sdf",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1a7d8b42c92bb10efa6263a7d516502971a706a4",
+      "size": 15751366,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/1a7d8b42c92bb10efa6263a7d516502971a706a4"
+    },
+    {
+      "path": "sampling_input/example_sample_output/example_alpha_out.sdf",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "fae8fd3c4a8d08b9dd6a36390edf260589effae9",
+      "size": 1969904,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/fae8fd3c4a8d08b9dd6a36390edf260589effae9"
+    },
+    {
+      "path": "sampling_input/in_distribution_sampling",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "6f1d6f21d3ee36a6f517b1011c3fc410ec9f8e07",
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/trees/6f1d6f21d3ee36a6f517b1011c3fc410ec9f8e07"
+    },
+    {
+      "path": "sampling_input/in_distribution_sampling/train_half_sampled_no_atoms_alpha.npy",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "287e1b881ca2e25ae4a717499d51ec5095c99df1",
+      "size": 80128,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/287e1b881ca2e25ae4a717499d51ec5095c99df1"
+    },
+    {
+      "path": "sampling_input/in_distribution_sampling/train_half_sampled_no_atoms_cv.npy",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ed3ed639a40007f14b63c2bdacce4ef5cee15ba1",
+      "size": 80128,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/ed3ed639a40007f14b63c2bdacce4ef5cee15ba1"
+    },
+    {
+      "path": "sampling_input/in_distribution_sampling/train_half_sampled_no_atoms_gap.npy",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8863c47754414b7e8c414c2e4d6298e6fe6c38d1",
+      "size": 80128,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/8863c47754414b7e8c414c2e4d6298e6fe6c38d1"
+    },
+    {
+      "path": "sampling_input/in_distribution_sampling/train_half_sampled_no_atoms_homo.npy",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d0b9c3372ac48cf412fca8e85a9a09ab5d69239a",
+      "size": 80128,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/d0b9c3372ac48cf412fca8e85a9a09ab5d69239a"
+    },
+    {
+      "path": "sampling_input/in_distribution_sampling/train_half_sampled_no_atoms_lumo.npy",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "014abc4e246d103ae5f56fb4e447320739d795b7",
+      "size": 80128,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/014abc4e246d103ae5f56fb4e447320739d795b7"
+    },
+    {
+      "path": "sampling_input/in_distribution_sampling/train_half_sampled_no_atoms_mu.npy",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d83a7d8a792a6ba69a2e90962bb354fc01e777ab",
+      "size": 80128,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/d83a7d8a792a6ba69a2e90962bb354fc01e777ab"
+    },
+    {
+      "path": "sampling_input/in_distribution_sampling/train_half_sampled_values_alpha.npy",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e8788e429be69da903877c4080d72e9ce94381d0",
+      "size": 40128,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/e8788e429be69da903877c4080d72e9ce94381d0"
+    },
+    {
+      "path": "sampling_input/in_distribution_sampling/train_half_sampled_values_cv.npy",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e98a139923e0558988c27f78bee35b32587a7a54",
+      "size": 40128,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/e98a139923e0558988c27f78bee35b32587a7a54"
+    },
+    {
+      "path": "sampling_input/in_distribution_sampling/train_half_sampled_values_gap.npy",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "53f8822e95bb1f94bf25f93784370fcbd63f6c25",
+      "size": 40128,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/53f8822e95bb1f94bf25f93784370fcbd63f6c25"
+    },
+    {
+      "path": "sampling_input/in_distribution_sampling/train_half_sampled_values_homo.npy",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f9ddf50ae5217fb6e3ab1c948560824a6025c4c4",
+      "size": 40128,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/f9ddf50ae5217fb6e3ab1c948560824a6025c4c4"
+    },
+    {
+      "path": "sampling_input/in_distribution_sampling/train_half_sampled_values_lumo.npy",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "07471d2c9bbda839bad86a3d2f136af117d91570",
+      "size": 40128,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/07471d2c9bbda839bad86a3d2f136af117d91570"
+    },
+    {
+      "path": "sampling_input/in_distribution_sampling/train_half_sampled_values_mu.npy",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4961fc68adb0d50bd641e9d75ab9aef6977684c8",
+      "size": 40128,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/4961fc68adb0d50bd641e9d75ab9aef6977684c8"
+    },
+    {
+      "path": "sampling_input/out_of_distribution_sampling",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "8987608c0da19381c44c68c7950dfb9414e1abd0",
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/trees/8987608c0da19381c44c68c7950dfb9414e1abd0"
+    },
+    {
+      "path": "sampling_input/out_of_distribution_sampling/chosen_target_values.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7303f44386bfe87ad2a00553d2bccb671679eedc",
+      "size": 163,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/7303f44386bfe87ad2a00553d2bccb671679eedc"
+    },
+    {
+      "path": "sampling_input/out_of_distribution_sampling/ood_n_atoms_alpha.npy",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2966f42d6aa207e3d08f50d72d9e3f29e93e6408",
+      "size": 8128,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/2966f42d6aa207e3d08f50d72d9e3f29e93e6408"
+    },
+    {
+      "path": "sampling_input/out_of_distribution_sampling/ood_n_atoms_cv.npy",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8f4d9606982d9615565f64e91b0e1448413019e4",
+      "size": 8128,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/8f4d9606982d9615565f64e91b0e1448413019e4"
+    },
+    {
+      "path": "sampling_input/out_of_distribution_sampling/ood_n_atoms_gap.npy",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "cf98beef446641ac1e6e65a9d8fe5b9f5d5e96a4",
+      "size": 8128,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/cf98beef446641ac1e6e65a9d8fe5b9f5d5e96a4"
+    },
+    {
+      "path": "sampling_input/out_of_distribution_sampling/ood_n_atoms_homo.npy",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a77434b0f182dbb80767521c1c26f2d3a92ef1f2",
+      "size": 8128,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/a77434b0f182dbb80767521c1c26f2d3a92ef1f2"
+    },
+    {
+      "path": "sampling_input/out_of_distribution_sampling/ood_n_atoms_lumo.npy",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "bcb827ec5f91069347e00846dd60843c39c83cd9",
+      "size": 8128,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/bcb827ec5f91069347e00846dd60843c39c83cd9"
+    },
+    {
+      "path": "sampling_input/out_of_distribution_sampling/ood_n_atoms_mu.npy",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a0878682570f796294fb55cd3522cd9134d1092a",
+      "size": 8128,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/a0878682570f796294fb55cd3522cd9134d1092a"
+    },
+    {
+      "path": "setup.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c37cd8d56a1f2b5beb8548452f6e3ace77e5e129",
+      "size": 609,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/c37cd8d56a1f2b5beb8548452f6e3ace77e5e129"
+    },
+    {
+      "path": "str2prop_module.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "38aec8dcb6a169dcff1b486422d2edf5f9a8e127",
+      "size": 9319,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/38aec8dcb6a169dcff1b486422d2edf5f9a8e127"
+    },
+    {
+      "path": "str2prop_sampler.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8da6624644417bcfd37114b8a78adc1177426527",
+      "size": 3639,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/8da6624644417bcfd37114b8a78adc1177426527"
+    },
+    {
+      "path": "train.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c768f7ecb15a531fa3e3ebbb88fe376d9e6f04ec",
+      "size": 5673,
+      "url": "https://api.github.com/repos/Liu-Group-UF/PropMolFlow/git/blobs/c768f7ecb15a531fa3e3ebbb88fe376d9e6f04ec"
+    }
+  ],
+  "truncated": false
+}
