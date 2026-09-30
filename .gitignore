@@ -181,3 +181,8 @@ bobo_v3_benchmark.zip
 #   curl -sL -o weights/deepflybrain/DeepFlyBrain.hdf5 \
 #     "https://zenodo.org/record/5153337/files/DeepFlyBrain.hdf5?download=1"
 weights/deepflybrain/*.hdf5
+
+# Scratch output from an AI assistant session: deck exports and previews that
+# were superseded by slides/. Nothing here is cited and the folder name does not
+# belong in a graded repository, so `git add -A` must not pick it up.
+Claude outputs/

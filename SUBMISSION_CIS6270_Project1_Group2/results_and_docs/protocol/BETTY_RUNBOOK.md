@@ -38,7 +38,7 @@ the shell will try to run them.
 Nothing on Betty updates itself. Any code change means a new tarball.
 
 ```
-cd "C:/Users/mooooonesy/Downloads/pennstuff/cis 6270/Project 1"
+cd "C:/Users/<user>/Downloads/pennstuff/cis 6270/Project 1"
 tar --exclude='__pycache__' -czf bundles/code/code_vN.tgz proj1/scripts proj1/src proj1/tests proj1/cluster
 scp bundles/code/code_vN.tgz betty:$PROJECT_ROOT/
 ```
@@ -262,7 +262,7 @@ To pull results back to the laptop for analysis:
 tar -czf cells.tgz results/sweep results/sweep_v2_seed2
 ```
 ```
-scp betty:$PROJECT_ROOT/cells.tgz "C:/Users/mooooonesy/Downloads/pennstuff/cis 6270/Project 1/bundles/results/"
+scp betty:$PROJECT_ROOT/cells.tgz "C:/Users/<user>/Downloads/pennstuff/cis 6270/Project 1/bundles/results/"
 ```
 
 Pulled tarballs land in `bundles/results/`, not the project root. Extract them
@@ -341,7 +341,7 @@ headline's table. Do not set `V3_ABL_N=2000`.
 shipping code never disturbs the weights already on Betty.
 
 ```
-cd "C:/Users/mooooonesy/Downloads/pennstuff/cis 6270/Project 1"
+cd "C:/Users/<user>/Downloads/pennstuff/cis 6270/Project 1"
 tar --exclude='__pycache__' -czf bundles/code/code_v20.tgz proj1/scripts proj1/src proj1/tests proj1/cluster results/v3_batch_memory.json
 scp bundles/code/code_v20.tgz betty:$PROJECT_ROOT/
 ```
@@ -544,7 +544,7 @@ as FM's measured 11 h 23 m.
 ### Step 1 — ship the code (laptop)
 
 ```
-cd "C:/Users/mooooonesy/Downloads/pennstuff/cis 6270/Project 1"
+cd "C:/Users/<user>/Downloads/pennstuff/cis 6270/Project 1"
 tar --exclude='__pycache__' -czf bundles/code/code_v20.tgz proj1/scripts proj1/src proj1/tests proj1/cluster results/v3_batch_memory.json
 scp bundles/code/code_v20.tgz betty:$PROJECT_ROOT/
 ```
@@ -668,7 +668,7 @@ its network definitions, TFG's guide and oracle networks, and OC-Flow's three
 property networks (the second oracle). They travel in their own bundle:
 
 ```
-cd "C:/Users/mooooonesy/Downloads/pennstuff/cis 6270/Project 1"
+cd "C:/Users/<user>/Downloads/pennstuff/cis 6270/Project 1"
 tar --exclude='__pycache__' -czf code_v13.tgz proj1/scripts proj1/src proj1/tests proj1/cluster
 scp code_v13.tgz fm_transfer_assets_v1.tgz betty:$PROJECT_ROOT/
 ```
@@ -785,7 +785,7 @@ Same assets as the transfer (EquiFM + TFG's pair + OC-Flow), already built.
 another session's:
 
 ```
-cd "C:/Users/mooooonesy/Downloads/pennstuff/cis 6270/Project 1"
+cd "C:/Users/<user>/Downloads/pennstuff/cis 6270/Project 1"
 tar --exclude='__pycache__' -czf code_v15_basecmp.tgz proj1/scripts proj1/src proj1/tests proj1/cluster
 scp code_v15_basecmp.tgz fm_transfer_assets_v1.tgz betty:$PROJECT_ROOT/
 ```
@@ -902,7 +902,7 @@ arm's two picks coincided — those are computed once and reported under both).
 On the laptop:
 
 ```
-scp betty:$PROJECT_ROOT/basecmp.tgz "C:/Users/mooooonesy/Downloads/pennstuff/cis 6270/Project 1/"
+scp betty:$PROJECT_ROOT/basecmp.tgz "C:/Users/<user>/Downloads/pennstuff/cis 6270/Project 1/"
 ```
 
 Then read, in this order:
@@ -937,7 +937,7 @@ cell. Protocol: SCOPE_FM_GUIDANCE_STATUS.md, "AMENDMENT FR2a".
 ### Step 1 — ship the code (laptop)
 
 ```
-cd "C:/Users/mooooonesy/Downloads/pennstuff/cis 6270/Project 1"
+cd "C:/Users/<user>/Downloads/pennstuff/cis 6270/Project 1"
 tar --exclude='__pycache__' -czf code_v12.tgz proj1/scripts proj1/src proj1/tests proj1/cluster
 scp code_v12.tgz betty:$PROJECT_ROOT/
 ```
@@ -1005,7 +1005,7 @@ tar -czf tfg_cells.tgz results/sweep/*__tfg__* results/full/n5000/frozen_q90_tfg
 Want 42, then 9 to 12. On the laptop:
 
 ```
-scp betty:$PROJECT_ROOT/tfg_cells.tgz "C:/Users/mooooonesy/Downloads/pennstuff/cis 6270/Project 1/"
+scp betty:$PROJECT_ROOT/tfg_cells.tgz "C:/Users/<user>/Downloads/pennstuff/cis 6270/Project 1/"
 ```
 
 Claude extracts it into a scratch folder, checks nothing overlaps, merges,

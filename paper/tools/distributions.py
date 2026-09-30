@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 
 ROOT = Path(__file__).resolve().parents[2]
 OUT = ROOT/'paper/figs'
-VERSION = 10
+# No version suffix: final draft. See build_results.py.
 
 def build():
     qpath=ROOT/'data/qm9.pt'
@@ -43,7 +43,7 @@ def build():
             'band_source':str(cell.relative_to(ROOT)),
             'training_in_band':float((np.abs(vals-target)<=delta).mean())}
     OUT.mkdir(exist_ok=True)
-    (ROOT/f'paper/property_distributions_v{VERSION}.json').write_text(json.dumps(out,indent=2))
+    (ROOT/'paper/property_distributions.json').write_text(json.dumps(out,indent=2))
     plt.rcParams.update({'font.size':9,'pdf.fonttype':42,'axes.spines.top':False,'axes.spines.right':False})
     fig=plt.figure(figsize=(7.7,5.35),layout='constrained')
     grid=fig.add_gridspec(2,6)
@@ -56,7 +56,7 @@ def build():
         ax.axvline(r['target'],color='#5d3ca6',lw=1.6,label='q50 target')
         ax.set(xlabel=label,ylabel='Density',title=f"q50 = {r['target']:.5g}; δ = {r['delta']:.5g}")
         ax.legend(frameon=False,fontsize=7)
-    for ext in ('pdf','png'): fig.savefig(OUT/f'property_distributions_v{VERSION}.{ext}',dpi=220)
+    for ext in ('pdf','png'): fig.savefig(OUT/f'property_distributions.{ext}',dpi=220)
     plt.close(fig)
     print(json.dumps({p:{k:r[k] for k in ('n','target','delta','training_in_band')} for p,r in out['properties'].items()},indent=2))
     return out

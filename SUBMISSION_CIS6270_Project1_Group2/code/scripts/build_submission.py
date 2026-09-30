@@ -42,6 +42,13 @@ SCRUB = [
     (re.compile(r"\b[a-z][a-z0-9]{2,}@(?:sas\.)?upenn\.edu\b"), "<email redacted>"),
     # bare login names in prose and in shell prompts
     (re.compile(r"\b(?:<user>|<user>|<user>)\b"), "<user>"),
+    # The Windows home of whoever drove the run. Every runbook opens with
+    # `cd "C:/Users/<name>/.../Project 1"`, which is step 1 of the procedure and
+    # has to stay readable, so only the account name goes. Both separators
+    # appear: forward slashes in the shell snippets, escaped backslashes in the
+    # JSON that records downloaded-weight paths.
+    (re.compile(r"([Cc]:[/\\]{1,2}Users[/\\]{1,2})[A-Za-z0-9_.~-]+"),
+     r"\1<user>"),
 ]
 
 TEXT_SUFFIXES = {".py", ".md", ".tex", ".sh", ".slurm", ".bib", ".sty", ".txt",
@@ -171,6 +178,11 @@ def main() -> int:
         ("paper/neurips_2026.sty", "paper/neurips_2026.sty"),
         ("paper/README.md", "paper/README.md"),
         ("paper/versions/CHANGELOG.md", "paper/CHANGELOG.md"),
+        # The paper cites both by path -- results_manifest.json is named in the
+        # reproducibility table -- so leaving them out points the grader at a
+        # file the folder does not contain.
+        ("paper/results_manifest.json", "paper/results_manifest.json"),
+        ("paper/property_distributions.json", "paper/property_distributions.json"),
     ], out, stats)
     copy_tree(ROOT / "paper/figs", out / "paper/figs", "paper/figs", stats)
     copy_tree(ROOT / "paper/tools", out / "paper/tools", "paper/tools", stats)

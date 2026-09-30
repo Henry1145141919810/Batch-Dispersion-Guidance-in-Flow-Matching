@@ -536,7 +536,7 @@ One defect is **recorded and not fixed**, because it is outside this page's scop
 ## Regenerate
 
 ```
-cd "C:/Users/mooooonesy/Downloads/pennstuff/cis 6270/Project 1"
+cd "C:/Users/<user>/Downloads/pennstuff/cis 6270/Project 1"
 # this page (read-only on results/ and logs/)
 .venv/Scripts/python.exe proj1/scripts/basecmp_partial_table.py --md-out docs/results/BASECMP_PARTIAL_RESULTS.md
 # optional: every screen cell as csv, anywhere outside results/

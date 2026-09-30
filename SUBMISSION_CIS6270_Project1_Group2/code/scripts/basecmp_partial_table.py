@@ -1278,7 +1278,7 @@ def main():
     A("## Regenerate")
     A("")
     A("```")
-    A("cd \"C:/Users/mooooonesy/Downloads/pennstuff/cis 6270/Project 1\"")
+    A("cd \"C:/Users/<user>/Downloads/pennstuff/cis 6270/Project 1\"")
     A("# this page (read-only on results/ and logs/)")
     A(".venv/Scripts/python.exe proj1/scripts/basecmp_partial_table.py --md-out docs/results/BASECMP_PARTIAL_RESULTS.md")
     A("# optional: every screen cell as csv, anywhere outside results/")
