@@ -116,17 +116,37 @@ def diagnostics():
     return out
 _NUM = re.compile(r'-?\d+\.?\d*')
 
-def _cellnum(c):
-    """Leading number of a cell, or None when the cell has no single value.
+def _bare(c):
+    """A cell stripped of its row terminator and surrounding blanks."""
+    return c.strip().removesuffix(r'\\').strip()
 
-    Cells like '12.3 / 45.6' carry two properties at once and are skipped on
-    purpose: there is no one 'best' to mark.
-    """
-    c = c.strip().removesuffix(r'\\').strip()
-    if '/' in c or c in ('--', ''):
+
+def _num(c):
+    """The leading number of one already-split piece, or None."""
+    c = _bare(c)
+    if c in ('--', '') or '$^' in c:
         return None
     m = _NUM.search(c.replace(r'\pm', ' '))
     return float(m.group()) if m else None
+
+
+def _cellnum(c):
+    """Leading number of a cell, or None when the cell has no single value.
+
+    A cell like '12.3 / 45.6' carries two properties at once, so it has no one
+    value. Those columns are ranked component-wise instead, through parts=True.
+    """
+    c = _bare(c)
+    if '/' in c:
+        return None
+    return _num(c)
+
+
+def _wrap(c, rank):
+    """Bold (rank 0) or underline (rank 1), keeping any surrounding math mode."""
+    if c.startswith('$') and c.endswith('$'):
+        return '$' + ((r'\mathbf{%s}' if rank == 0 else r'\underline{%s}') % c[1:-1]) + '$'
+    return (r'\textbf{%s}' if rank == 0 else r'\underline{%s}') % c
 
 def decorate(rows, cols, better='max', skip=()):
     """Bold the best entry of each given column and underline the runner-up.
@@ -153,22 +173,84 @@ def decorate(rows, cols, better='max', skip=()):
         best, second = order[0], order[1]
         if vals[best] == vals[second]:
             continue          # a tie for first: marking one would invent a winner
-        for rank, i in ((0, best), (1, second)):
+        marks = [(0, best)]
+        if len(order) < 3 or vals[second] != vals[order[2]]:
+            marks.append((1, second))   # otherwise the runner-up is a tie too
+        for rank, i in marks:
             cells = rows[i].split('&')
             raw = cells[ci]
             end = r'\\' if raw.rstrip().endswith(r'\\') else ''
-            c = raw.strip().removesuffix(r'\\').strip()
-            if c.startswith('$') and c.endswith('$'):
-                inner = c[1:-1]
-                new = '$' + ((r'\mathbf{%s}' if rank == 0 else r'\underline{%s}') % inner) + '$'
-            else:
-                new = (r'\textbf{%s}' if rank == 0 else r'\underline{%s}') % c
-            cells[ci] = ' ' + new + end
+            cells[ci] = ' ' + _wrap(_bare(raw), rank) + end
             rows[i] = '&'.join(cells)
     return rows
 
 
-def decorate_panels(rows, cols, better='max', skip=()):
+def decorate_parts(rows, cols, better='max', skip=()):
+    """Rank a 'a / b / c' column one component at a time.
+
+    Those cells pack several properties into one column to save width, so the
+    components are separate comparisons and a single winner would be
+    meaningless. Rows whose component count differs are left out.
+    """
+    for ci in cols:
+        live = [i for i, r in enumerate(rows)
+                if r.strip() != r'\midrule' and ci < len(r.split('&'))
+                and not any(k in r.split('&')[0] for k in skip)]
+        parts = {i: _bare(rows[i].split('&')[ci]).split('/') for i in live}
+        if not parts:
+            continue
+        width = max(len(v) for v in parts.values())
+        live = [i for i in live if len(parts[i]) == width]
+        for k in range(width):
+            vals = {i: _num(parts[i][k]) for i in live}
+            vals = {i: v for i, v in vals.items() if v is not None}
+            if len(vals) < 2:
+                continue
+            order = sorted(vals, key=lambda i: vals[i], reverse=(better == 'max'))
+            if vals[order[0]] == vals[order[1]]:
+                continue
+            marks = [(0, order[0])]
+            if len(order) < 3 or vals[order[1]] != vals[order[2]]:
+                marks.append((1, order[1]))
+            for rank, i in marks:
+                parts[i][k] = ' ' + _wrap(_bare(parts[i][k]), rank) + ' '
+        for i in live:
+            cells = rows[i].split('&')
+            end = r'\\' if cells[ci].rstrip().endswith(r'\\') else ''
+            cells[ci] = ' ' + ' / '.join(x.strip() for x in parts[i]) + end
+            rows[i] = '&'.join(cells)
+    return rows
+
+
+def decorate_across(rows, cols, better='max'):
+    """Rank ACROSS the given columns within each row, not down a column.
+
+    For a table whose columns are the methods and whose rows are separate
+    tasks, the comparison runs along the row; ranking down a column would
+    compare different properties against each other.
+    """
+    for i, r in enumerate(rows):
+        if r.strip() == r'\midrule':
+            continue
+        cells = r.split('&')
+        vals = {c: _cellnum(cells[c]) for c in cols if c < len(cells)}
+        vals = {c: v for c, v in vals.items() if v is not None}
+        if len(vals) < 2:
+            continue
+        order = sorted(vals, key=lambda c: vals[c], reverse=(better == 'max'))
+        if vals[order[0]] == vals[order[1]]:
+            continue
+        marks = [(0, order[0])]
+        if len(order) < 3 or vals[order[1]] != vals[order[2]]:
+            marks.append((1, order[1]))
+        for rank, c in marks:
+            end = r'\\' if cells[c].rstrip().endswith(r'\\') else ''
+            cells[c] = ' ' + _wrap(_bare(cells[c]), rank) + end
+        rows[i] = '&'.join(cells)
+    return rows
+
+
+def decorate_panels(rows, cols, better='max', skip=(), fn=None):
     """decorate() one \\midrule-separated block at a time.
 
     A table whose panels are different properties must not be ranked as one
@@ -179,11 +261,14 @@ def decorate_panels(rows, cols, better='max', skip=()):
     out, block = [], []
     for r in rows + [r'\midrule']:
         if r.strip() == r'\midrule':
-            out.extend(decorate(block, cols, better, skip)); out.append(r); block = []
+            out.extend((fn or decorate)(block, cols, better, skip)); out.append(r); block = []
         else:
             block.append(r)
     return out[:-1]
 
+
+MARK = (' Bold marks the best entry in each marked column and underline the runner-up; a column is marked only where one direction is better, and a tie is left unmarked, never broken arbitrarily.')
+MARK_PANEL = (' Bold marks the best entry of each panel in each marked column and underline the runner-up; panels are ranked separately because their rows are not comparable across panels, a column is marked only where one direction is better, and a tie is left unmarked.')
 
 def latex_table(caption,label,cols,header,rows):
     return '\n'.join([r'\begin{table}[!htbp]',r'\centering\small',r'\caption{'+caption+'}',r'\label{'+label+'}',r'\begin{tabular}{'+cols+'}',r'\toprule',header+r'\\',r'\midrule',*rows,r'\bottomrule',r'\end{tabular}',r'\end{table}'])
@@ -196,7 +281,8 @@ def tables():
         time=f'{duration(rs):.3f}'+(r'$^{*}$' if be=='vp' else '')
         rows.append(f'{name} & {pm(rs,"mol_stability")} & {pm(rs,"validity")} & {100*avg(rs,"uniqueness_of_valid"):.1f} & {nfe} & {time}'+r'\\')
         if be=='vp': rows.append(r'\midrule')
-    out['BASE']=latex_table('Unguided QM9, $3\\times2{,}000$ samples: percentages, mean $\\pm$ seed sd. Lower rows use pretrained external models. Timing includes scoring: RTX A6000 except $^*$B200 MIG; runtimes are not hardware matched.','tab:fmvd','lccccc',r'Generator & Mol. stable$\uparrow$ & Valid$\uparrow$ & Unique$\uparrow$ & NFE & s/sample',rows)
+    rows=decorate_panels(rows,[1,2,3],'max')  # stability, validity, uniqueness
+    out['BASE']=latex_table('Unguided QM9, $3\\times2{,}000$ samples: percentages, mean $\\pm$ seed sd. Lower rows use pretrained external models. Timing includes scoring: RTX A6000 except $^*$B200 MIG; runtimes are not hardware matched.'+MARK_PANEL,'tab:fmvd','lccccc',r'Generator & Mol. stable$\uparrow$ & Valid$\uparrow$ & Unique$\uparrow$ & NFE & s/sample',rows)
     rows=[]
     for w,a in ((1,'bdg_e0t1'),(4,'bdg_e0t1'),(1,'bdg_e4t0.5'),(1,'bdg_e4t1'),(1,'bdg_e8t0.5'),(1,'bdg_e8t1.5')):
         rs=abl['fm',w]['mu',a]
@@ -204,21 +290,25 @@ def tables():
         if e=='0': t='--'
         rows.append(f'{w} & {e} & {t} & '+pm(rs,KEY)+f' & {avg(rs,"prop_mae_eval_dec"):.3f} & {avg(rs,"f_B_dec_mean"):.3f} & {spread(rs):.3f} & {100*avg(rs,"mol_stability"):.1f}'+r'\\')
     rows=decorate(rows,[3],'max'); rows=decorate(rows,[4],'min')
-    out['ABLATION']=latex_table('Dipole ablation on our FM: q50 $y=2.4932$ D, band $\\pm0.17541$ D. IB is percent mean $\\pm$ seed sd; stability is percent mean. Decoded MAE, mean and spread $\\sigma$ are in D. Zero gain is plug-in; its $w=4$ row tests stronger guidance. $\\tau_m$ is written -- at $\\eta=0$, where $w_{\\mathrm{eff}}=1$ and the setpoint has no effect. Bold marks the best entry in each marked column and underline the runner-up; coverage alone is not a quality ranking, and the quality columns show what each arm spent to reach it.','tab:ablation','cccccccc',r'$w$ & $\eta$ & $\tau_m$ & IB$\uparrow$ & MAE$\downarrow$ & Mean & $\sigma$ & Stable$\uparrow$',rows)
+    rows=decorate(rows,[7],'max')  # Stable; Mean and sigma have no better direction
+    out['ABLATION']=latex_table('Dipole ablation on our FM: q50 $y=2.4932$ D, band $\\pm0.17541$ D. IB is percent mean $\\pm$ seed sd; stability is percent mean. Decoded MAE, mean and spread $\\sigma$ are in D. Zero gain is plug-in; its $w=4$ row tests stronger guidance. $\\tau_m$ is written -- at $\\eta=0$, where $w_{\\mathrm{eff}}=1$ and the setpoint has no effect. Coverage alone is not a quality ranking, and the quality columns show what each arm spent to reach it.'+MARK,'tab:ablation','cccccccc',r'$w$ & $\eta$ & $\tau_m$ & IB$\uparrow$ & MAE$\downarrow$ & Mean & $\sigma$ & Stable$\uparrow$',rows)
     rows=[]
     for a in ARMS:
         name=r'Plug-in ($\eta=0$)' if a=='plug' else NAMES[a]
         rs=heads['fm']['mu',a]
         rows.append(name+' & '+' & '.join(pm(heads['fm'][(p,a)],KEY) for p in PROPS)+' & '+' / '.join(f'{100*avg(heads["fm"][(p,a)],"mol_stability"):.1f}' for p in PROPS)+f' & {100*avg(rs,"unique_valid_per_sample"):.1f} & {duration(rs):.3f}'+r'\\')
-    rows=decorate(rows,[1,2,3],'max')
-    out['M1']=latex_table('Our FM, $w=1$: decoded IB, percent mean $\\pm$ seed sd; stability means in $\\mu/\\alpha/\\mathrm{gap}$ order. DV is distinct-valid yield (\\%), and time is s/sample, both for $\\mu$. Plug-in is $\\eta=0$; BDG uses $\\eta=4$. Rows are matched-backbone adaptations. Bold marks the best entry in each marked column and underline the runner-up; coverage alone is not a quality ranking, and the quality columns show what each arm spent to reach it.','tab:recent','lcccccc',r'Method & IB $\mu\uparrow$ & IB $\alpha\uparrow$ & IB gap$\uparrow$ & Stable$\uparrow$ & DV$\uparrow$ & Time',rows)
+    rows=decorate(rows,[1,2,3],'max'); rows=decorate(rows,[5],'max')
+    rows=decorate_parts(rows,[4],'max')   # Stable, one component per property
+    rows=decorate(rows,[6],'min')         # time: lower is cheaper
+    out['M1']=latex_table('Our FM, $w=1$: decoded IB, percent mean $\\pm$ seed sd; stability means in $\\mu/\\alpha/\\mathrm{gap}$ order. DV is distinct-valid yield (\\%), and time is s/sample, both for $\\mu$. Plug-in is $\\eta=0$; BDG uses $\\eta=4$. Rows are matched-backbone adaptations. Coverage alone is not a quality ranking, and the quality columns show what each arm spent to reach it.'+MARK,'tab:recent','lcccccc',r'Method & IB $\mu\uparrow$ & IB $\alpha\uparrow$ & IB gap$\uparrow$ & Stable$\uparrow$ & DV$\uparrow$ & Time',rows)
     rows=[]
     for a in M.HEADLINE_ARMS:
         # Keep all adaptations visible and report fidelity at the same strength.
         gc,cp=seq('gc',a,4),seq('cpg',a,4)
         rows.append(NAMES[a]+' & '+pm(gc,'in_band_fraction')+' & '+pm(cp,'in_band_fraction')+' & '+f'{1e4*avg(gc,"kmer_js"):.2f} / {1e4*avg(cp,"kmer_js"):.2f} & {avg(gc,"diversity"):.4f} / {avg(cp,"diversity"):.4f} & {duration(cp,True):.3f}'+r'\\')
-    rows=decorate(rows,[1,2],'max')
-    out['M2']=latex_table('DNA, $w=4$, $t\\ge0.5$: decoded IB (percent mean $\\pm$ seed sd); JSD ($\\times10^{-4}$) and Hamming diversity in GC/CpG order. Time is recorded s/sequence for CpG. TFG-MC is a restricted adaptation. Full results: Table~\\ref{tab:full-m2}. Bold marks the best entry in each marked column and underline the runner-up; coverage alone is not a quality ranking, and the quality columns show what each arm spent to reach it.','tab:m2','lccccc',r'Method & GC IB$\uparrow$ & CpG IB$\uparrow$ & JSD$\downarrow$ & Hamming & Time',rows)
+    rows=decorate(rows,[1,2],'max'); rows=decorate_parts(rows,[3],'min')
+    rows=decorate_parts(rows,[5],'min')   # time per property; Hamming has no better direction
+    out['M2']=latex_table('DNA, $w=4$, $t\\ge0.5$: decoded IB (percent mean $\\pm$ seed sd); JSD ($\\times10^{-4}$) and Hamming diversity in GC/CpG order. Time is recorded s/sequence for CpG. TFG-MC is a restricted adaptation. Full results: Table~\\ref{tab:full-m2}. Coverage alone is not a quality ranking, and the quality columns show what each arm spent to reach it.'+MARK,'tab:m2','lccccc',r'Method & GC IB$\uparrow$ & CpG IB$\uparrow$ & JSD$\downarrow$ & Hamming & Time',rows)
     out['M2']=out['M2'].replace(r'\centering\small',r'\centering\small\setlength{\tabcolsep}{4pt}')
     # Preserve the original window in the appendix; show the complete new GC
     # comparison beside the still-late CpG comparison, with windows in headers.
@@ -233,8 +323,9 @@ def tables():
                     +f' & {1e4*avg(gc,"kmer_js"):.2f} / {1e4*avg(cp,"kmer_js"):.2f}'
                     +f' & {avg(gc,"diversity"):.4f} / {avg(cp,"diversity"):.4f}'
                     +f' & {duration(gc,True):.3f} / {duration(cp,True):.3f}'+r'\\')
-    rows=decorate(rows,[1,2],'max')
-    out['M2']=latex_table('DNA, $w=4$, $t\\ge0.3$ for both properties. IB is percent mean $\\pm$ seed sd; JSD ($\\times10^{-4}$), Hamming and s/sequence are GC/CpG. The original $t\\ge0.5$ window, where the three uncertainty-based comparators are numerically indistinguishable from plug-in, is Table~\\ref{tab:m2-late}. Bold marks the best entry in each marked column and underline the runner-up; coverage alone is not a quality ranking, and the quality columns show what each arm spent to reach it.','tab:m2','lccccc',r'Method & GC IB$\uparrow$ & CpG IB$\uparrow$ & JSD$\downarrow$ & Hamming & Time',rows).replace(r'\centering\small',r'\centering\small\setlength{\tabcolsep}{3pt}')
+    rows=decorate(rows,[1,2],'max'); rows=decorate_parts(rows,[3],'min')
+    rows=decorate_parts(rows,[5],'min')
+    out['M2']=latex_table('DNA, $w=4$, $t\\ge0.3$ for both properties. IB is percent mean $\\pm$ seed sd; JSD ($\\times10^{-4}$), Hamming and s/sequence are GC/CpG. The original $t\\ge0.5$ window, where the three uncertainty-based comparators are numerically indistinguishable from plug-in, is Table~\\ref{tab:m2-late}. Coverage alone is not a quality ranking, and the quality columns show what each arm spent to reach it.'+MARK,'tab:m2','lccccc',r'Method & GC IB$\uparrow$ & CpG IB$\uparrow$ & JSD$\downarrow$ & Hamming & Time',rows).replace(r'\centering\small',r'\centering\small\setlength{\tabcolsep}{3pt}')
     rows=[]
     for prop in ('gc','cpg'):
         if rows: rows.append(r'\midrule')
@@ -243,7 +334,9 @@ def tables():
             name=r'BDG $\eta=0$' if a=='bdg_e0t1' else NAMES[a]
             rows.append(f'{PL[prop]} & '+name+' & '+pm(rs,'in_band_fraction')+f' & {c["delta_pp"]:+.2f} & {st.stdev(c["seed_deltas_pp"]):.2f} & {1e4*avg(rs,"kmer_js"):.2f} & {avg(rs,"diversity"):.4f} & {100*M.pooled(rs)["clip_frac"]:.2f} & {duration(rs,True):.3f}'+r'\\')
     rows=decorate_panels(rows,[2],'max',skip=(r'\eta=0',))
-    out['M2-WINDOW']=latex_table('Window follow-up on both properties, $t\\ge0.3$, $w=4$, three seeds of 2,000. IB is percent mean $\\pm$ seed sd; differences and paired SD are percentage points against plug-in. JSD is $\\times10^{-4}$, Clip is percent of guided sample-steps. This exploratory follow-up was added after diagnosing the original late window; the sign of the BDG effect differs between the two properties. Bold marks the best entry in each marked column and underline the runner-up; coverage alone is not a quality ranking, and the quality columns show what each arm spent to reach it.','tab:m2-window','llccccccc',r'Prop. & Method & IB$\uparrow$ & $\Delta$IB & SD$(\Delta)$ & JSD$\downarrow$ & Hamming & Clip & s/seq.',rows)
+    rows=decorate_panels(rows,[5],'min',skip=(r'\eta=0',))
+    rows=decorate_panels(rows,[8],'min',skip=(r'\eta=0',))
+    out['M2-WINDOW']=latex_table('Window follow-up on both properties, $t\\ge0.3$, $w=4$, three seeds of 2,000. IB is percent mean $\\pm$ seed sd; differences and paired SD are percentage points against plug-in. JSD is $\\times10^{-4}$, Clip is percent of guided sample-steps. This exploratory follow-up was added after diagnosing the original late window; the sign of the BDG effect differs between the two properties. Coverage alone is not a quality ranking, and the quality columns show what each arm spent to reach it.'+MARK,'tab:m2-window','llccccccc',r'Prop. & Method & IB$\uparrow$ & $\Delta$IB & SD$(\Delta)$ & JSD$\downarrow$ & Hamming & Clip & s/seq.',rows)
     # The setpoint probe. BDG's sign rule says a setpoint BELOW the baseline's
     # achieved spread should contract and gain; on CpG plug-in already sits at
     # 0.37s, inside the registered tau_m=0.5, which is why the registered rung
@@ -267,7 +360,8 @@ def tables():
         rows.append(lab+' & %d & '%len(rs)+ib+f' & {dd} & {sd} & {avg(rs,"gc_sd")/avg(rs,"s"):.3f}'
                     +f' & {1e4*avg(rs,"kmer_js"):.2f} & {avg(rs,"decode_conf"):.3f}'
                     +f' & {100*M.pooled(rs)["clip_frac"]:.2f}'+r'\\')
-    out['SETPOINT']=latex_table('Exploratory setpoint probe on CpG, $t\\ge0.3$, $w=4$, $n=2{,}000$ per seed. BDG contracts only a batch wider than $\\tau$, and plug-in already reaches $0.372s$ here, inside the registered $\\tau_m=0.5$. Lowering the setpoint below the achieved spread restores contraction and coverage, which is the prediction the sign rule makes. Seeds gives the number of seeds; only $\\tau_m=0.25$ has the full three, so the one-seed rows are directional and their paired SD is omitted. These setpoints are outside the pre-registered grid and are reported as exploratory, not as headline results.','tab:setpoint','lcccccccc',r'Method & Seeds & IB$\uparrow$ & $\Delta$IB & SD$(\Delta)$ & $\sigma/s$ & JSD$\downarrow$ & Conf. & Clip',rows).replace(r'\centering\small',r'\centering\small\setlength{\tabcolsep}{4pt}')
+    rows=decorate(rows,[2],'max',skip=(r'\eta=8',r'\tau_m=0.15'))
+    out['SETPOINT']=latex_table('Exploratory setpoint probe on CpG, $t\\ge0.3$, $w=4$, $n=2{,}000$ per seed. BDG contracts only a batch wider than $\\tau$, and plug-in already reaches $0.372s$ here, inside the registered $\\tau_m=0.5$. Lowering the setpoint below the achieved spread restores contraction and coverage, which is the prediction the sign rule makes. Seeds gives the number of seeds; only $\\tau_m=0.25$ has the full three, so the one-seed rows are directional and their paired SD is omitted. These setpoints are outside the pre-registered grid and are reported as exploratory, not as headline results.'+MARK,'tab:setpoint','lcccccccc',r'Method & Seeds & IB$\uparrow$ & $\Delta$IB & SD$(\Delta)$ & $\sigma/s$ & JSD$\downarrow$ & Conf. & Clip',rows).replace(r'\centering\small',r'\centering\small\setlength{\tabcolsep}{4pt}')
     rows=[]
     for be,lab in (('fm','FM, ours'),('vp','VP diffusion, ours')):
         if rows: rows.append(r'\midrule')
@@ -289,8 +383,10 @@ def tables():
             for a in V.BACKEND_ARMS[be]:
                 rs=heads[be][(p,a)]
                 rows.append(PL[p]+' & '+NAMES[a]+' & '+pm(rs,KEY)+' & '+pm(rs,'mol_stability')+' & '+f'{100*avg(rs,"validity"):.1f} & {100*avg(rs,"unique_valid_per_sample"):.1f} & {duration(rs):.3f}'+r'\\')
+        rows=decorate_panels(rows,[2,3,4,5],'max')
+        rows=decorate_panels(rows,[6],'min')     # s/sample
         be_label={'fm':'our FM','equifm':'borrowed EquiFM','edm':'borrowed EDMsecond','vp':'our VP diffusion'}[be]
-        out['FULL-'+be.upper()]=latex_table(f'Complete headline evaluation on {be_label}. IB is decoded; IB and stability show percent mean $\\pm$ seed sd. Validity and distinct-valid yield (DV) are percentages; time is recorded cell wall-clock divided by attempts. $w=1$, $t\\ge0.5$, three seeds, $n=2{{,}}000$ each.','tab:full-'+be,'llccccc',r'Property & Method & IB$\uparrow$ & Stable$\uparrow$ & Valid$\uparrow$ & DV$\uparrow$ & s/sample',rows)
+        out['FULL-'+be.upper()]=latex_table(f'Complete headline evaluation on {be_label}. IB is decoded; IB and stability show percent mean $\\pm$ seed sd. Validity and distinct-valid yield (DV) are percentages; time is recorded cell wall-clock divided by attempts. $w=1$, $t\\ge0.5$, three seeds, $n=2{{,}}000$ each.'+MARK_PANEL,'tab:full-'+be,'llccccc',r'Property & Method & IB$\uparrow$ & Stable$\uparrow$ & Valid$\uparrow$ & DV$\uparrow$ & s/sample',rows)
     for be in ('fm','equifm'):
         for p in PROPS:
             rows=[]
@@ -301,11 +397,12 @@ def tables():
                     e,t=a.removeprefix('bdg_e').split('t')
                     if e=='0': t='--'
                     rows.append(f'{w} & {e} & {t} & '+pm(rs,KEY)+f' & {avg(rs,"prop_mae_eval_dec")/d:.2f} & {bias(rs)/d:+.2f} & {spread(rs)/d:.2f} & '+pm(rs,'mol_stability')+r'\\')
+            rows=decorate(rows,[3,7],'max'); rows=decorate(rows,[4],'min')
             rs=abl[be,1][p,'bdg_e0t1']
             unit={'mu':'D','alpha':r'Bohr$^3$','gap':'Ha'}[p]
             name='Our FM' if be=='fm' else 'Pretrained EquiFM (flow matching)'
             cap=f'{name}, {PL[p]}: all gain/setpoint ablations at $w=1,4$, q50 target $y={avg(rs,"target"):.4f}$ {unit}, half-width $\\delta={avg(rs,"delta"):.5f}$ {unit}. Each row uses three seeds of 2,000 samples. IB and molecular stability are percent mean $\\pm$ seed sd. MAE, signed bias of the pooled mean, and pooled standard deviation $\\sigma$ are decoded and normalized by $\\delta$. The $\\eta=0$ row removes the residual; its setpoint is irrelevant.'
-            out[f'GRID-{be.upper()}-{p.upper()}']=latex_table(cap,f'tab:grid-{be}-{p}','cccccccc',r'$w$ & $\eta$ & $\tau_m$ & IB$\uparrow$ & MAE/$\delta\downarrow$ & Bias/$\delta$ & $\sigma/\delta$ & Stable$\uparrow$',rows)
+            out[f'GRID-{be.upper()}-{p.upper()}']=latex_table(cap+MARK,f'tab:grid-{be}-{p}','cccccccc',r'$w$ & $\eta$ & $\tau_m$ & IB$\uparrow$ & MAE/$\delta\downarrow$ & Bias/$\delta$ & $\sigma/\delta$ & Stable$\uparrow$',rows)
     rows=[]
     for be in ('fm','equifm'):
         for p in PROPS:
@@ -313,7 +410,8 @@ def tables():
                 c=contrast(heads[be][(p,a)],heads[be][(p,'plug')])
                 ds=c['seed_deltas_pp']
                 rows.append(f'{be} & '+PL[p]+' & '+('0.5' if a.endswith('.5') else '1')+f' & {c["delta_pp"]:+.2f} & {st.stdev(ds):.2f} & {c["z"]:+.2f} & {c["mdd_pp"]:.2f}'+r'\\')
-    out['CONTRASTS']=latex_table('BDG minus plug-in on decoded molecular IB. Differences, paired seed sd and the threshold-sized difference $2.99\\,\\mathrm{se}(\\Delta)$ are in percentage points. The registered unpaired statistic is shown separately from descriptive pairing.','tab:contrasts','llccccc',r'Backend & Property & $\tau_m$ & $\Delta$IB & SD$(\Delta)$ & $z$ & Threshold',rows)
+    rows=decorate(rows,[3],'max')
+    out['CONTRASTS']=latex_table('BDG minus plug-in on decoded molecular IB. Differences, paired seed sd and the threshold-sized difference $2.99\\,\\mathrm{se}(\\Delta)$ are in percentage points. The registered unpaired statistic is shown separately from descriptive pairing.'+MARK+' The test statistic and its threshold are left unmarked: ranking significance is not a comparison this protocol makes.','tab:contrasts','llccccc',r'Backend & Property & $\tau_m$ & $\Delta$IB & SD$(\Delta)$ & $z$ & Threshold',rows)
     rows=[]
     for p in ('gc','cpg'):
         for w in (1,4):
@@ -321,7 +419,9 @@ def tables():
             for a in ('unguided','plug','tmpd','lgd_mc','tfg_mc','bdg_e4t0.5','bdg_e4t1'):
                 rs=seq(p,a,w); pooled=M.pooled(rs)
                 rows.append(f'{PL[p]}, {w} & '+NAMES[a]+' & '+pm(rs,'in_band_fraction')+f' & {1e4*avg(rs,"kmer_js"):.2f} & {avg(rs,"decode_conf"):.3f} & {avg(rs,"diversity"):.4f} & {100*pooled["clip_frac"]:.2f} & {duration(rs,True):.3f}'+r'\\')
-    out['FULL-M2']=latex_table('All DNA headline settings at the pre-registered window $t\\ge0.5$; the same grid at $t\\ge0.3$ is Table~\\ref{tab:full-m2-early}. IB is percent mean $\\pm$ seed sd; JSD is multiplied by $10^4$; Conf. is decoding confidence; Div. is normalized Hamming distance; Clip is percent of guided sample-steps. Unguided rows repeat a common reference and are never pooled twice.','tab:full-m2','llcccccc',r'Prop., $w$ & Method & IB$\uparrow$ & JSD$\downarrow$ & Conf. & Div. & Clip & s/seq.',rows)
+    rows=decorate_panels(rows,[2],'max'); rows=decorate_panels(rows,[3],'min')
+    rows=decorate_panels(rows,[7],'min')
+    out['FULL-M2']=latex_table('All DNA headline settings at the pre-registered window $t\\ge0.5$; the same grid at $t\\ge0.3$ is Table~\\ref{tab:full-m2-early}. IB is percent mean $\\pm$ seed sd; JSD is multiplied by $10^4$; Conf. is decoding confidence; Div. is normalized Hamming distance; Clip is percent of guided sample-steps. Unguided rows repeat a common reference and are never pooled twice.'+MARK_PANEL,'tab:full-m2','llcccccc',r'Prop., $w$ & Method & IB$\uparrow$ & JSD$\downarrow$ & Conf. & Div. & Clip & s/seq.',rows)
     # The same grid at the window the headline table uses, so every number in
     # tab:m2 and tab:m2-window can be traced to a cell. Both w rungs are here:
     # w=1 is the pre-registered strength, w=4 the ablation rung.
@@ -332,19 +432,22 @@ def tables():
             for a in ('unguided','plug','tmpd','lgd_mc','tfg_mc','bdg_e4t0.5','bdg_e4t1'):
                 rs=win(a,prop=prop,w=w); pooled=M.pooled(rs)
                 rows.append(f'{PL[prop]}, {w:g} & '+NAMES[a]+' & '+pm(rs,'in_band_fraction')+f' & {1e4*avg(rs,"kmer_js"):.2f} & {avg(rs,"decode_conf"):.3f} & {avg(rs,"diversity"):.4f} & {100*pooled["clip_frac"]:.2f} & {duration(rs,True):.3f}'+r'\\')
-    out['FULL-M2-EARLY']=latex_table('All DNA headline settings at $t\\ge0.3$, the window the main-text DNA tables use. Columns match Table~\\ref{tab:full-m2}. IB is percent mean $\\pm$ seed sd; JSD is multiplied by $10^4$; Conf. is decoding confidence; Div. is normalized Hamming distance; Clip is percent of guided sample-steps. Unguided rows repeat a common reference and are never pooled twice.','tab:full-m2-early','llcccccc',r'Prop., $w$ & Method & IB$\uparrow$ & JSD$\downarrow$ & Conf. & Div. & Clip & s/seq.',rows)
+    rows=decorate_panels(rows,[2],'max'); rows=decorate_panels(rows,[3],'min')
+    rows=decorate_panels(rows,[7],'min')
+    out['FULL-M2-EARLY']=latex_table('All DNA headline settings at $t\\ge0.3$, the window the main-text DNA tables use. Columns match Table~\\ref{tab:full-m2}. IB is percent mean $\\pm$ seed sd; JSD is multiplied by $10^4$; Conf. is decoding confidence; Div. is normalized Hamming distance; Clip is percent of guided sample-steps. Unguided rows repeat a common reference and are never pooled twice.'+MARK_PANEL,'tab:full-m2-early','llcccccc',r'Prop., $w$ & Method & IB$\uparrow$ & JSD$\downarrow$ & Conf. & Div. & Clip & s/seq.',rows)
     rows=[]
     for a in ARMS:
         rs=heads['fm']['mu',a]; counts=rs[0]['cost']
         assert all(r['cost']==counts for r in rs)
         rows.append(NAMES[a]+' & '+' & '.join(str(counts[k]) for k in ('gen_fwd','gen_vjp','gen_jvp','guide_fwd','guide_bwd'))+r'\\')
-    out['COST']=latex_table('Recorded sampling operations per 2,000-molecule cell, our FM, dipole, $w=1$. Forward calls, vector--Jacobian products (VJP) and Jacobian--vector products (JVP) are separate operations, not equal-cost units. Evaluator calls are outside these counts; Table~\\ref{tab:recent} reports wall-clock including scoring.','tab:cost','lccccc',r'Method & Gen. forward & Gen. VJP & Gen. JVP & Guide forward & Guide backward',rows)
+    out['COST']=latex_table('Recorded sampling operations per 2,000-molecule cell, our FM, dipole, $w=1$. Forward calls, vector--Jacobian products (VJP) and Jacobian--vector products (JVP) are separate operations, not equal-cost units. Evaluator calls are outside these counts; Table~\\ref{tab:recent} reports wall-clock including scoring. No entry is marked here: these counts are exact and fixed by construction, plug-in and both BDG rungs are identical by design, and the smallest entry in every column belongs to the unguided reference, which performs no guidance at all.','tab:cost','lccccc',r'Method & Gen. forward & Gen. VJP & Gen. JVP & Guide forward & Guide backward',rows)
     rows=[]
     for be in ('fm','equifm'):
         for p in PROPS:
             vals=[exchange(be,p,e) for e in (4,8,None)]
             rows.append(('Our FM' if be=='fm' else 'EquiFM')+' & '+PL[p]+' & '+' & '.join(f'{v["ratio"]:.3f}' for v in vals)+r'\\')
-    out['EXCHANGE']=latex_table('Exploratory coverage gained per stability point lost. All differences use the ablation-stage zero-gain reference at $w=1$. BDG changes $\\eta$ at $\\tau_m=0.5,w=1$; the strength control keeps $\\eta=0$ and increases $w$ to 4. Ratios use decoded IB and molecular stability means, not joint useful yield.','tab:exchange','llccc',r'Backend & Property & BDG $\eta=4$ & BDG $\eta=8$ & Plug-in $w=4$',rows)
+    rows=decorate_across(rows,[2,3,4],'max')
+    out['EXCHANGE']=latex_table('Exploratory coverage gained per stability point lost. All differences use the ablation-stage zero-gain reference at $w=1$. BDG changes $\\eta$ at $\\tau_m=0.5,w=1$; the strength control keeps $\\eta=0$ and increases $w$ to 4. Ratios use decoded IB and molecular stability means, not joint useful yield.'+MARK,'tab:exchange','llccc',r'Backend & Property & BDG $\eta=4$ & BDG $\eta=8$ & Plug-in $w=4$',rows)
     return out
 
 def figures():

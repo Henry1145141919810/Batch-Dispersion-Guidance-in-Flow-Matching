@@ -102,3 +102,39 @@ spanning 0.45 to 1.52 points; 162 headline and 612 ablation molecular cells;
 199 original DNA cells at 5.26 hours; BDG guide calls one fifth of LGD-MC and
 TFG. The thresholds are internally consistent: 2.99 is Bonferroni 0.05/18 and
 3.16 is 0.05/32.
+
+## Bold and underline applied everywhere a ranking exists
+
+v9 marked only the coverage columns of five tables. Every table whose rows are
+compared quantitatively now marks the best entry in bold and the runner-up
+underlined, under three rules:
+
+* **A column is marked only where one direction is better.** IB, stability,
+  validity, uniqueness, distinct-valid yield and the exchange ratio rank high;
+  MAE, JSD and wall-clock rank low. Mean, bias, sigma, decoding confidence,
+  Hamming diversity, clip fraction, paired SD, z and the threshold are
+  diagnostics with no better value, so they stay unmarked.
+* **Panels are ranked separately.** Tables S4 to S7 rank within each property,
+  Table 1 separates our models from the pretrained pair, and Tables S15, S16
+  and S18 rank within each property and strength. Ranked as one list, these
+  tables would compare coverage across properties whose bands differ, which
+  Appendix A.9 says cannot be done.
+* **Ties are never broken.** A tie for first leaves the column unmarked; a tie
+  for second bolds the winner and leaves the runner-up unmarked. Three arms
+  share 0.119 s/sample in Table 4, so no runner-up is named there.
+
+Two tables stay unmarked on purpose, and their captions say why. Table S3 is a
+specification: the counts are exact, plug-in and both BDG rungs are identical
+by construction, and the smallest entry in every column is the unguided
+reference, which performs no guidance. In Table S8 only the difference is
+ranked, because marking a best test statistic would rank significance, which
+section 4.1.3 refuses to do.
+
+Table S9's columns are the methods, so it is ranked along each row instead of
+down each column; ranking down would compare different properties.
+
+Three supporting changes: cells like "39.7 / 39.7 / 39.7" are now ranked one
+component at a time, since they pack several properties into one column; the
+five hand-copied caption notes were replaced by two shared constants so they
+cannot drift; and the tie-for-second guard was added after Table 4 underlined
+one of three equal times.

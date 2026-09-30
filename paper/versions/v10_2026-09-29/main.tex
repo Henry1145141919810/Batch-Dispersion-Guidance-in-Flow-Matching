@@ -138,17 +138,17 @@ FM's higher stability (39.7\% versus 28.8\%) and validity (75.6\% versus 66.2\%)
 % BEGIN DATA BASE
 \begin{table}[!htbp]
 \centering\small
-\caption{Unguided QM9, $3\times2{,}000$ samples: percentages, mean $\pm$ seed sd. Lower rows use pretrained external models. Timing includes scoring: RTX A6000 except $^*$B200 MIG; runtimes are not hardware matched.}
+\caption{Unguided QM9, $3\times2{,}000$ samples: percentages, mean $\pm$ seed sd. Lower rows use pretrained external models. Timing includes scoring: RTX A6000 except $^*$B200 MIG; runtimes are not hardware matched. Bold marks the best entry of each panel in each marked column and underline the runner-up; panels are ranked separately because their rows are not comparable across panels, a column is marked only where one direction is better, and a tie is left unmarked.}
 \label{tab:fmvd}
 \begin{tabular}{lccccc}
 \toprule
 Generator & Mol. stable$\uparrow$ & Valid$\uparrow$ & Unique$\uparrow$ & NFE & s/sample\\
 \midrule
-FM, ours & $39.7\pm0.6$ & $75.6\pm1.1$ & 99.8 & 100 & 0.051\\
-VP diffusion, ours & $28.8\pm1.3$ & $66.2\pm0.7$ & 99.9 & 101 & 0.048$^{*}$\\
+FM, ours & $\mathbf{39.7\pm0.6}$& $\mathbf{75.6\pm1.1}$& \underline{99.8}& 100 & 0.051\\
+VP diffusion, ours & $\underline{28.8\pm1.3}$& $\underline{66.2\pm0.7}$& \textbf{99.9}& 101 & 0.048$^{*}$\\
 \midrule
-EquiFM (flow) & $86.2\pm0.3$ & $93.8\pm0.6$ & 99.7 & 100 & 0.086\\
-EDMsecond (diffusion) & $67.2\pm1.3$ & $86.0\pm1.3$ & 99.8 & 101 & 0.087\\
+EquiFM (flow) & $\mathbf{86.2\pm0.3}$& $\mathbf{93.8\pm0.6}$& \underline{99.7}& 100 & 0.086\\
+EDMsecond (diffusion) & $\underline{67.2\pm1.3}$& $\underline{86.0\pm1.3}$& \textbf{99.8}& 101 & 0.087\\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -183,7 +183,7 @@ Table~\ref{tab:ablation} removes BDG's residual ($\eta=0$), changes its setpoint
 % BEGIN DATA ABLATION
 \begin{table}[!htbp]
 \centering\small
-\caption{Dipole ablation on our FM: q50 $y=2.4932$ D, band $\pm0.17541$ D. IB is percent mean $\pm$ seed sd; stability is percent mean. Decoded MAE, mean and spread $\sigma$ are in D. Zero gain is plug-in; its $w=4$ row tests stronger guidance. $\tau_m$ is written -- at $\eta=0$, where $w_{\mathrm{eff}}=1$ and the setpoint has no effect. Bold marks the best entry in each marked column and underline the runner-up; coverage alone is not a quality ranking, and the quality columns show what each arm spent to reach it.}
+\caption{Dipole ablation on our FM: q50 $y=2.4932$ D, band $\pm0.17541$ D. IB is percent mean $\pm$ seed sd; stability is percent mean. Decoded MAE, mean and spread $\sigma$ are in D. Zero gain is plug-in; its $w=4$ row tests stronger guidance. $\tau_m$ is written -- at $\eta=0$, where $w_{\mathrm{eff}}=1$ and the setpoint has no effect. Coverage alone is not a quality ranking, and the quality columns show what each arm spent to reach it. Bold marks the best entry in each marked column and underline the runner-up; a column is marked only where one direction is better, and a tie is left unmarked, never broken arbitrarily.}
 \label{tab:ablation}
 \begin{tabular}{cccccccc}
 \toprule
@@ -192,9 +192,9 @@ $w$ & $\eta$ & $\tau_m$ & IB$\uparrow$ & MAE$\downarrow$ & Mean & $\sigma$ & Sta
 1 & 0 & -- & $10.6\pm0.4$ & 0.969 & 2.615 & 1.209 & 35.6\\
 4 & 0 & -- & $\mathbf{13.4\pm0.4}$& \textbf{0.812}& 2.548 & 1.024 & 30.3\\
 1 & 4 & 0.5 & $11.2\pm1.1$ & 0.903 & 2.609 & 1.113 & 35.1\\
-1 & 4 & 1 & $8.9\pm0.2$ & 1.133 & 2.714 & 1.434 & 40.5\\
+1 & 4 & 1 & $8.9\pm0.2$ & 1.133 & 2.714 & 1.434 & \textbf{40.5}\\
 1 & 8 & 0.5 & $\underline{11.9\pm0.3}$& \underline{0.861}& 2.603 & 1.064 & 34.0\\
-1 & 8 & 1.5 & $7.6\pm0.2$ & 1.377 & 2.858 & 1.922 & 37.6\\
+1 & 8 & 1.5 & $7.6\pm0.2$ & 1.377 & 2.858 & 1.922 & \underline{37.6}\\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -205,19 +205,19 @@ At $\tau_m=0.5$, BDG improves mean coverage and MAE in all six flow/property com
 % BEGIN DATA M1
 \begin{table}[!htbp]
 \centering\small
-\caption{Our FM, $w=1$: decoded IB, percent mean $\pm$ seed sd; stability means in $\mu/\alpha/\mathrm{gap}$ order. DV is distinct-valid yield (\%), and time is s/sample, both for $\mu$. Plug-in is $\eta=0$; BDG uses $\eta=4$. Rows are matched-backbone adaptations. Bold marks the best entry in each marked column and underline the runner-up; coverage alone is not a quality ranking, and the quality columns show what each arm spent to reach it.}
+\caption{Our FM, $w=1$: decoded IB, percent mean $\pm$ seed sd; stability means in $\mu/\alpha/\mathrm{gap}$ order. DV is distinct-valid yield (\%), and time is s/sample, both for $\mu$. Plug-in is $\eta=0$; BDG uses $\eta=4$. Rows are matched-backbone adaptations. Coverage alone is not a quality ranking, and the quality columns show what each arm spent to reach it. Bold marks the best entry in each marked column and underline the runner-up; a column is marked only where one direction is better, and a tie is left unmarked, never broken arbitrarily.}
 \label{tab:recent}
 \begin{tabular}{lcccccc}
 \toprule
 Method & IB $\mu\uparrow$ & IB $\alpha\uparrow$ & IB gap$\uparrow$ & Stable$\uparrow$ & DV$\uparrow$ & Time\\
 \midrule
-Unguided & $7.8\pm0.1$ & $5.0\pm0.3$ & $10.3\pm1.0$ & 39.7 / 39.7 / 39.7 & 75.5 & 0.051\\
-Plug-in ($\eta=0$) & $10.6\pm0.4$ & $6.1\pm0.3$ & $12.6\pm0.7$ & 35.6 / 37.2 / 33.6 & 72.4 & 0.119\\
-TMPD-inspired & $9.0\pm0.6$ & $6.1\pm0.4$ & $11.6\pm0.9$ & 38.4 / 38.9 / 37.3 & 74.7 & 0.255\\
-LGD-MC & $9.6\pm0.8$ & $5.2\pm0.4$ & $10.8\pm0.7$ & 39.9 / 39.2 / 39.5 & 75.4 & 0.229\\
-TFG & $\mathbf{28.8\pm1.6}$& $\mathbf{10.5\pm0.3}$& $\mathbf{27.5\pm0.3}$& 24.5 / 26.8 / 14.4 & 62.7 & 0.122\\
-BDG, $\tau_m=0.5$ & $\underline{11.2\pm1.1}$& $\underline{7.0\pm0.5}$& $\underline{14.2\pm0.8}$& 35.1 / 36.4 / 30.0 & 71.2 & 0.119\\
-BDG, $\tau_m=1$ & $8.9\pm0.2$ & $5.6\pm0.5$ & $10.6\pm0.2$ & 40.5 / 37.9 / 37.6 & 76.3 & 0.119\\
+Unguided & $7.8\pm0.1$ & $5.0\pm0.3$ & $10.3\pm1.0$ & 39.7 / \textbf{39.7} / \textbf{39.7}& \underline{75.5}& \textbf{0.051}\\
+Plug-in ($\eta=0$) & $10.6\pm0.4$ & $6.1\pm0.3$ & $12.6\pm0.7$ & 35.6 / 37.2 / 33.6& 72.4 & 0.119\\
+TMPD-inspired & $9.0\pm0.6$ & $6.1\pm0.4$ & $11.6\pm0.9$ & 38.4 / 38.9 / 37.3& 74.7 & 0.255\\
+LGD-MC & $9.6\pm0.8$ & $5.2\pm0.4$ & $10.8\pm0.7$ & \underline{39.9} / \underline{39.2} / \underline{39.5}& 75.4 & 0.229\\
+TFG & $\mathbf{28.8\pm1.6}$& $\mathbf{10.5\pm0.3}$& $\mathbf{27.5\pm0.3}$& 24.5 / 26.8 / 14.4& 62.7 & 0.122\\
+BDG, $\tau_m=0.5$ & $\underline{11.2\pm1.1}$& $\underline{7.0\pm0.5}$& $\underline{14.2\pm0.8}$& 35.1 / 36.4 / 30.0& 71.2 & 0.119\\
+BDG, $\tau_m=1$ & $8.9\pm0.2$ & $5.6\pm0.5$ & $10.6\pm0.2$ & \textbf{40.5} / 37.9 / 37.6& \textbf{76.3}& 0.119\\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -228,19 +228,19 @@ Both properties now start guidance at $t=0.3$, where the four baselines separate
 % BEGIN DATA M2
 \begin{table}[!htbp]
 \centering\small\setlength{\tabcolsep}{3pt}
-\caption{DNA, $w=4$, $t\ge0.3$ for both properties. IB is percent mean $\pm$ seed sd; JSD ($\times10^{-4}$), Hamming and s/sequence are GC/CpG. The original $t\ge0.5$ window, where the three uncertainty-based comparators are numerically indistinguishable from plug-in, is Table~\ref{tab:m2-late}. Bold marks the best entry in each marked column and underline the runner-up; coverage alone is not a quality ranking, and the quality columns show what each arm spent to reach it.}
+\caption{DNA, $w=4$, $t\ge0.3$ for both properties. IB is percent mean $\pm$ seed sd; JSD ($\times10^{-4}$), Hamming and s/sequence are GC/CpG. The original $t\ge0.5$ window, where the three uncertainty-based comparators are numerically indistinguishable from plug-in, is Table~\ref{tab:m2-late}. Coverage alone is not a quality ranking, and the quality columns show what each arm spent to reach it. Bold marks the best entry in each marked column and underline the runner-up; a column is marked only where one direction is better, and a tie is left unmarked, never broken arbitrarily.}
 \label{tab:m2}
 \begin{tabular}{lccccc}
 \toprule
 Method & GC IB$\uparrow$ & CpG IB$\uparrow$ & JSD$\downarrow$ & Hamming & Time\\
 \midrule
-Unguided & $14.0\pm1.0$ & $50.2\pm1.6$ & 4.53 / 4.53 & 0.7456 / 0.7456 & 0.050 / 0.052\\
-DPS-style plug-in & $\underline{30.3\pm2.0}$& $\mathbf{91.5\pm0.5}$& 3.64 / 4.37 & 0.7456 / 0.7455 & 0.124 / 0.072\\
-TMPD-inspired & $29.2\pm2.1$ & $\underline{91.4\pm1.4}$& 3.66 / 4.36 & 0.7455 / 0.7455 & 0.145 / 0.076\\
-LGD-MC & $30.0\pm1.3$ & $90.7\pm0.6$ & 3.61 / 4.02 & 0.7455 / 0.7454 & 0.131 / 0.109\\
-TFG-MC adaptation & $29.8\pm1.8$ & $85.1\pm0.7$ & 3.57 / 3.56 & 0.7455 / 0.7454 & 0.109 / 0.122\\
-BDG, $\tau_m=0.5$ & $\mathbf{37.3\pm6.5}$& $86.6\pm0.9$ & 4.24 / 3.94 & 0.7455 / 0.7455 & 0.122 / 0.117\\
-BDG, $\tau_m=1$ & $15.6\pm0.8$ & $54.3\pm0.6$ & 3.59 / 3.62 & 0.7455 / 0.7454 & 0.075 / 0.115\\
+Unguided & $14.0\pm1.0$ & $50.2\pm1.6$ & 4.53 / 4.53& 0.7456 / 0.7456 & \textbf{0.050} / \textbf{0.052}\\
+DPS-style plug-in & $\underline{30.3\pm2.0}$& $\mathbf{91.5\pm0.5}$& 3.64 / 4.37& 0.7456 / 0.7455 & 0.124 / \underline{0.072}\\
+TMPD-inspired & $29.2\pm2.1$ & $\underline{91.4\pm1.4}$& 3.66 / 4.36& 0.7455 / 0.7455 & 0.145 / 0.076\\
+LGD-MC & $30.0\pm1.3$ & $90.7\pm0.6$ & 3.61 / 4.02& 0.7455 / 0.7454 & 0.131 / 0.109\\
+TFG-MC adaptation & $29.8\pm1.8$ & $85.1\pm0.7$ & \textbf{3.57} / \textbf{3.56}& 0.7455 / 0.7454 & 0.109 / 0.122\\
+BDG, $\tau_m=0.5$ & $\mathbf{37.3\pm6.5}$& $86.6\pm0.9$ & 4.24 / 3.94& 0.7455 / 0.7455 & 0.122 / 0.117\\
+BDG, $\tau_m=1$ & $15.6\pm0.8$ & $54.3\pm0.6$ & \underline{3.59} / \underline{3.62}& 0.7455 / 0.7454 & \underline{0.075} / 0.115\\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -386,7 +386,7 @@ Table~\ref{tab:cost} separates the recorded operation types. BDG and plug-in sha
 % BEGIN DATA COST
 \begin{table}[!htbp]
 \centering\small
-\caption{Recorded sampling operations per 2,000-molecule cell, our FM, dipole, $w=1$. Forward calls, vector--Jacobian products (VJP) and Jacobian--vector products (JVP) are separate operations, not equal-cost units. Evaluator calls are outside these counts; Table~\ref{tab:recent} reports wall-clock including scoring.}
+\caption{Recorded sampling operations per 2,000-molecule cell, our FM, dipole, $w=1$. Forward calls, vector--Jacobian products (VJP) and Jacobian--vector products (JVP) are separate operations, not equal-cost units. Evaluator calls are outside these counts; Table~\ref{tab:recent} reports wall-clock including scoring. No entry is marked here: these counts are exact and fixed by construction, plug-in and both BDG rungs are identical by design, and the smallest entry in every column belongs to the unguided reference, which performs no guidance at all.}
 \label{tab:cost}
 \begin{tabular}{lccccc}
 \toprule
@@ -411,34 +411,34 @@ DPS-style plug-in adapts posterior guidance to a Gaussian property energy and a 
 % BEGIN DATA FULL-FM
 \begin{table}[!htbp]
 \centering\small
-\caption{Complete headline evaluation on our FM. IB is decoded; IB and stability show percent mean $\pm$ seed sd. Validity and distinct-valid yield (DV) are percentages; time is recorded cell wall-clock divided by attempts. $w=1$, $t\ge0.5$, three seeds, $n=2{,}000$ each.}
+\caption{Complete headline evaluation on our FM. IB is decoded; IB and stability show percent mean $\pm$ seed sd. Validity and distinct-valid yield (DV) are percentages; time is recorded cell wall-clock divided by attempts. $w=1$, $t\ge0.5$, three seeds, $n=2{,}000$ each. Bold marks the best entry of each panel in each marked column and underline the runner-up; panels are ranked separately because their rows are not comparable across panels, a column is marked only where one direction is better, and a tie is left unmarked.}
 \label{tab:full-fm}
 \begin{tabular}{llccccc}
 \toprule
 Property & Method & IB$\uparrow$ & Stable$\uparrow$ & Valid$\uparrow$ & DV$\uparrow$ & s/sample\\
 \midrule
-$\mu$ & Unguided & $7.8\pm0.1$ & $39.7\pm0.6$ & 75.6 & 75.5 & 0.051\\
+$\mu$ & Unguided & $7.8\pm0.1$ & $39.7\pm0.6$ & \underline{75.6}& \underline{75.5}& \textbf{0.051}\\
 $\mu$ & DPS-style plug-in & $10.6\pm0.4$ & $35.6\pm0.3$ & 72.5 & 72.4 & 0.119\\
 $\mu$ & TMPD-inspired & $9.0\pm0.6$ & $38.4\pm0.6$ & 74.8 & 74.7 & 0.255\\
-$\mu$ & LGD-MC & $9.6\pm0.8$ & $39.9\pm0.3$ & 75.5 & 75.4 & 0.229\\
-$\mu$ & TFG & $28.8\pm1.6$ & $24.5\pm1.0$ & 62.8 & 62.7 & 0.122\\
-$\mu$ & BDG, $\tau_m=0.5$ & $11.2\pm1.1$ & $35.1\pm1.1$ & 71.4 & 71.2 & 0.119\\
-$\mu$ & BDG, $\tau_m=1$ & $8.9\pm0.2$ & $40.5\pm0.8$ & 76.5 & 76.3 & 0.119\\
+$\mu$ & LGD-MC & $9.6\pm0.8$ & $\underline{39.9\pm0.3}$& 75.5 & 75.4 & 0.229\\
+$\mu$ & TFG & $\mathbf{28.8\pm1.6}$& $24.5\pm1.0$ & 62.8 & 62.7 & 0.122\\
+$\mu$ & BDG, $\tau_m=0.5$ & $\underline{11.2\pm1.1}$& $35.1\pm1.1$ & 71.4 & 71.2 & 0.119\\
+$\mu$ & BDG, $\tau_m=1$ & $8.9\pm0.2$ & $\mathbf{40.5\pm0.8}$& \textbf{76.5}& \textbf{76.3}& 0.119\\
 \midrule
-$\alpha$ & Unguided & $5.0\pm0.3$ & $39.7\pm0.6$ & 75.6 & 75.5 & 0.050\\
+$\alpha$ & Unguided & $5.0\pm0.3$ & $\mathbf{39.7\pm0.6}$& \textbf{75.6}& \textbf{75.5}& \textbf{0.050}\\
 $\alpha$ & DPS-style plug-in & $6.1\pm0.3$ & $37.2\pm1.6$ & 73.7 & 73.6 & 0.118\\
 $\alpha$ & TMPD-inspired & $6.1\pm0.4$ & $38.9\pm1.1$ & 75.1 & 75.0 & 0.200\\
-$\alpha$ & LGD-MC & $5.2\pm0.4$ & $39.2\pm1.3$ & 74.9 & 74.9 & 0.224\\
-$\alpha$ & TFG & $10.5\pm0.3$ & $26.8\pm0.8$ & 61.2 & 61.1 & 0.121\\
-$\alpha$ & BDG, $\tau_m=0.5$ & $7.0\pm0.5$ & $36.4\pm1.0$ & 72.2 & 72.1 & 0.118\\
-$\alpha$ & BDG, $\tau_m=1$ & $5.6\pm0.5$ & $37.9\pm1.1$ & 75.1 & 75.1 & 0.118\\
+$\alpha$ & LGD-MC & $5.2\pm0.4$ & $\underline{39.2\pm1.3}$& 74.9 & 74.9 & 0.224\\
+$\alpha$ & TFG & $\mathbf{10.5\pm0.3}$& $26.8\pm0.8$ & 61.2 & 61.1 & 0.121\\
+$\alpha$ & BDG, $\tau_m=0.5$ & $\underline{7.0\pm0.5}$& $36.4\pm1.0$ & 72.2 & 72.1 & 0.118\\
+$\alpha$ & BDG, $\tau_m=1$ & $5.6\pm0.5$ & $37.9\pm1.1$ & 75.1 & \underline{75.1}& 0.118\\
 \midrule
-gap & Unguided & $10.3\pm1.0$ & $39.7\pm0.6$ & 75.6 & 75.5 & 0.051\\
+gap & Unguided & $10.3\pm1.0$ & $\mathbf{39.7\pm0.6}$& \textbf{75.6}& \textbf{75.5}& \textbf{0.051}\\
 gap & DPS-style plug-in & $12.6\pm0.7$ & $33.6\pm0.8$ & 69.9 & 69.8 & 0.119\\
 gap & TMPD-inspired & $11.6\pm0.9$ & $37.3\pm0.7$ & 73.8 & 73.7 & 0.201\\
-gap & LGD-MC & $10.8\pm0.7$ & $39.5\pm0.8$ & 75.2 & 75.1 & 0.225\\
-gap & TFG & $27.5\pm0.3$ & $14.4\pm0.8$ & 45.5 & 45.5 & 0.122\\
-gap & BDG, $\tau_m=0.5$ & $14.2\pm0.8$ & $30.0\pm0.4$ & 65.8 & 65.7 & 0.119\\
+gap & LGD-MC & $10.8\pm0.7$ & $\underline{39.5\pm0.8}$& \underline{75.2}& \underline{75.1}& 0.225\\
+gap & TFG & $\mathbf{27.5\pm0.3}$& $14.4\pm0.8$ & 45.5 & 45.5 & 0.122\\
+gap & BDG, $\tau_m=0.5$ & $\underline{14.2\pm0.8}$& $30.0\pm0.4$ & 65.8 & 65.7 & 0.119\\
 gap & BDG, $\tau_m=1$ & $10.6\pm0.2$ & $37.6\pm0.8$ & 74.3 & 74.2 & 0.119\\
 \bottomrule
 \end{tabular}
@@ -448,34 +448,34 @@ gap & BDG, $\tau_m=1$ & $10.6\pm0.2$ & $37.6\pm0.8$ & 74.3 & 74.2 & 0.119\\
 % BEGIN DATA FULL-EQUIFM
 \begin{table}[!htbp]
 \centering\small
-\caption{Complete headline evaluation on borrowed EquiFM. IB is decoded; IB and stability show percent mean $\pm$ seed sd. Validity and distinct-valid yield (DV) are percentages; time is recorded cell wall-clock divided by attempts. $w=1$, $t\ge0.5$, three seeds, $n=2{,}000$ each.}
+\caption{Complete headline evaluation on borrowed EquiFM. IB is decoded; IB and stability show percent mean $\pm$ seed sd. Validity and distinct-valid yield (DV) are percentages; time is recorded cell wall-clock divided by attempts. $w=1$, $t\ge0.5$, three seeds, $n=2{,}000$ each. Bold marks the best entry of each panel in each marked column and underline the runner-up; panels are ranked separately because their rows are not comparable across panels, a column is marked only where one direction is better, and a tie is left unmarked.}
 \label{tab:full-equifm}
 \begin{tabular}{llccccc}
 \toprule
 Property & Method & IB$\uparrow$ & Stable$\uparrow$ & Valid$\uparrow$ & DV$\uparrow$ & s/sample\\
 \midrule
-$\mu$ & Unguided & $8.7\pm0.8$ & $86.2\pm0.3$ & 93.8 & 93.5 & 0.086\\
-$\mu$ & DPS-style plug-in & $10.9\pm0.9$ & $82.1\pm0.7$ & 91.9 & 91.6 & 0.231\\
+$\mu$ & Unguided & $8.7\pm0.8$ & $\mathbf{86.2\pm0.3}$& \textbf{93.8}& \textbf{93.5}& \textbf{0.086}\\
+$\mu$ & DPS-style plug-in & $10.9\pm0.9$ & $82.1\pm0.7$ & 91.9 & 91.6 & \underline{0.231}\\
 $\mu$ & TMPD-inspired & $9.0\pm0.3$ & $85.3\pm0.4$ & 93.5 & 93.2 & 0.366\\
 $\mu$ & LGD-MC & $9.7\pm0.3$ & $85.5\pm0.4$ & 93.3 & 93.1 & 0.474\\
-$\mu$ & TFG & $11.9\pm0.3$ & $74.0\pm0.7$ & 86.5 & 86.2 & 0.301\\
-$\mu$ & BDG, $\tau_m=0.5$ & $12.1\pm0.5$ & $79.3\pm0.7$ & 90.9 & 90.6 & 0.232\\
-$\mu$ & BDG, $\tau_m=1$ & $8.9\pm0.7$ & $85.8\pm0.3$ & 93.6 & 93.3 & 0.232\\
+$\mu$ & TFG & $\underline{11.9\pm0.3}$& $74.0\pm0.7$ & 86.5 & 86.2 & 0.301\\
+$\mu$ & BDG, $\tau_m=0.5$ & $\mathbf{12.1\pm0.5}$& $79.3\pm0.7$ & 90.9 & 90.6 & 0.232\\
+$\mu$ & BDG, $\tau_m=1$ & $8.9\pm0.7$ & $\underline{85.8\pm0.3}$& \underline{93.6}& \underline{93.3}& 0.232\\
 \midrule
-$\alpha$ & Unguided & $2.1\pm0.1$ & $86.2\pm0.3$ & 93.8 & 93.5 & 0.087\\
+$\alpha$ & Unguided & $2.1\pm0.1$ & $\mathbf{86.2\pm0.3}$& \textbf{93.8}& \textbf{93.5}& \textbf{0.087}\\
 $\alpha$ & DPS-style plug-in & $2.1\pm0.2$ & $82.9\pm0.4$ & 91.9 & 91.7 & 0.233\\
 $\alpha$ & TMPD-inspired & $2.1\pm0.3$ & $84.8\pm0.3$ & 93.3 & 93.0 & 0.368\\
-$\alpha$ & LGD-MC & $2.1\pm0.1$ & $85.5\pm0.9$ & 93.3 & 93.0 & 0.476\\
-$\alpha$ & TFG & $3.4\pm0.5$ & $64.5\pm0.5$ & 84.5 & 84.4 & 0.302\\
-$\alpha$ & BDG, $\tau_m=0.5$ & $2.5\pm0.2$ & $76.6\pm0.5$ & 89.5 & 89.2 & 0.233\\
+$\alpha$ & LGD-MC & $2.1\pm0.1$ & $\underline{85.5\pm0.9}$& 93.3 & 93.0 & 0.476\\
+$\alpha$ & TFG & $\mathbf{3.4\pm0.5}$& $64.5\pm0.5$ & 84.5 & 84.4 & 0.302\\
+$\alpha$ & BDG, $\tau_m=0.5$ & $\underline{2.5\pm0.2}$& $76.6\pm0.5$ & 89.5 & 89.2 & 0.233\\
 $\alpha$ & BDG, $\tau_m=1$ & $2.0\pm0.1$ & $84.8\pm0.5$ & 92.8 & 92.6 & 0.233\\
 \midrule
-gap & Unguided & $4.9\pm0.2$ & $86.2\pm0.3$ & 93.8 & 93.5 & 0.086\\
+gap & Unguided & $4.9\pm0.2$ & $\mathbf{86.2\pm0.3}$& \textbf{93.8}& \textbf{93.5}& \textbf{0.086}\\
 gap & DPS-style plug-in & $5.9\pm0.3$ & $82.7\pm0.4$ & 91.9 & 91.7 & 0.231\\
 gap & TMPD-inspired & $5.1\pm0.3$ & $84.6\pm0.7$ & 92.7 & 92.4 & 0.365\\
-gap & LGD-MC & $5.1\pm0.4$ & $86.1\pm0.2$ & 93.5 & 93.3 & 0.473\\
-gap & TFG & $10.9\pm0.2$ & $55.5\pm1.4$ & 76.4 & 76.2 & 0.300\\
-gap & BDG, $\tau_m=0.5$ & $6.8\pm0.8$ & $77.4\pm1.1$ & 90.1 & 90.0 & 0.231\\
+gap & LGD-MC & $5.1\pm0.4$ & $\underline{86.1\pm0.2}$& \underline{93.5}& \underline{93.3}& 0.473\\
+gap & TFG & $\mathbf{10.9\pm0.2}$& $55.5\pm1.4$ & 76.4 & 76.2 & 0.300\\
+gap & BDG, $\tau_m=0.5$ & $\underline{6.8\pm0.8}$& $77.4\pm1.1$ & 90.1 & 90.0 & 0.231\\
 gap & BDG, $\tau_m=1$ & $5.0\pm0.4$ & $85.6\pm0.3$ & 93.4 & 93.1 & 0.231\\
 \bottomrule
 \end{tabular}
@@ -484,20 +484,20 @@ gap & BDG, $\tau_m=1$ & $5.0\pm0.4$ & $85.6\pm0.3$ & 93.4 & 93.1 & 0.231\\
 % BEGIN DATA FULL-EDM
 \begin{table}[!htbp]
 \centering\small
-\caption{Complete headline evaluation on borrowed EDMsecond. IB is decoded; IB and stability show percent mean $\pm$ seed sd. Validity and distinct-valid yield (DV) are percentages; time is recorded cell wall-clock divided by attempts. $w=1$, $t\ge0.5$, three seeds, $n=2{,}000$ each.}
+\caption{Complete headline evaluation on borrowed EDMsecond. IB is decoded; IB and stability show percent mean $\pm$ seed sd. Validity and distinct-valid yield (DV) are percentages; time is recorded cell wall-clock divided by attempts. $w=1$, $t\ge0.5$, three seeds, $n=2{,}000$ each. Bold marks the best entry of each panel in each marked column and underline the runner-up; panels are ranked separately because their rows are not comparable across panels, a column is marked only where one direction is better, and a tie is left unmarked.}
 \label{tab:full-edm}
 \begin{tabular}{llccccc}
 \toprule
 Property & Method & IB$\uparrow$ & Stable$\uparrow$ & Valid$\uparrow$ & DV$\uparrow$ & s/sample\\
 \midrule
-$\mu$ & Unguided & $9.4\pm0.2$ & $67.2\pm1.3$ & 86.0 & 85.8 & 0.087\\
-$\mu$ & DPS-style plug-in & $11.2\pm1.1$ & $62.2\pm0.6$ & 82.8 & 82.7 & 0.210\\
+$\mu$ & Unguided & $\underline{9.4\pm0.2}$& $\mathbf{67.2\pm1.3}$& \textbf{86.0}& \textbf{85.8}& \textbf{0.087}\\
+$\mu$ & DPS-style plug-in & $\mathbf{11.2\pm1.1}$& $\underline{62.2\pm0.6}$& \underline{82.8}& \underline{82.7}& \underline{0.210}\\
 \midrule
-$\alpha$ & Unguided & $5.4\pm0.7$ & $67.2\pm1.2$ & 86.0 & 85.8 & 0.087\\
-$\alpha$ & DPS-style plug-in & $6.1\pm0.4$ & $64.6\pm0.8$ & 84.1 & 83.9 & 0.208\\
+$\alpha$ & Unguided & $\underline{5.4\pm0.7}$& $\mathbf{67.2\pm1.2}$& \textbf{86.0}& \textbf{85.8}& \textbf{0.087}\\
+$\alpha$ & DPS-style plug-in & $\mathbf{6.1\pm0.4}$& $\underline{64.6\pm0.8}$& \underline{84.1}& \underline{83.9}& \underline{0.208}\\
 \midrule
-gap & Unguided & $10.8\pm0.7$ & $67.1\pm1.3$ & 86.0 & 85.8 & 0.087\\
-gap & DPS-style plug-in & $12.8\pm0.7$ & $57.9\pm1.7$ & 80.3 & 80.2 & 0.209\\
+gap & Unguided & $\underline{10.8\pm0.7}$& $\mathbf{67.1\pm1.3}$& \textbf{86.0}& \textbf{85.8}& \textbf{0.087}\\
+gap & DPS-style plug-in & $\mathbf{12.8\pm0.7}$& $\underline{57.9\pm1.7}$& \underline{80.3}& \underline{80.2}& \underline{0.209}\\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -506,20 +506,20 @@ gap & DPS-style plug-in & $12.8\pm0.7$ & $57.9\pm1.7$ & 80.3 & 80.2 & 0.209\\
 % BEGIN DATA FULL-VP
 \begin{table}[!htbp]
 \centering\small
-\caption{Complete headline evaluation on our VP diffusion. IB is decoded; IB and stability show percent mean $\pm$ seed sd. Validity and distinct-valid yield (DV) are percentages; time is recorded cell wall-clock divided by attempts. $w=1$, $t\ge0.5$, three seeds, $n=2{,}000$ each.}
+\caption{Complete headline evaluation on our VP diffusion. IB is decoded; IB and stability show percent mean $\pm$ seed sd. Validity and distinct-valid yield (DV) are percentages; time is recorded cell wall-clock divided by attempts. $w=1$, $t\ge0.5$, three seeds, $n=2{,}000$ each. Bold marks the best entry of each panel in each marked column and underline the runner-up; panels are ranked separately because their rows are not comparable across panels, a column is marked only where one direction is better, and a tie is left unmarked.}
 \label{tab:full-vp}
 \begin{tabular}{llccccc}
 \toprule
 Property & Method & IB$\uparrow$ & Stable$\uparrow$ & Valid$\uparrow$ & DV$\uparrow$ & s/sample\\
 \midrule
-$\mu$ & Unguided & $8.7\pm0.8$ & $28.8\pm1.3$ & 66.2 & 66.1 & 0.048\\
-$\mu$ & DPS-style plug-in & $10.8\pm0.4$ & $26.2\pm0.9$ & 61.8 & 61.7 & 0.114\\
+$\mu$ & Unguided & $\underline{8.7\pm0.8}$& $\mathbf{28.8\pm1.3}$& \textbf{66.2}& \textbf{66.1}& \textbf{0.048}\\
+$\mu$ & DPS-style plug-in & $\mathbf{10.8\pm0.4}$& $\underline{26.2\pm0.9}$& \underline{61.8}& \underline{61.7}& \underline{0.114}\\
 \midrule
-$\alpha$ & Unguided & $5.2\pm0.6$ & $28.8\pm1.3$ & 66.2 & 66.1 & 0.048\\
-$\alpha$ & DPS-style plug-in & $5.4\pm0.4$ & $25.2\pm1.5$ & 58.7 & 58.6 & 0.114\\
+$\alpha$ & Unguided & $\underline{5.2\pm0.6}$& $\mathbf{28.8\pm1.3}$& \textbf{66.2}& \textbf{66.1}& \textbf{0.048}\\
+$\alpha$ & DPS-style plug-in & $\mathbf{5.4\pm0.4}$& $\underline{25.2\pm1.5}$& \underline{58.7}& \underline{58.6}& \underline{0.114}\\
 \midrule
-gap & Unguided & $9.8\pm0.6$ & $28.8\pm1.3$ & 66.2 & 66.1 & 0.048\\
-gap & DPS-style plug-in & $12.4\pm1.2$ & $23.2\pm0.6$ & 57.3 & 57.3 & 0.114\\
+gap & Unguided & $\underline{9.8\pm0.6}$& $\mathbf{28.8\pm1.3}$& \textbf{66.2}& \textbf{66.1}& \textbf{0.048}\\
+gap & DPS-style plug-in & $\mathbf{12.4\pm1.2}$& $\underline{23.2\pm0.6}$& \underline{57.3}& \underline{57.3}& \underline{0.114}\\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -527,7 +527,7 @@ gap & DPS-style plug-in & $12.4\pm1.2$ & $23.2\pm0.6$ & 57.3 & 57.3 & 0.114\\
 % BEGIN DATA CONTRASTS
 \begin{table}[!htbp]
 \centering\small
-\caption{BDG minus plug-in on decoded molecular IB. Differences, paired seed sd and the threshold-sized difference $2.99\,\mathrm{se}(\Delta)$ are in percentage points. The registered unpaired statistic is shown separately from descriptive pairing.}
+\caption{BDG minus plug-in on decoded molecular IB. Differences, paired seed sd and the threshold-sized difference $2.99\,\mathrm{se}(\Delta)$ are in percentage points. The registered unpaired statistic is shown separately from descriptive pairing. Bold marks the best entry in each marked column and underline the runner-up; a column is marked only where one direction is better, and a tie is left unmarked, never broken arbitrarily. The test statistic and its threshold are left unmarked: ranking significance is not a comparison this protocol makes.}
 \label{tab:contrasts}
 \begin{tabular}{llccccc}
 \toprule
@@ -537,9 +537,9 @@ fm & $\mu$ & 0.5 & +0.63 & 1.45 & +1.11 & 1.70\\
 fm & $\mu$ & 1 & -1.68 & 0.19 & -3.11 & 1.62\\
 fm & $\alpha$ & 0.5 & +0.90 & 0.50 & +2.00 & 1.35\\
 fm & $\alpha$ & 1 & -0.43 & 0.75 & -1.01 & 1.28\\
-fm & gap & 0.5 & +1.52 & 0.21 & +2.44 & 1.86\\
+fm & gap & 0.5 & \textbf{+1.52}& 0.21 & +2.44 & 1.86\\
 fm & gap & 1 & -2.07 & 0.72 & -3.54 & 1.75\\
-equifm & $\mu$ & 0.5 & +1.25 & 0.70 & +2.15 & 1.74\\
+equifm & $\mu$ & 0.5 & \underline{+1.25}& 0.70 & +2.15 & 1.74\\
 equifm & $\mu$ & 1 & -1.93 & 0.62 & -3.55 & 1.63\\
 equifm & $\alpha$ & 0.5 & +0.45 & 0.13 & +1.65 & 0.81\\
 equifm & $\alpha$ & 1 & -0.02 & 0.31 & -0.06 & 0.77\\
@@ -563,18 +563,18 @@ Table~\ref{tab:exchange} compares $\Delta\mathrm{IB}/(-\Delta\mathrm{stability})
 % BEGIN DATA EXCHANGE
 \begin{table}[!htbp]
 \centering\small
-\caption{Exploratory coverage gained per stability point lost. All differences use the ablation-stage zero-gain reference at $w=1$. BDG changes $\eta$ at $\tau_m=0.5,w=1$; the strength control keeps $\eta=0$ and increases $w$ to 4. Ratios use decoded IB and molecular stability means, not joint useful yield.}
+\caption{Exploratory coverage gained per stability point lost. All differences use the ablation-stage zero-gain reference at $w=1$. BDG changes $\eta$ at $\tau_m=0.5,w=1$; the strength control keeps $\eta=0$ and increases $w$ to 4. Ratios use decoded IB and molecular stability means, not joint useful yield. Bold marks the best entry in each marked column and underline the runner-up; a column is marked only where one direction is better, and a tie is left unmarked, never broken arbitrarily.}
 \label{tab:exchange}
 \begin{tabular}{llccc}
 \toprule
 Backend & Property & BDG $\eta=4$ & BDG $\eta=8$ & Plug-in $w=4$\\
 \midrule
-Our FM & $\mu$ & 1.267 & 0.792 & 0.534\\
-Our FM & $\alpha$ & 1.174 & 0.806 & 0.439\\
-Our FM & gap & 0.423 & 0.524 & 0.383\\
-EquiFM & $\mu$ & 0.370 & 0.385 & 0.369\\
-EquiFM & $\alpha$ & 0.053 & 0.057 & 0.083\\
-EquiFM & gap & 0.149 & 0.238 & 0.217\\
+Our FM & $\mu$ & \textbf{1.267}& \underline{0.792}& 0.534\\
+Our FM & $\alpha$ & \textbf{1.174}& \underline{0.806}& 0.439\\
+Our FM & gap & \underline{0.423}& \textbf{0.524}& 0.383\\
+EquiFM & $\mu$ & \underline{0.370}& \textbf{0.385}& 0.369\\
+EquiFM & $\alpha$ & 0.053 & \underline{0.057}& \textbf{0.083}\\
+EquiFM & gap & 0.149 & \textbf{0.238}& \underline{0.217}\\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -593,7 +593,7 @@ EquiFM & gap & 0.149 & 0.238 & 0.217\\
 % BEGIN DATA GRID-FM-MU
 \begin{table}[!htbp]
 \centering\small
-\caption{Our FM, $\mu$: all gain/setpoint ablations at $w=1,4$, q50 target $y=2.4932$ D, half-width $\delta=0.17541$ D. Each row uses three seeds of 2,000 samples. IB and molecular stability are percent mean $\pm$ seed sd. MAE, signed bias of the pooled mean, and pooled standard deviation $\sigma$ are decoded and normalized by $\delta$. The $\eta=0$ row removes the residual; its setpoint is irrelevant.}
+\caption{Our FM, $\mu$: all gain/setpoint ablations at $w=1,4$, q50 target $y=2.4932$ D, half-width $\delta=0.17541$ D. Each row uses three seeds of 2,000 samples. IB and molecular stability are percent mean $\pm$ seed sd. MAE, signed bias of the pooled mean, and pooled standard deviation $\sigma$ are decoded and normalized by $\delta$. The $\eta=0$ row removes the residual; its setpoint is irrelevant. Bold marks the best entry in each marked column and underline the runner-up; a column is marked only where one direction is better, and a tie is left unmarked, never broken arbitrarily.}
 \label{tab:grid-fm-mu}
 \begin{tabular}{cccccccc}
 \toprule
@@ -610,14 +610,14 @@ $w$ & $\eta$ & $\tau_m$ & IB$\uparrow$ & MAE/$\delta\downarrow$ & Bias/$\delta$ 
 1 & 2 & 1.5 & $8.5\pm0.5$ & 6.81 & +1.45 & 8.82 & $39.4\pm0.9$\\
 1 & 4 & 0.5 & $11.2\pm1.1$ & 5.15 & +0.66 & 6.35 & $35.1\pm1.1$\\
 1 & 4 & 0.75 & $9.8\pm0.5$ & 5.91 & +1.03 & 7.30 & $38.9\pm0.3$\\
-1 & 4 & 1 & $8.9\pm0.2$ & 6.46 & +1.26 & 8.17 & $40.5\pm0.8$\\
+1 & 4 & 1 & $8.9\pm0.2$ & 6.46 & +1.26 & 8.17 & $\mathbf{40.5\pm0.8}$\\
 1 & 4 & 1.5 & $8.2\pm0.7$ & 7.27 & +1.71 & 9.93 & $38.2\pm1.0$\\
 1 & 8 & 0.5 & $11.9\pm0.3$ & 4.91 & +0.62 & 6.07 & $34.0\pm0.5$\\
 1 & 8 & 0.75 & $9.7\pm0.4$ & 5.82 & +1.02 & 7.21 & $38.7\pm0.5$\\
-1 & 8 & 1 & $8.6\pm0.4$ & 6.64 & +1.37 & 8.36 & $40.4\pm0.7$\\
+1 & 8 & 1 & $8.6\pm0.4$ & 6.64 & +1.37 & 8.36 & $\underline{40.4\pm0.7}$\\
 1 & 8 & 1.5 & $7.6\pm0.2$ & 7.85 & +2.08 & 10.96 & $37.6\pm1.2$\\
 \midrule
-4 & 0 & -- & $13.4\pm0.4$ & 4.63 & +0.31 & 5.84 & $30.3\pm0.6$\\
+4 & 0 & -- & $\underline{13.4\pm0.4}$& 4.63 & +0.31 & 5.84 & $30.3\pm0.6$\\
 4 & 1 & 0.5 & $12.9\pm0.5$ & 4.70 & +0.27 & 5.85 & $31.2\pm0.5$\\
 4 & 1 & 0.75 & $11.6\pm0.5$ & 5.10 & +0.44 & 6.31 & $34.3\pm0.4$\\
 4 & 1 & 1 & $11.0\pm0.3$ & 5.33 & +0.58 & 6.60 & $35.4\pm0.7$\\
@@ -626,11 +626,11 @@ $w$ & $\eta$ & $\tau_m$ & IB$\uparrow$ & MAE/$\delta\downarrow$ & Bias/$\delta$ 
 4 & 2 & 0.75 & $10.5\pm0.7$ & 5.40 & +0.62 & 6.71 & $36.0\pm1.1$\\
 4 & 2 & 1 & $9.7\pm0.4$ & 5.88 & +0.75 & 7.30 & $39.1\pm0.9$\\
 4 & 2 & 1.5 & $8.1\pm0.8$ & 6.76 & +1.09 & 8.79 & $38.6\pm1.2$\\
-4 & 4 & 0.5 & $13.8\pm0.4$ & 4.50 & +0.34 & 5.58 & $33.5\pm0.6$\\
+4 & 4 & 0.5 & $\mathbf{13.8\pm0.4}$& \underline{4.50}& +0.34 & 5.58 & $33.5\pm0.6$\\
 4 & 4 & 0.75 & $10.9\pm0.6$ & 5.40 & +0.58 & 6.70 & $37.4\pm1.0$\\
 4 & 4 & 1 & $9.2\pm0.6$ & 6.28 & +0.82 & 7.83 & $39.9\pm0.2$\\
 4 & 4 & 1.5 & $8.0\pm0.3$ & 7.61 & +1.40 & 10.44 & $36.6\pm1.0$\\
-4 & 8 & 0.5 & $13.0\pm0.5$ & 4.46 & +0.49 & 5.54 & $34.0\pm1.6$\\
+4 & 8 & 0.5 & $13.0\pm0.5$ & \textbf{4.46}& +0.49 & 5.54 & $34.0\pm1.6$\\
 4 & 8 & 0.75 & $10.8\pm0.3$ & 5.42 & +1.01 & 6.81 & $37.7\pm0.5$\\
 4 & 8 & 1 & $9.1\pm0.8$ & 6.41 & +1.01 & 8.09 & $40.3\pm0.7$\\
 4 & 8 & 1.5 & $7.0\pm0.2$ & 8.05 & +1.55 & 11.08 & $37.5\pm0.6$\\
@@ -642,7 +642,7 @@ $w$ & $\eta$ & $\tau_m$ & IB$\uparrow$ & MAE/$\delta\downarrow$ & Bias/$\delta$ 
 % BEGIN DATA GRID-FM-ALPHA
 \begin{table}[!htbp]
 \centering\small
-\caption{Our FM, $\alpha$: all gain/setpoint ablations at $w=1,4$, q50 target $y=75.5400$ Bohr$^3$, half-width $\delta=0.50618$ Bohr$^3$. Each row uses three seeds of 2,000 samples. IB and molecular stability are percent mean $\pm$ seed sd. MAE, signed bias of the pooled mean, and pooled standard deviation $\sigma$ are decoded and normalized by $\delta$. The $\eta=0$ row removes the residual; its setpoint is irrelevant.}
+\caption{Our FM, $\alpha$: all gain/setpoint ablations at $w=1,4$, q50 target $y=75.5400$ Bohr$^3$, half-width $\delta=0.50618$ Bohr$^3$. Each row uses three seeds of 2,000 samples. IB and molecular stability are percent mean $\pm$ seed sd. MAE, signed bias of the pooled mean, and pooled standard deviation $\sigma$ are decoded and normalized by $\delta$. The $\eta=0$ row removes the residual; its setpoint is irrelevant. Bold marks the best entry in each marked column and underline the runner-up; a column is marked only where one direction is better, and a tie is left unmarked, never broken arbitrarily.}
 \label{tab:grid-fm-alpha}
 \begin{tabular}{cccccccc}
 \toprule
@@ -655,7 +655,7 @@ $w$ & $\eta$ & $\tau_m$ & IB$\uparrow$ & MAE/$\delta\downarrow$ & Bias/$\delta$ 
 1 & 1 & 1.5 & $5.8\pm0.4$ & 11.74 & +1.64 & 14.91 & $38.3\pm1.0$\\
 1 & 2 & 0.5 & $7.1\pm0.6$ & 9.29 & +1.77 & 11.90 & $37.0\pm1.1$\\
 1 & 2 & 0.75 & $6.2\pm0.4$ & 10.56 & +1.82 & 13.34 & $37.8\pm1.3$\\
-1 & 2 & 1 & $5.7\pm0.3$ & 11.59 & +1.71 & 14.67 & $38.5\pm0.5$\\
+1 & 2 & 1 & $5.7\pm0.3$ & 11.59 & +1.71 & 14.67 & $\underline{38.5\pm0.5}$\\
 1 & 2 & 1.5 & $5.2\pm0.2$ & 12.72 & +1.16 & 16.39 & $38.3\pm0.7$\\
 1 & 4 & 0.5 & $7.0\pm0.5$ & 9.00 & +1.78 & 11.56 & $36.4\pm1.0$\\
 1 & 4 & 0.75 & $6.2\pm0.2$ & 10.56 & +1.80 & 13.34 & $37.6\pm1.2$\\
@@ -675,13 +675,13 @@ $w$ & $\eta$ & $\tau_m$ & IB$\uparrow$ & MAE/$\delta\downarrow$ & Bias/$\delta$ 
 4 & 2 & 0.75 & $6.8\pm0.2$ & 9.75 & +3.12 & 12.12 & $36.5\pm0.4$\\
 4 & 2 & 1 & $6.0\pm0.5$ & 10.97 & +2.99 & 13.66 & $37.9\pm0.7$\\
 4 & 2 & 1.5 & $5.4\pm0.4$ & 12.74 & +2.22 & 16.31 & $38.2\pm0.4$\\
-4 & 4 & 0.5 & $7.3\pm0.1$ & 8.38 & +2.94 & 10.42 & $33.5\pm0.9$\\
+4 & 4 & 0.5 & $7.3\pm0.1$ & \underline{8.38}& +2.94 & 10.42 & $33.5\pm0.9$\\
 4 & 4 & 0.75 & $6.5\pm0.4$ & 10.10 & +3.09 & 12.52 & $36.8\pm0.8$\\
 4 & 4 & 1 & $5.6\pm0.3$ & 11.80 & +2.77 & 14.86 & $38.1\pm1.0$\\
 4 & 4 & 1.5 & $4.6\pm0.3$ & 14.33 & +1.20 & 18.70 & $36.8\pm1.3$\\
-4 & 8 & 0.5 & $8.0\pm0.5$ & 8.21 & +2.93 & 10.23 & $33.1\pm0.1$\\
+4 & 8 & 0.5 & $\mathbf{8.0\pm0.5}$& \textbf{8.21}& +2.93 & 10.23 & $33.1\pm0.1$\\
 4 & 8 & 0.75 & $6.4\pm0.4$ & 10.27 & +3.08 & 12.73 & $37.2\pm0.9$\\
-4 & 8 & 1 & $5.4\pm0.1$ & 12.26 & +2.51 & 15.68 & $38.8\pm0.9$\\
+4 & 8 & 1 & $5.4\pm0.1$ & 12.26 & +2.51 & 15.68 & $\mathbf{38.8\pm0.9}$\\
 4 & 8 & 1.5 & $4.2\pm0.3$ & 16.11 & +0.49 & 20.85 & $35.8\pm0.8$\\
 \bottomrule
 \end{tabular}
@@ -691,7 +691,7 @@ $w$ & $\eta$ & $\tau_m$ & IB$\uparrow$ & MAE/$\delta\downarrow$ & Bias/$\delta$ 
 % BEGIN DATA GRID-FM-GAP
 \begin{table}[!htbp]
 \centering\small
-\caption{Our FM, gap: all gain/setpoint ablations at $w=1,4$, q50 target $y=0.2496$ Ha, half-width $\delta=0.00748$ Ha. Each row uses three seeds of 2,000 samples. IB and molecular stability are percent mean $\pm$ seed sd. MAE, signed bias of the pooled mean, and pooled standard deviation $\sigma$ are decoded and normalized by $\delta$. The $\eta=0$ row removes the residual; its setpoint is irrelevant.}
+\caption{Our FM, gap: all gain/setpoint ablations at $w=1,4$, q50 target $y=0.2496$ Ha, half-width $\delta=0.00748$ Ha. Each row uses three seeds of 2,000 samples. IB and molecular stability are percent mean $\pm$ seed sd. MAE, signed bias of the pooled mean, and pooled standard deviation $\sigma$ are decoded and normalized by $\delta$. The $\eta=0$ row removes the residual; its setpoint is irrelevant. Bold marks the best entry in each marked column and underline the runner-up; a column is marked only where one direction is better, and a tie is left unmarked, never broken arbitrarily.}
 \label{tab:grid-fm-gap}
 \begin{tabular}{cccccccc}
 \toprule
@@ -705,7 +705,7 @@ $w$ & $\eta$ & $\tau_m$ & IB$\uparrow$ & MAE/$\delta\downarrow$ & Bias/$\delta$ 
 1 & 2 & 0.5 & $13.7\pm0.5$ & 4.24 & -1.37 & 4.95 & $31.0\pm0.9$\\
 1 & 2 & 0.75 & $12.4\pm0.9$ & 4.60 & -1.29 & 5.40 & $35.0\pm1.3$\\
 1 & 2 & 1 & $11.3\pm0.8$ & 4.90 & -1.21 & 5.75 & $37.4\pm0.9$\\
-1 & 2 & 1.5 & $10.3\pm0.4$ & 5.31 & -1.15 & 6.24 & $38.2\pm0.7$\\
+1 & 2 & 1.5 & $10.3\pm0.4$ & 5.31 & -1.15 & 6.24 & $\mathbf{38.2\pm0.7}$\\
 1 & 4 & 0.5 & $14.2\pm0.8$ & 4.13 & -1.36 & 4.82 & $30.0\pm0.4$\\
 1 & 4 & 0.75 & $12.0\pm0.4$ & 4.62 & -1.31 & 5.40 & $35.1\pm1.0$\\
 1 & 4 & 1 & $10.6\pm0.2$ & 5.09 & -1.17 & 5.95 & $37.6\pm0.8$\\
@@ -724,13 +724,13 @@ $w$ & $\eta$ & $\tau_m$ & IB$\uparrow$ & MAE/$\delta\downarrow$ & Bias/$\delta$ 
 4 & 2 & 0.75 & $13.4\pm0.7$ & 4.28 & -1.25 & 5.05 & $30.2\pm0.7$\\
 4 & 2 & 1 & $11.9\pm0.2$ & 4.65 & -1.19 & 5.47 & $34.9\pm0.6$\\
 4 & 2 & 1.5 & $9.6\pm0.3$ & 5.40 & -1.10 & 6.34 & $36.5\pm0.7$\\
-4 & 4 & 0.5 & $16.4\pm0.4$ & 3.74 & -1.20 & 4.42 & $27.0\pm0.3$\\
+4 & 4 & 0.5 & $\underline{16.4\pm0.4}$& \underline{3.74}& -1.20 & 4.42 & $27.0\pm0.3$\\
 4 & 4 & 0.75 & $13.0\pm0.4$ & 4.35 & -1.14 & 5.14 & $33.0\pm1.4$\\
 4 & 4 & 1 & $10.5\pm0.8$ & 4.96 & -1.08 & 5.83 & $36.6\pm0.6$\\
 4 & 4 & 1.5 & $7.6\pm0.6$ & 6.06 & -0.90 & 7.05 & $33.7\pm1.1$\\
-4 & 8 & 0.5 & $16.5\pm0.4$ & 3.67 & -0.97 & 4.41 & $27.0\pm0.6$\\
+4 & 8 & 0.5 & $\mathbf{16.5\pm0.4}$& \textbf{3.67}& -0.97 & 4.41 & $27.0\pm0.6$\\
 4 & 8 & 0.75 & $13.5\pm1.1$ & 4.39 & -0.96 & 5.24 & $34.1\pm0.3$\\
-4 & 8 & 1 & $10.4\pm0.2$ & 5.08 & -1.05 & 5.97 & $38.1\pm0.6$\\
+4 & 8 & 1 & $10.4\pm0.2$ & 5.08 & -1.05 & 5.97 & $\underline{38.1\pm0.6}$\\
 4 & 8 & 1.5 & $6.5\pm0.6$ & 6.47 & -0.77 & 7.47 & $31.5\pm1.6$\\
 \bottomrule
 \end{tabular}
@@ -740,7 +740,7 @@ $w$ & $\eta$ & $\tau_m$ & IB$\uparrow$ & MAE/$\delta\downarrow$ & Bias/$\delta$ 
 % BEGIN DATA GRID-EQUIFM-MU
 \begin{table}[!htbp]
 \centering\small
-\caption{Pretrained EquiFM (flow matching), $\mu$: all gain/setpoint ablations at $w=1,4$, q50 target $y=2.4932$ D, half-width $\delta=0.15675$ D. Each row uses three seeds of 2,000 samples. IB and molecular stability are percent mean $\pm$ seed sd. MAE, signed bias of the pooled mean, and pooled standard deviation $\sigma$ are decoded and normalized by $\delta$. The $\eta=0$ row removes the residual; its setpoint is irrelevant.}
+\caption{Pretrained EquiFM (flow matching), $\mu$: all gain/setpoint ablations at $w=1,4$, q50 target $y=2.4932$ D, half-width $\delta=0.15675$ D. Each row uses three seeds of 2,000 samples. IB and molecular stability are percent mean $\pm$ seed sd. MAE, signed bias of the pooled mean, and pooled standard deviation $\sigma$ are decoded and normalized by $\delta$. The $\eta=0$ row removes the residual; its setpoint is irrelevant. Bold marks the best entry in each marked column and underline the runner-up; a column is marked only where one direction is better, and a tie is left unmarked, never broken arbitrarily.}
 \label{tab:grid-equifm-mu}
 \begin{tabular}{cccccccc}
 \toprule
@@ -773,11 +773,11 @@ $w$ & $\eta$ & $\tau_m$ & IB$\uparrow$ & MAE/$\delta\downarrow$ & Bias/$\delta$ 
 4 & 2 & 0.75 & $10.9\pm0.6$ & 5.46 & +0.98 & 6.82 & $81.3\pm0.3$\\
 4 & 2 & 1 & $9.8\pm0.4$ & 6.00 & +1.21 & 7.41 & $84.8\pm0.6$\\
 4 & 2 & 1.5 & $8.7\pm0.9$ & 7.06 & +1.59 & 9.34 & $84.8\pm1.0$\\
-4 & 4 & 0.5 & $13.2\pm0.7$ & 4.70 & +0.55 & 5.88 & $76.5\pm0.4$\\
+4 & 4 & 0.5 & $13.2\pm0.7$ & \underline{4.70}& +0.55 & 5.88 & $76.5\pm0.4$\\
 4 & 4 & 0.75 & $11.0\pm0.7$ & 5.62 & +1.07 & 7.03 & $83.3\pm0.7$\\
 4 & 4 & 1 & $8.7\pm0.5$ & 6.52 & +1.33 & 8.16 & $85.5\pm0.8$\\
 4 & 4 & 1.5 & $7.8\pm0.2$ & 7.84 & +1.81 & 10.95 & $81.7\pm0.7$\\
-4 & 8 & 0.5 & $14.2\pm0.2$ & 4.60 & +0.49 & 5.87 & $78.5\pm0.4$\\
+4 & 8 & 0.5 & $\mathbf{14.2\pm0.2}$& \textbf{4.60}& +0.49 & 5.87 & $78.5\pm0.4$\\
 4 & 8 & 0.75 & $10.8\pm0.4$ & 5.69 & +1.13 & 7.17 & $83.4\pm0.7$\\
 4 & 8 & 1 & $8.2\pm0.5$ & 6.87 & +1.58 & 8.72 & $85.2\pm0.8$\\
 4 & 8 & 1.5 & $7.0\pm0.3$ & 8.25 & +1.93 & 11.54 & $81.2\pm0.6$\\
@@ -789,7 +789,7 @@ $w$ & $\eta$ & $\tau_m$ & IB$\uparrow$ & MAE/$\delta\downarrow$ & Bias/$\delta$ 
 % BEGIN DATA GRID-EQUIFM-ALPHA
 \begin{table}[!htbp]
 \centering\small
-\caption{Pretrained EquiFM (flow matching), $\alpha$: all gain/setpoint ablations at $w=1,4$, q50 target $y=75.5400$ Bohr$^3$, half-width $\delta=0.16480$ Bohr$^3$. Each row uses three seeds of 2,000 samples. IB and molecular stability are percent mean $\pm$ seed sd. MAE, signed bias of the pooled mean, and pooled standard deviation $\sigma$ are decoded and normalized by $\delta$. The $\eta=0$ row removes the residual; its setpoint is irrelevant.}
+\caption{Pretrained EquiFM (flow matching), $\alpha$: all gain/setpoint ablations at $w=1,4$, q50 target $y=75.5400$ Bohr$^3$, half-width $\delta=0.16480$ Bohr$^3$. Each row uses three seeds of 2,000 samples. IB and molecular stability are percent mean $\pm$ seed sd. MAE, signed bias of the pooled mean, and pooled standard deviation $\sigma$ are decoded and normalized by $\delta$. The $\eta=0$ row removes the residual; its setpoint is irrelevant. Bold marks the best entry in each marked column and underline the runner-up; a column is marked only where one direction is better, and a tie is left unmarked, never broken arbitrarily.}
 \label{tab:grid-equifm-alpha}
 \begin{tabular}{cccccccc}
 \toprule
@@ -803,14 +803,14 @@ $w$ & $\eta$ & $\tau_m$ & IB$\uparrow$ & MAE/$\delta\downarrow$ & Bias/$\delta$ 
 1 & 2 & 0.5 & $2.2\pm0.4$ & 29.62 & -11.95 & 37.43 & $78.9\pm1.1$\\
 1 & 2 & 0.75 & $2.1\pm0.3$ & 31.97 & -11.30 & 40.62 & $82.7\pm0.1$\\
 1 & 2 & 1 & $2.1\pm0.1$ & 34.28 & -10.96 & 43.51 & $84.7\pm0.5$\\
-1 & 2 & 1.5 & $2.0\pm0.3$ & 37.81 & -12.09 & 48.48 & $85.2\pm0.5$\\
+1 & 2 & 1.5 & $2.0\pm0.3$ & 37.81 & -12.09 & 48.48 & $\mathbf{85.2\pm0.5}$\\
 1 & 4 & 0.5 & $2.4\pm0.3$ & 28.49 & -11.89 & 35.97 & $76.8\pm0.2$\\
 1 & 4 & 0.75 & $2.2\pm0.2$ & 31.86 & -11.40 & 40.53 & $82.6\pm0.2$\\
 1 & 4 & 1 & $2.0\pm0.1$ & 35.53 & -11.10 & 45.22 & $84.8\pm0.5$\\
 1 & 4 & 1.5 & $1.7\pm0.3$ & 42.28 & -13.62 & 54.00 & $83.1\pm0.8$\\
 1 & 8 & 0.5 & $2.5\pm0.1$ & 27.31 & -11.93 & 34.50 & $74.6\pm0.6$\\
 1 & 8 & 0.75 & $2.1\pm0.1$ & 31.53 & -11.46 & 40.22 & $82.0\pm0.5$\\
-1 & 8 & 1 & $2.0\pm0.2$ & 36.79 & -11.39 & 47.03 & $85.1\pm0.2$\\
+1 & 8 & 1 & $2.0\pm0.2$ & 36.79 & -11.39 & 47.03 & $\underline{85.1\pm0.2}$\\
 1 & 8 & 1.5 & $1.5\pm0.4$ & 46.61 & -15.04 & 58.60 & $79.3\pm0.5$\\
 \midrule
 4 & 0 & -- & $2.6\pm0.1$ & 27.68 & -9.36 & 36.11 & $76.2\pm0.4$\\
@@ -822,11 +822,11 @@ $w$ & $\eta$ & $\tau_m$ & IB$\uparrow$ & MAE/$\delta\downarrow$ & Bias/$\delta$ 
 4 & 2 & 0.75 & $2.3\pm0.2$ & 28.50 & -9.40 & 37.20 & $77.6\pm0.6$\\
 4 & 2 & 1 & $2.4\pm0.3$ & 32.10 & -8.77 & 41.32 & $81.0\pm0.6$\\
 4 & 2 & 1.5 & $2.0\pm0.1$ & 38.30 & -9.75 & 49.83 & $83.2\pm0.2$\\
-4 & 4 & 0.5 & $2.7\pm0.3$ & 24.96 & -10.87 & 32.39 & $71.0\pm0.9$\\
+4 & 4 & 0.5 & $2.7\pm0.3$ & \underline{24.96}& -10.87 & 32.39 & $71.0\pm0.9$\\
 4 & 4 & 0.75 & $2.4\pm0.2$ & 29.08 & -9.49 & 37.85 & $78.4\pm0.8$\\
 4 & 4 & 1 & $2.2\pm0.3$ & 34.67 & -8.75 & 44.55 & $83.7\pm0.7$\\
 4 & 4 & 1.5 & $1.6\pm0.2$ & 45.53 & -12.35 & 58.23 & $78.7\pm0.4$\\
-4 & 8 & 0.5 & $2.9\pm0.1$ & 24.27 & -11.20 & 31.38 & $69.1\pm0.7$\\
+4 & 8 & 0.5 & $\mathbf{2.9\pm0.1}$& \textbf{24.27}& -11.20 & 31.38 & $69.1\pm0.7$\\
 4 & 8 & 0.75 & $2.3\pm0.2$ & 29.59 & -9.44 & 38.31 & $78.3\pm0.6$\\
 4 & 8 & 1 & $1.8\pm0.2$ & 36.45 & -9.33 & 47.05 & $83.7\pm0.6$\\
 4 & 8 & 1.5 & $1.4\pm0.2$ & 50.89 & -13.74 & 63.38 & $72.0\pm0.3$\\
@@ -838,7 +838,7 @@ $w$ & $\eta$ & $\tau_m$ & IB$\uparrow$ & MAE/$\delta\downarrow$ & Bias/$\delta$ 
 % BEGIN DATA GRID-EQUIFM-GAP
 \begin{table}[!htbp]
 \centering\small
-\caption{Pretrained EquiFM (flow matching), gap: all gain/setpoint ablations at $w=1,4$, q50 target $y=0.2496$ Ha, half-width $\delta=0.00374$ Ha. Each row uses three seeds of 2,000 samples. IB and molecular stability are percent mean $\pm$ seed sd. MAE, signed bias of the pooled mean, and pooled standard deviation $\sigma$ are decoded and normalized by $\delta$. The $\eta=0$ row removes the residual; its setpoint is irrelevant.}
+\caption{Pretrained EquiFM (flow matching), gap: all gain/setpoint ablations at $w=1,4$, q50 target $y=0.2496$ Ha, half-width $\delta=0.00374$ Ha. Each row uses three seeds of 2,000 samples. IB and molecular stability are percent mean $\pm$ seed sd. MAE, signed bias of the pooled mean, and pooled standard deviation $\sigma$ are decoded and normalized by $\delta$. The $\eta=0$ row removes the residual; its setpoint is irrelevant. Bold marks the best entry in each marked column and underline the runner-up; a column is marked only where one direction is better, and a tie is left unmarked, never broken arbitrarily.}
 \label{tab:grid-equifm-gap}
 \begin{tabular}{cccccccc}
 \toprule
@@ -859,7 +859,7 @@ $w$ & $\eta$ & $\tau_m$ & IB$\uparrow$ & MAE/$\delta\downarrow$ & Bias/$\delta$ 
 1 & 4 & 1.5 & $4.1\pm0.2$ & 11.71 & -1.31 & 13.58 & $80.7\pm0.9$\\
 1 & 8 & 0.5 & $7.5\pm0.4$ & 7.88 & -0.99 & 9.40 & $75.9\pm1.0$\\
 1 & 8 & 0.75 & $5.9\pm0.3$ & 9.07 & -0.91 & 10.66 & $82.9\pm0.5$\\
-1 & 8 & 1 & $5.0\pm0.2$ & 10.48 & -1.32 & 12.22 & $86.5\pm0.7$\\
+1 & 8 & 1 & $5.0\pm0.2$ & 10.48 & -1.32 & 12.22 & $\mathbf{86.5\pm0.7}$\\
 1 & 8 & 1.5 & $3.7\pm0.7$ & 12.46 & -1.43 & 14.34 & $74.8\pm0.7$\\
 \midrule
 4 & 0 & -- & $7.1\pm0.4$ & 8.03 & -0.92 & 9.58 & $77.0\pm1.1$\\
@@ -867,17 +867,17 @@ $w$ & $\eta$ & $\tau_m$ & IB$\uparrow$ & MAE/$\delta\downarrow$ & Bias/$\delta$ 
 4 & 1 & 0.75 & $6.8\pm0.8$ & 8.30 & -0.88 & 9.85 & $78.6\pm0.7$\\
 4 & 1 & 1 & $6.7\pm0.6$ & 8.56 & -1.05 & 10.10 & $80.2\pm0.9$\\
 4 & 1 & 1.5 & $5.8\pm0.3$ & 9.07 & -1.00 & 10.67 & $82.7\pm0.6$\\
-4 & 2 & 0.5 & $7.9\pm0.5$ & 7.70 & -0.99 & 9.22 & $74.7\pm1.1$\\
+4 & 2 & 0.5 & $\underline{7.9\pm0.5}$& 7.70 & -0.99 & 9.22 & $74.7\pm1.1$\\
 4 & 2 & 0.75 & $6.5\pm0.8$ & 8.44 & -0.96 & 9.99 & $79.0\pm1.2$\\
 4 & 2 & 1 & $5.6\pm0.4$ & 9.23 & -0.84 & 10.84 & $83.5\pm0.7$\\
 4 & 2 & 1.5 & $4.7\pm0.0$ & 10.99 & -1.18 & 12.82 & $84.9\pm0.4$\\
-4 & 4 & 0.5 & $7.8\pm0.3$ & 7.50 & -0.75 & 9.02 & $73.2\pm1.6$\\
+4 & 4 & 0.5 & $7.8\pm0.3$ & \underline{7.50}& -0.75 & 9.02 & $73.2\pm1.6$\\
 4 & 4 & 0.75 & $6.4\pm0.6$ & 8.57 & -0.83 & 10.15 & $80.3\pm1.4$\\
 4 & 4 & 1 & $5.2\pm0.3$ & 9.95 & -1.01 & 11.64 & $84.9\pm0.5$\\
 4 & 4 & 1.5 & $3.8\pm0.7$ & 12.41 & -1.34 & 14.30 & $75.1\pm0.1$\\
-4 & 8 & 0.5 & $8.4\pm0.5$ & 7.32 & -0.70 & 8.87 & $72.1\pm0.6$\\
+4 & 8 & 0.5 & $\mathbf{8.4\pm0.5}$& \textbf{7.32}& -0.70 & 8.87 & $72.1\pm0.6$\\
 4 & 8 & 0.75 & $6.4\pm0.2$ & 8.72 & -0.71 & 10.32 & $81.1\pm0.9$\\
-4 & 8 & 1 & $4.6\pm0.2$ & 10.38 & -1.07 & 12.12 & $86.2\pm0.4$\\
+4 & 8 & 1 & $4.6\pm0.2$ & 10.38 & -1.07 & 12.12 & $\underline{86.2\pm0.4}$\\
 4 & 8 & 1.5 & $3.2\pm0.7$ & 13.22 & -1.59 & 15.10 & $68.3\pm1.1$\\
 \bottomrule
 \end{tabular}
@@ -908,24 +908,24 @@ At $t\ge0.3$, GC JSD improves relative to unguided for all measured methods, alt
 % BEGIN DATA M2-WINDOW
 \begin{table}[!htbp]
 \centering\small
-\caption{Window follow-up on both properties, $t\ge0.3$, $w=4$, three seeds of 2,000. IB is percent mean $\pm$ seed sd; differences and paired SD are percentage points against plug-in. JSD is $\times10^{-4}$, Clip is percent of guided sample-steps. This exploratory follow-up was added after diagnosing the original late window; the sign of the BDG effect differs between the two properties. Bold marks the best entry in each marked column and underline the runner-up; coverage alone is not a quality ranking, and the quality columns show what each arm spent to reach it.}
+\caption{Window follow-up on both properties, $t\ge0.3$, $w=4$, three seeds of 2,000. IB is percent mean $\pm$ seed sd; differences and paired SD are percentage points against plug-in. JSD is $\times10^{-4}$, Clip is percent of guided sample-steps. This exploratory follow-up was added after diagnosing the original late window; the sign of the BDG effect differs between the two properties. Coverage alone is not a quality ranking, and the quality columns show what each arm spent to reach it. Bold marks the best entry in each marked column and underline the runner-up; a column is marked only where one direction is better, and a tie is left unmarked, never broken arbitrarily.}
 \label{tab:m2-window}
 \begin{tabular}{llccccccc}
 \toprule
 Prop. & Method & IB$\uparrow$ & $\Delta$IB & SD$(\Delta)$ & JSD$\downarrow$ & Hamming & Clip & s/seq.\\
 \midrule
-GC & DPS-style plug-in & $\underline{30.3\pm2.0}$& +0.00 & 0.00 & 3.64 & 0.7456 & 14.94 & 0.124\\
+GC & DPS-style plug-in & $30.3\pm2.0$ & +0.00 & 0.00 & 3.64 & 0.7456 & 14.94 & 0.124\\
 GC & TMPD-inspired & $29.2\pm2.1$ & -1.07 & 0.57 & 3.66 & 0.7455 & 14.89 & 0.145\\
-GC & LGD-MC & $30.0\pm1.3$ & -0.28 & 1.14 & 3.61 & 0.7455 & 15.13 & 0.131\\
-GC & TFG-MC adaptation & $29.8\pm1.8$ & -0.48 & 1.06 & 3.57 & 0.7455 & 15.17 & 0.109\\
+GC & LGD-MC & $30.0\pm1.3$ & -0.28 & 1.14 & \underline{3.61}& 0.7455 & 15.13 & 0.131\\
+GC & TFG-MC adaptation & $29.8\pm1.8$ & -0.48 & 1.06 & \textbf{3.57}& 0.7455 & 15.17 & \underline{0.109}\\
 GC & BDG, $\tau_m=0.5$ & $\mathbf{37.3\pm6.5}$& +7.08 & 4.53 & 4.24 & 0.7455 & 20.75 & 0.122\\
-GC & BDG $\eta=0$ & $30.3\pm2.0$ & +0.00 & 0.00 & 3.63 & 0.7456 & 14.94 & 0.059\\
+GC & BDG $\eta=0$ & $30.3\pm2.0$ & +0.00 & 0.00 & 3.63 & 0.7456 & 14.94 & \textbf{0.059}\\
 \midrule
-CpG & DPS-style plug-in & $\mathbf{91.5\pm0.5}$& +0.00 & 0.00 & 4.37 & 0.7455 & 12.74 & 0.072\\
-CpG & TMPD-inspired & $\underline{91.4\pm1.4}$& -0.02 & 1.14 & 4.36 & 0.7455 & 12.47 & 0.076\\
+CpG & DPS-style plug-in & $\mathbf{91.5\pm0.5}$& +0.00 & 0.00 & 4.37 & 0.7455 & 12.74 & \textbf{0.072}\\
+CpG & TMPD-inspired & $91.4\pm1.4$ & -0.02 & 1.14 & 4.36 & 0.7455 & 12.47 & \underline{0.076}\\
 CpG & LGD-MC & $90.7\pm0.6$ & -0.72 & 0.83 & 4.02 & 0.7454 & 14.31 & 0.109\\
-CpG & TFG-MC adaptation & $85.1\pm0.7$ & -6.33 & 0.33 & 3.56 & 0.7454 & 17.36 & 0.122\\
-CpG & BDG, $\tau_m=0.5$ & $86.6\pm0.9$ & -4.88 & 1.33 & 3.94 & 0.7455 & 13.26 & 0.117\\
+CpG & TFG-MC adaptation & $85.1\pm0.7$ & -6.33 & 0.33 & \textbf{3.56}& 0.7454 & 17.36 & 0.122\\
+CpG & BDG, $\tau_m=0.5$ & $86.6\pm0.9$ & -4.88 & 1.33 & \underline{3.94}& 0.7455 & 13.26 & 0.117\\
 CpG & BDG $\eta=0$ & $91.4\pm0.4$ & -0.05 & 0.17 & 4.38 & 0.7455 & 12.74 & 0.103\\
 \bottomrule
 \end{tabular}
@@ -937,15 +937,15 @@ CpG & BDG $\eta=0$ & $91.4\pm0.4$ & -0.05 & 0.17 & 4.38 & 0.7455 & 12.74 & 0.103
 % BEGIN DATA SETPOINT
 \begin{table}[!htbp]
 \centering\small\setlength{\tabcolsep}{4pt}
-\caption{Exploratory setpoint probe on CpG, $t\ge0.3$, $w=4$, $n=2{,}000$ per seed. BDG contracts only a batch wider than $\tau$, and plug-in already reaches $0.372s$ here, inside the registered $\tau_m=0.5$. Lowering the setpoint below the achieved spread restores contraction and coverage, which is the prediction the sign rule makes. Seeds gives the number of seeds; only $\tau_m=0.25$ has the full three, so the one-seed rows are directional and their paired SD is omitted. These setpoints are outside the pre-registered grid and are reported as exploratory, not as headline results.}
+\caption{Exploratory setpoint probe on CpG, $t\ge0.3$, $w=4$, $n=2{,}000$ per seed. BDG contracts only a batch wider than $\tau$, and plug-in already reaches $0.372s$ here, inside the registered $\tau_m=0.5$. Lowering the setpoint below the achieved spread restores contraction and coverage, which is the prediction the sign rule makes. Seeds gives the number of seeds; only $\tau_m=0.25$ has the full three, so the one-seed rows are directional and their paired SD is omitted. These setpoints are outside the pre-registered grid and are reported as exploratory, not as headline results. Bold marks the best entry in each marked column and underline the runner-up; a column is marked only where one direction is better, and a tie is left unmarked, never broken arbitrarily.}
 \label{tab:setpoint}
 \begin{tabular}{lcccccccc}
 \toprule
 Method & Seeds & IB$\uparrow$ & $\Delta$IB & SD$(\Delta)$ & $\sigma/s$ & JSD$\downarrow$ & Conf. & Clip\\
 \midrule
-DPS-style plug-in & 3 & $91.5\pm0.5$ & +0.00 & 0.00 & 0.372 & 4.37 & 0.957 & 12.74\\
+DPS-style plug-in & 3 & $\underline{91.5\pm0.5}$& +0.00 & 0.00 & 0.372 & 4.37 & 0.957 & 12.74\\
 BDG, $\tau_m=0.5$ & 3 & $86.6\pm0.9$ & -4.88 & 1.33 & 0.454 & 3.94 & 0.958 & 13.26\\
-BDG, $\tau_m=0.25$ & 3 & $93.7\pm1.1$ & +2.28 & 0.89 & 0.298 & 5.96 & 0.952 & 21.88\\
+BDG, $\tau_m=0.25$ & 3 & $\mathbf{93.7\pm1.1}$& +2.28 & 0.89 & 0.298 & 5.96 & 0.952 & 21.88\\
 BDG, $\tau_m=0.25$, $\eta=8$ & 1 & $93.40$ & +1.95 & -- & 0.280 & 6.69 & 0.950 & 23.73\\
 BDG, $\tau_m=0.15$ & 1 & $93.30$ & +1.85 & -- & 0.241 & 7.55 & 0.948 & 26.15\\
 \bottomrule
@@ -955,19 +955,19 @@ BDG, $\tau_m=0.15$ & 1 & $93.30$ & +1.85 & -- & 0.241 & 7.55 & 0.948 & 26.15\\
 % BEGIN DATA M2-LATE
 \begin{table}[!htbp]
 \centering\small\setlength{\tabcolsep}{4pt}
-\caption{DNA, $w=4$, $t\ge0.5$: decoded IB (percent mean $\pm$ seed sd); JSD ($\times10^{-4}$) and Hamming diversity in GC/CpG order. Time is recorded s/sequence for CpG. TFG-MC is a restricted adaptation. Full results: Table~\ref{tab:full-m2}. Bold marks the best entry in each marked column and underline the runner-up; coverage alone is not a quality ranking, and the quality columns show what each arm spent to reach it.}
+\caption{DNA, $w=4$, $t\ge0.5$: decoded IB (percent mean $\pm$ seed sd); JSD ($\times10^{-4}$) and Hamming diversity in GC/CpG order. Time is recorded s/sequence for CpG. TFG-MC is a restricted adaptation. Full results: Table~\ref{tab:full-m2}. Coverage alone is not a quality ranking, and the quality columns show what each arm spent to reach it. Bold marks the best entry in each marked column and underline the runner-up; a column is marked only where one direction is better, and a tie is left unmarked, never broken arbitrarily.}
 \label{tab:m2-late}
 \begin{tabular}{lccccc}
 \toprule
 Method & GC IB$\uparrow$ & CpG IB$\uparrow$ & JSD$\downarrow$ & Hamming & Time\\
 \midrule
-Unguided & $14.0\pm1.0$ & $50.2\pm1.6$ & 4.53 / 4.53 & 0.7456 / 0.7456 & 0.049\\
-DPS-style plug-in & $\underline{14.1\pm1.0}$& $\underline{51.6\pm1.4}$& 4.61 / 4.63 & 0.7456 / 0.7456 & 0.096\\
-TMPD-inspired & $14.1\pm1.0$ & $51.6\pm1.4$ & 4.61 / 4.63 & 0.7456 / 0.7456 & 0.124\\
-LGD-MC & $14.1\pm1.0$ & $51.6\pm1.4$ & 4.61 / 4.63 & 0.7456 / 0.7456 & 0.102\\
-TFG-MC adaptation & $14.1\pm1.0$ & $51.1\pm1.7$ & 4.59 / 4.58 & 0.7456 / 0.7456 & 0.084\\
-BDG, $\tau_m=0.5$ & $\mathbf{16.4\pm1.2}$& $\mathbf{68.5\pm1.2}$& 5.93 / 7.73 & 0.7457 / 0.7457 & 0.076\\
-BDG, $\tau_m=1$ & $14.1\pm1.0$ & $50.3\pm1.5$ & 4.54 / 4.52 & 0.7456 / 0.7456 & 0.076\\
+Unguided & $14.0\pm1.0$ & $50.2\pm1.6$ & \textbf{4.53} / \underline{4.53}& 0.7456 / 0.7456 & \textbf{0.049}\\
+DPS-style plug-in & $14.1\pm1.0$ & $51.6\pm1.4$ & 4.61 / 4.63& 0.7456 / 0.7456 & 0.096\\
+TMPD-inspired & $14.1\pm1.0$ & $51.6\pm1.4$ & 4.61 / 4.63& 0.7456 / 0.7456 & 0.124\\
+LGD-MC & $14.1\pm1.0$ & $51.6\pm1.4$ & 4.61 / 4.63& 0.7456 / 0.7456 & 0.102\\
+TFG-MC adaptation & $14.1\pm1.0$ & $51.1\pm1.7$ & 4.59 / 4.58& 0.7456 / 0.7456 & 0.084\\
+BDG, $\tau_m=0.5$ & $\mathbf{16.4\pm1.2}$& $\mathbf{68.5\pm1.2}$& 5.93 / 7.73& 0.7457 / 0.7457 & 0.076\\
+BDG, $\tau_m=1$ & $14.1\pm1.0$ & $50.3\pm1.5$ & \underline{4.54} / \textbf{4.52}& 0.7456 / 0.7456 & 0.076\\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -976,43 +976,43 @@ BDG, $\tau_m=1$ & $14.1\pm1.0$ & $50.3\pm1.5$ & 4.54 / 4.52 & 0.7456 / 0.7456 & 
 % BEGIN DATA FULL-M2
 \begin{table}[!htbp]
 \centering\small
-\caption{All DNA headline settings at the pre-registered window $t\ge0.5$; the same grid at $t\ge0.3$ is Table~\ref{tab:full-m2-early}. IB is percent mean $\pm$ seed sd; JSD is multiplied by $10^4$; Conf. is decoding confidence; Div. is normalized Hamming distance; Clip is percent of guided sample-steps. Unguided rows repeat a common reference and are never pooled twice.}
+\caption{All DNA headline settings at the pre-registered window $t\ge0.5$; the same grid at $t\ge0.3$ is Table~\ref{tab:full-m2-early}. IB is percent mean $\pm$ seed sd; JSD is multiplied by $10^4$; Conf. is decoding confidence; Div. is normalized Hamming distance; Clip is percent of guided sample-steps. Unguided rows repeat a common reference and are never pooled twice. Bold marks the best entry of each panel in each marked column and underline the runner-up; panels are ranked separately because their rows are not comparable across panels, a column is marked only where one direction is better, and a tie is left unmarked.}
 \label{tab:full-m2}
 \begin{tabular}{llcccccc}
 \toprule
 Prop., $w$ & Method & IB$\uparrow$ & JSD$\downarrow$ & Conf. & Div. & Clip & s/seq.\\
 \midrule
-GC, 1 & Unguided & $14.0\pm1.0$ & 4.53 & 0.958 & 0.7456 & 0.00 & 0.021\\
+GC, 1 & Unguided & $14.0\pm1.0$ & 4.53 & 0.958 & 0.7456 & 0.00 & \textbf{0.021}\\
 GC, 1 & DPS-style plug-in & $14.0\pm0.9$ & 4.53 & 0.958 & 0.7456 & 0.00 & 0.042\\
 GC, 1 & TMPD-inspired & $14.0\pm0.9$ & 4.53 & 0.958 & 0.7456 & 0.00 & 0.045\\
-GC, 1 & LGD-MC & $14.0\pm0.9$ & 4.53 & 0.958 & 0.7456 & 0.00 & 0.035\\
-GC, 1 & TFG-MC adaptation & $14.1\pm1.0$ & 4.53 & 0.958 & 0.7456 & 0.00 & 0.047\\
-GC, 1 & BDG, $\tau_m=0.5$ & $14.5\pm1.0$ & 4.95 & 0.956 & 0.7456 & 0.56 & 0.042\\
+GC, 1 & LGD-MC & $14.0\pm0.9$ & 4.53 & 0.958 & 0.7456 & 0.00 & \underline{0.035}\\
+GC, 1 & TFG-MC adaptation & $\underline{14.1\pm1.0}$& 4.53 & 0.958 & 0.7456 & 0.00 & 0.047\\
+GC, 1 & BDG, $\tau_m=0.5$ & $\mathbf{14.5\pm1.0}$& 4.95 & 0.956 & 0.7456 & 0.56 & 0.042\\
 GC, 1 & BDG, $\tau_m=1$ & $14.0\pm1.0$ & 4.53 & 0.958 & 0.7456 & 0.00 & 0.042\\
 \midrule
-GC, 4 & Unguided & $14.0\pm1.0$ & 4.53 & 0.958 & 0.7456 & 0.00 & 0.021\\
+GC, 4 & Unguided & $14.0\pm1.0$ & \textbf{4.53}& 0.958 & 0.7456 & 0.00 & \textbf{0.021}\\
 GC, 4 & DPS-style plug-in & $14.1\pm1.0$ & 4.61 & 0.958 & 0.7456 & 0.08 & 0.040\\
 GC, 4 & TMPD-inspired & $14.1\pm1.0$ & 4.61 & 0.958 & 0.7456 & 0.08 & 0.051\\
 GC, 4 & LGD-MC & $14.1\pm1.0$ & 4.61 & 0.958 & 0.7456 & 0.08 & 0.047\\
 GC, 4 & TFG-MC adaptation & $14.1\pm1.0$ & 4.59 & 0.958 & 0.7456 & 0.06 & 0.043\\
-GC, 4 & BDG, $\tau_m=0.5$ & $16.4\pm1.2$ & 5.93 & 0.947 & 0.7457 & 9.24 & 0.028\\
-GC, 4 & BDG, $\tau_m=1$ & $14.1\pm1.0$ & 4.54 & 0.958 & 0.7456 & 0.01 & 0.028\\
+GC, 4 & BDG, $\tau_m=0.5$ & $\mathbf{16.4\pm1.2}$& 5.93 & 0.947 & 0.7457 & 9.24 & 0.028\\
+GC, 4 & BDG, $\tau_m=1$ & $14.1\pm1.0$ & \underline{4.54}& 0.958 & 0.7456 & 0.01 & 0.028\\
 \midrule
-CpG, 1 & Unguided & $50.2\pm1.6$ & 4.53 & 0.958 & 0.7456 & 0.00 & 0.036\\
+CpG, 1 & Unguided & $50.2\pm1.6$ & 4.53 & 0.958 & 0.7456 & 0.00 & \textbf{0.036}\\
 CpG, 1 & DPS-style plug-in & $50.5\pm1.8$ & 4.53 & 0.958 & 0.7456 & 0.02 & 0.074\\
 CpG, 1 & TMPD-inspired & $50.5\pm1.8$ & 4.53 & 0.958 & 0.7456 & 0.02 & 0.120\\
 CpG, 1 & LGD-MC & $50.5\pm1.8$ & 4.53 & 0.958 & 0.7456 & 0.02 & 0.102\\
 CpG, 1 & TFG-MC adaptation & $50.4\pm1.7$ & 4.54 & 0.958 & 0.7456 & 0.01 & 0.089\\
-CpG, 1 & BDG, $\tau_m=0.5$ & $55.3\pm0.8$ & 5.26 & 0.956 & 0.7456 & 0.98 & 0.073\\
-CpG, 1 & BDG, $\tau_m=1$ & $50.2\pm1.6$ & 4.53 & 0.958 & 0.7456 & 0.00 & 0.061\\
+CpG, 1 & BDG, $\tau_m=0.5$ & $\mathbf{55.3\pm0.8}$& 5.26 & 0.956 & 0.7456 & 0.98 & 0.073\\
+CpG, 1 & BDG, $\tau_m=1$ & $50.2\pm1.6$ & 4.53 & 0.958 & 0.7456 & 0.00 & \underline{0.061}\\
 \midrule
-CpG, 4 & Unguided & $50.2\pm1.6$ & 4.53 & 0.958 & 0.7456 & 0.00 & 0.049\\
+CpG, 4 & Unguided & $50.2\pm1.6$ & \underline{4.53}& 0.958 & 0.7456 & 0.00 & \textbf{0.049}\\
 CpG, 4 & DPS-style plug-in & $51.6\pm1.4$ & 4.63 & 0.958 & 0.7456 & 0.21 & 0.096\\
 CpG, 4 & TMPD-inspired & $51.6\pm1.4$ & 4.63 & 0.958 & 0.7456 & 0.21 & 0.124\\
 CpG, 4 & LGD-MC & $51.6\pm1.4$ & 4.63 & 0.958 & 0.7456 & 0.21 & 0.102\\
 CpG, 4 & TFG-MC adaptation & $51.1\pm1.7$ & 4.58 & 0.958 & 0.7456 & 0.10 & 0.084\\
-CpG, 4 & BDG, $\tau_m=0.5$ & $68.5\pm1.2$ & 7.73 & 0.950 & 0.7457 & 7.41 & 0.076\\
-CpG, 4 & BDG, $\tau_m=1$ & $50.3\pm1.5$ & 4.52 & 0.959 & 0.7456 & 0.03 & 0.076\\
+CpG, 4 & BDG, $\tau_m=0.5$ & $\mathbf{68.5\pm1.2}$& 7.73 & 0.950 & 0.7457 & 7.41 & 0.076\\
+CpG, 4 & BDG, $\tau_m=1$ & $50.3\pm1.5$ & \textbf{4.52}& 0.959 & 0.7456 & 0.03 & 0.076\\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -1021,43 +1021,43 @@ CpG, 4 & BDG, $\tau_m=1$ & $50.3\pm1.5$ & 4.52 & 0.959 & 0.7456 & 0.03 & 0.076\\
 % BEGIN DATA FULL-M2-EARLY
 \begin{table}[!htbp]
 \centering\small
-\caption{All DNA headline settings at $t\ge0.3$, the window the main-text DNA tables use. Columns match Table~\ref{tab:full-m2}. IB is percent mean $\pm$ seed sd; JSD is multiplied by $10^4$; Conf. is decoding confidence; Div. is normalized Hamming distance; Clip is percent of guided sample-steps. Unguided rows repeat a common reference and are never pooled twice.}
+\caption{All DNA headline settings at $t\ge0.3$, the window the main-text DNA tables use. Columns match Table~\ref{tab:full-m2}. IB is percent mean $\pm$ seed sd; JSD is multiplied by $10^4$; Conf. is decoding confidence; Div. is normalized Hamming distance; Clip is percent of guided sample-steps. Unguided rows repeat a common reference and are never pooled twice. Bold marks the best entry of each panel in each marked column and underline the runner-up; panels are ranked separately because their rows are not comparable across panels, a column is marked only where one direction is better, and a tie is left unmarked.}
 \label{tab:full-m2-early}
 \begin{tabular}{llcccccc}
 \toprule
 Prop., $w$ & Method & IB$\uparrow$ & JSD$\downarrow$ & Conf. & Div. & Clip & s/seq.\\
 \midrule
-GC, 1 & Unguided & $14.0\pm1.0$ & 4.53 & 0.958 & 0.7456 & 0.00 & 0.048\\
-GC, 1 & DPS-style plug-in & $25.5\pm2.6$ & 3.40 & 0.960 & 0.7456 & 8.70 & 0.088\\
+GC, 1 & Unguided & $14.0\pm1.0$ & 4.53 & 0.958 & 0.7456 & 0.00 & \textbf{0.048}\\
+GC, 1 & DPS-style plug-in & $\underline{25.5\pm2.6}$& 3.40 & 0.960 & 0.7456 & 8.70 & \underline{0.088}\\
 GC, 1 & TMPD-inspired & $25.1\pm2.2$ & 3.40 & 0.960 & 0.7456 & 8.63 & 0.100\\
 GC, 1 & LGD-MC & $25.1\pm1.8$ & 3.40 & 0.960 & 0.7455 & 8.68 & 0.100\\
-GC, 1 & TFG-MC adaptation & $24.6\pm1.4$ & 3.39 & 0.960 & 0.7455 & 8.35 & 0.110\\
-GC, 1 & BDG, $\tau_m=0.5$ & $34.0\pm4.6$ & 3.48 & 0.959 & 0.7455 & 15.92 & 0.093\\
+GC, 1 & TFG-MC adaptation & $24.6\pm1.4$ & \textbf{3.39}& 0.960 & 0.7455 & 8.35 & 0.110\\
+GC, 1 & BDG, $\tau_m=0.5$ & $\mathbf{34.0\pm4.6}$& 3.48 & 0.959 & 0.7455 & 15.92 & 0.093\\
 GC, 1 & BDG, $\tau_m=1$ & $14.8\pm1.0$ & 4.04 & 0.960 & 0.7456 & 0.91 & 0.098\\
 \midrule
-GC, 4 & Unguided & $14.0\pm1.0$ & 4.53 & 0.958 & 0.7456 & 0.00 & 0.050\\
-GC, 4 & DPS-style plug-in & $30.3\pm2.0$ & 3.64 & 0.959 & 0.7456 & 14.94 & 0.124\\
+GC, 4 & Unguided & $14.0\pm1.0$ & 4.53 & 0.958 & 0.7456 & 0.00 & \textbf{0.050}\\
+GC, 4 & DPS-style plug-in & $\underline{30.3\pm2.0}$& 3.64 & 0.959 & 0.7456 & 14.94 & 0.124\\
 GC, 4 & TMPD-inspired & $29.2\pm2.1$ & 3.66 & 0.959 & 0.7455 & 14.89 & 0.145\\
 GC, 4 & LGD-MC & $30.0\pm1.3$ & 3.61 & 0.959 & 0.7455 & 15.13 & 0.131\\
-GC, 4 & TFG-MC adaptation & $29.8\pm1.8$ & 3.57 & 0.959 & 0.7455 & 15.17 & 0.109\\
-GC, 4 & BDG, $\tau_m=0.5$ & $37.3\pm6.5$ & 4.24 & 0.957 & 0.7455 & 20.75 & 0.122\\
-GC, 4 & BDG, $\tau_m=1$ & $15.6\pm0.8$ & 3.59 & 0.961 & 0.7455 & 4.12 & 0.075\\
+GC, 4 & TFG-MC adaptation & $29.8\pm1.8$ & \textbf{3.57}& 0.959 & 0.7455 & 15.17 & 0.109\\
+GC, 4 & BDG, $\tau_m=0.5$ & $\mathbf{37.3\pm6.5}$& 4.24 & 0.957 & 0.7455 & 20.75 & 0.122\\
+GC, 4 & BDG, $\tau_m=1$ & $15.6\pm0.8$ & \underline{3.59}& 0.961 & 0.7455 & 4.12 & \underline{0.075}\\
 \midrule
-CpG, 1 & Unguided & $50.2\pm1.6$ & 4.53 & 0.958 & 0.7456 & 0.00 & 0.039\\
-CpG, 1 & DPS-style plug-in & $86.9\pm0.6$ & 4.21 & 0.957 & 0.7455 & 7.11 & 0.115\\
-CpG, 1 & TMPD-inspired & $86.7\pm0.4$ & 4.23 & 0.957 & 0.7455 & 6.69 & 0.135\\
-CpG, 1 & LGD-MC & $85.9\pm1.0$ & 3.87 & 0.958 & 0.7454 & 7.83 & 0.115\\
-CpG, 1 & TFG-MC adaptation & $80.0\pm0.8$ & 3.36 & 0.959 & 0.7454 & 9.11 & 0.094\\
+CpG, 1 & Unguided & $50.2\pm1.6$ & 4.53 & 0.958 & 0.7456 & 0.00 & \textbf{0.039}\\
+CpG, 1 & DPS-style plug-in & $\mathbf{86.9\pm0.6}$& 4.21 & 0.957 & 0.7455 & 7.11 & 0.115\\
+CpG, 1 & TMPD-inspired & $\underline{86.7\pm0.4}$& 4.23 & 0.957 & 0.7455 & 6.69 & 0.135\\
+CpG, 1 & LGD-MC & $85.9\pm1.0$ & \underline{3.87}& 0.958 & 0.7454 & 7.83 & 0.115\\
+CpG, 1 & TFG-MC adaptation & $80.0\pm0.8$ & \textbf{3.36}& 0.959 & 0.7454 & 9.11 & \underline{0.094}\\
 CpG, 1 & BDG, $\tau_m=0.5$ & $85.2\pm0.6$ & 3.91 & 0.958 & 0.7455 & 9.81 & 0.117\\
 CpG, 1 & BDG, $\tau_m=1$ & $51.8\pm0.6$ & 4.01 & 0.959 & 0.7455 & 2.23 & 0.118\\
 \midrule
-CpG, 4 & Unguided & $50.2\pm1.6$ & 4.53 & 0.958 & 0.7456 & 0.00 & 0.052\\
-CpG, 4 & DPS-style plug-in & $91.5\pm0.5$ & 4.37 & 0.957 & 0.7455 & 12.74 & 0.072\\
-CpG, 4 & TMPD-inspired & $91.4\pm1.4$ & 4.36 & 0.957 & 0.7455 & 12.47 & 0.076\\
+CpG, 4 & Unguided & $50.2\pm1.6$ & 4.53 & 0.958 & 0.7456 & 0.00 & \textbf{0.052}\\
+CpG, 4 & DPS-style plug-in & $\mathbf{91.5\pm0.5}$& 4.37 & 0.957 & 0.7455 & 12.74 & \underline{0.072}\\
+CpG, 4 & TMPD-inspired & $\underline{91.4\pm1.4}$& 4.36 & 0.957 & 0.7455 & 12.47 & 0.076\\
 CpG, 4 & LGD-MC & $90.7\pm0.6$ & 4.02 & 0.957 & 0.7454 & 14.31 & 0.109\\
-CpG, 4 & TFG-MC adaptation & $85.1\pm0.7$ & 3.56 & 0.957 & 0.7454 & 17.36 & 0.122\\
+CpG, 4 & TFG-MC adaptation & $85.1\pm0.7$ & \textbf{3.56}& 0.957 & 0.7454 & 17.36 & 0.122\\
 CpG, 4 & BDG, $\tau_m=0.5$ & $86.6\pm0.9$ & 3.94 & 0.958 & 0.7455 & 13.26 & 0.117\\
-CpG, 4 & BDG, $\tau_m=1$ & $54.3\pm0.6$ & 3.62 & 0.960 & 0.7454 & 6.87 & 0.115\\
+CpG, 4 & BDG, $\tau_m=1$ & $54.3\pm0.6$ & \underline{3.62}& 0.960 & 0.7454 & 6.87 & 0.115\\
 \bottomrule
 \end{tabular}
 \end{table}
