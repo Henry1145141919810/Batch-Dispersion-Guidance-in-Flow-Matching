@@ -25,6 +25,20 @@ Everything the paper reports about molecules comes from here.
 | **pinned axes** | n = 2000 in 4 batches of 500 · q50 · w = 1 · t ≥ 0.5 · 100-step Euler · uniform time spacing (recorded as `flow`/`native`/`uniform` per backend) · clip 1.0 · δ = 2 × MAE(f_B) |
 | **integrity** | `python proj1/scripts/v3_sanity.py` → **0 fail, 17 warn, 15,243 checks** |
 
+### Modality 2 — the DNA cells
+
+This file listed none of these until an audit noticed, and three of them are read
+directly by `paper/tools/build_results.py`.
+
+| tree | cells | what reads it |
+|---|---|---|
+| `results/m2/m2/n2000/` | 84 | `tab:m2-late`, `tab:full-m2` — the registered t ≥ 0.5 grid |
+| `results/m2/m2win/n2000/` | 100 | `tab:m2`, `tab:m2-window`, `tab:full-m2-early`, and panel (b) of `fig:results` — the t ≥ 0.3 window both properties now use |
+| `results/m2/m2tau/n2000/` | 5 | `tab:setpoint` — the setpoint sign probe |
+| `results/m2/m2abl/n2000/` | 111 | the M2 ablation grid; no paper table |
+| `results/m2/m2wsweep/n2000/` | 4 | the strength sweep that chose w; no paper table |
+| the loose `results/*.json` | 22 files | `m2_gate_scores.json`, `m2_dfb_activity.json`, `m2_share.json`, `v3_batch_memory.json` and friends. Small, and four documented commands fail without them, so they ship |
+
 ### The four base models — which is whose
 
 | backend | generator | ours? | property pair | arms |
@@ -195,7 +209,14 @@ Betty (gate → 9-task array → table). Its gate pins the checkpoint md5
 
 ## 7. STILL OPEN
 
-0. ⚠️ **`tab:m2` currently mixes windows, and the data to fix it now exists.**
+0. ✅ **RESOLVED 29–30 Sep. `tab:m2` is now built wholly at t ≥ 0.3.** Kept below
+   because the reasoning still explains the CpG result. `build_results.py` builds
+   `tab:m2` from `results/m2/m2win`, keeps the registered t ≥ 0.5 grid as
+   `tab:m2-late`, and adds `tab:m2-window` and `tab:setpoint`. The paper has been
+   rebuilt against these cells and reports that BDG loses on CpG. The original
+   entry, for the record:
+
+   ⚠️ **`tab:m2` currently mixes windows, and the data to fix it now exists.**
    The table pairs a `gc` column at t >= 0.3 with a `cpg` column at t >= 0.5 —
    its caption says so — and that pairing is what produces CpG's +16.83 pp for
    BDG. Bobo's 29 Sep suite supplies `cpg` at t >= 0.3, where the same contrast
