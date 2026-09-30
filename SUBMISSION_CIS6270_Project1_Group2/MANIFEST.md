@@ -4,8 +4,8 @@
 
 SHA-256 of the graded artefacts:
 
-- `paper/main.pdf`  `263d79a1b045199272d65a58b81acb9399e0baf34b7df83e05ecc5b94ffb1f31`
-- `paper/main.tex`  `52b05da31224424b4b7af28fef591611693a73cffc2adb5c8dc7efaf0a248f67`
+- `paper/main.pdf`  `bedd964e3529b459d26aaae759965643468e1fb69d5da94b382e6af2fb4f6bc8`
+- `paper/main.tex`  `6c9ef0996a7470033fa91567a46c0a8303a8588e23c24f2ba97db3a181d415b1`
 
 Top-level contents:
 

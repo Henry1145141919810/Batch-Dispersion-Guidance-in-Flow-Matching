@@ -469,18 +469,22 @@ def figures():
     handles += [Line2D([],[],color='.2',ls=ls,label=name) for ls,name in [('-','Our FM'),('--','EquiFM')]]
     ax.legend(handles=handles,ncol=3,loc='upper left',frameon=False,handlelength=1.4,columnspacing=.8)
     ax=axs[1]
+    # Both DNA properties at t>=0.3, the window Table 5 reports; the registered
+    # t>=0.5 window stays in Table S18. Both setpoints are drawn on one axis, so
+    # the widening tau_m=1 losses are shown at their full size, not clipped.
+    cells=[('gc',1),('gc',4),('cpg',1),('cpg',4)]
+    lo,hi=0.,0.
     for a,col,off,mark in [('bdg_e4t0.5',colors[0],-.12,'o'),('bdg_e4t1',colors[1],.12,'s')]:
         ds=[]; es=[]
-        for p,w in [('gc',1),('gc',4),('gc03',4),('cpg',1),('cpg',4)]:
-            if p=='gc03' and a=='bdg_e4t1':
-                ds.append(float('nan')); es.append(float('nan')); continue
-            c=contrast(win(a),win('plug'),'in_band_fraction') if p=='gc03' else contrast(seq(p,a,w),seq(p,'plug',w),'in_band_fraction')
+        for p,w in cells:
+            c=contrast(win(a,prop=p,w=w),win('plug',prop=p,w=w),'in_band_fraction')
             ds.append(c['delta_pp']); es.append(st.stdev(c['seed_deltas_pp']))
-        ax.errorbar(np.arange(5)+off,ds,yerr=es,ls='none',marker=mark,color=col,capsize=3,label=r'$\tau_m='+('0.5' if a.endswith('.5') else '1')+'$')
+        lo=min(lo,min(d-e for d,e in zip(ds,es))); hi=max(hi,max(d+e for d,e in zip(ds,es)))
+        ax.errorbar(np.arange(len(cells))+off,ds,yerr=es,ls='none',marker=mark,color=col,capsize=3,label=r'$\tau_m='+('0.5' if a.endswith('.5') else '1')+'$')
     ax.axhline(0,color='.5',ls='--',lw=.8)
-    ax.set(xticks=range(5),xticklabels=['GC\n$w=1$','GC\n$w=4$','GC .3\n$w=4$','CpG\n$w=1$','CpG\n$w=4$'],ylabel='IB difference vs plug-in (pp)',ylim=(-4,20))
-    ax.set_title('(b) DNA: property and window matter',loc='left')
-    ax.legend(loc='upper left',frameon=False,ncol=2)
+    ax.set(xticks=range(len(cells)),xticklabels=[f'{PL[p]}\n$w={w}$' for p,w in cells],ylabel='IB difference vs plug-in (pp)',ylim=(lo-3,hi+3))
+    ax.set_title(r'(b) DNA, $t\geq0.3$: sign follows setpoint',loc='left')
+    ax.legend(loc='upper right',frameon=False,ncol=2)
     fig.savefig(PAPER/f'figs/results_v{VERSION}.pdf'); fig.savefig(PAPER/f'figs/results_v{VERSION}.png',dpi=220); plt.close(fig)
     for be in ('fm','equifm'):
         fig,axs=plt.subplots(2,3,figsize=(8,5.2),layout='constrained')

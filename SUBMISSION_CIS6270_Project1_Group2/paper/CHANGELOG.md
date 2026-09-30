@@ -27,6 +27,8 @@ A correctness pass over v9, not a new experiment. Authors: Bobo Li, Henry Huang.
   setpoint-probe stage.
 - **Tables mark best and runner-up** wherever one direction is better, ranked
   within each property panel, with ties left unmarked.
+- **Figure 2b redrawn at t >= 0.3** for both properties and both setpoints, so it
+  matches Table 5; the caption points to Table S18 for the registered window.
 - **First compiled build of this source.** 0 errors, 0 undefined references,
   0 overfull boxes; `tools/check.py` passes. 23 generated table blocks and 1,073
   source hashes pass `build_results.py --check`; 27 pages overall.

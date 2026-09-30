@@ -138,3 +138,22 @@ component at a time, since they pack several properties into one column; the
 five hand-copied caption notes were replaced by two shared constants so they
 cannot drift; and the tie-for-second guard was added after Table 4 underlined
 one of three equal times.
+
+## Figure 2b redrawn at the t >= 0.3 window
+
+Figure 2b still plotted v9's windows: GC and CpG at t >= 0.5 plus one GC point
+at t >= 0.3, with no tau_m = 1 point there and a caption saying so. Table 5 and
+section 4.6 report both properties at t >= 0.3, so the figure disagreed with
+the table beside it.
+
+The panel now plots BDG minus plug-in at t >= 0.3 for GC and CpG at w = 1 and
+4, for both registered setpoints, with the same paired-seed error bars. GC
+gains +8.43 / +7.08 and CpG loses -1.73 / -4.88 at tau_m = 0.5; tau_m = 1 loses
+on both (-10.70 / -14.67 GC, -35.08 / -37.20 CpG). The y-axis is set from the
+data so the tau_m = 1 losses are drawn at full size. The caption points to
+Table S18 for the registered t >= 0.5 window.
+
+Table blocks, the manifest and every other figure are unchanged;
+build_results.py --check passes (23 tables, 1,073 hashes) and tools/check.py
+passes. The build has 0 errors, 0 undefined references and 0 overfull boxes,
+and one underfull vbox at a float, which the previous build already had.

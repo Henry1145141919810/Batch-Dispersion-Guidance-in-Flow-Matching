@@ -11,6 +11,7 @@ result cell hashes, dataset hashes, histogram bins and derived measurements.
 
 This is the first version compiled and checked rather than only written. The
 build reports zero errors, zero undefined references or citations, and zero
-overfull or underfull boxes. The page limit is eight; the main text uses six.
+overfull boxes, and one underfull vbox at a float. The course limit is five main
+pages; the main text uses six.
 
 Earlier versions remain unchanged. SHA256SUMS.txt inventories this snapshot.
