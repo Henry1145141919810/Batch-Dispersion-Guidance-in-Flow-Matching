@@ -222,6 +222,39 @@ enough to guide 70 steps — plug run twice at one seed differs by gc_mean 3.0e-
 and 2 clipped steps. The η = 0 control therefore needs a tolerance (1e-5), as
 EquiFM's does in M1. At t ≥ 0.5 it landed exact, which was luck.
 
+### t >= 0.3, both properties: BDG wins on gc and LOSES on cpg
+
+The full t >= 0.3 suite (96 cells: gc + cpg, w in {1,4}, 8 arms incl. unguided
+and the eta=0 control, 3 seeds) does **not** replicate across properties.
+
+| | unguided | plug | tmpd | lgd_mc | tfg_mc | **bdg_e4t0.5** | bdg_e4t1 |
+|---|---|---|---|---|---|---|---|
+| **gc** w=4 | 0.1395 | 0.3025 | 0.2918 | 0.2997 | 0.2977 | **0.3733 (+7.08)** | 0.1558 (−14.67) |
+| **gc** w=1 | 0.1395 | 0.2552 | 0.2507 | 0.2508 | 0.2462 | **0.3395 (+8.43)** | 0.1482 (−10.70) |
+| **cpg** w=4 | 0.5015 | **0.9145** | 0.9143 | 0.9073 | 0.8512 | 0.8657 (**−4.88**) | 0.5425 (−37.20) |
+| **cpg** w=1 | 0.5015 | **0.8688** | 0.8667 | 0.8588 | 0.7998 | 0.8515 (**−1.73**) | 0.5180 (−35.08) |
+
+(in-band, 3 seeds; bracketed figure is pp against `plug`.)
+
+**On cpg the best arm is plain DPS, and BDG is worse at both strengths.** The
+replication contradicts gc rather than confirming it, so **"BDG helps on M2"
+cannot be stated without naming the property.**
+
+Two things make cpg a different problem, and both are measured:
+
+- **Its band is quantum-floored.** delta = max(0.16·s, 4.4·quantum): for gc the
+  ratio binds at 0.16 sd, for cpg the floor binds at **0.60 sd** — 3.7x wider in
+  sd terms. Unguided is already in band 50.2 % of the time against gc's 14.0 %.
+  **gc and cpg in-band values may sit side by side but must never be compared or
+  pooled.**
+- **BDG's mechanism is contraction** (README section above). With a band already
+  0.6 sd wide, there is little to gain by tightening and something to lose when
+  the batch mean drifts — which is what the negative numbers show.
+
+`bdg_e4t1` is catastrophic on both properties (−14.67 gc, −37.20 cpg), so the
+setpoint sign-reversal holds here too; it is the tau_mult=0.5 rung that carries
+the method.
+
 ### Bugs fixed in shared code
 
 * `v3_table.py` refused **every** equifm table (δ compared exactly, but the GPU
