@@ -58,6 +58,7 @@ by hand what it refuses.
 | [V3_PAIR_DELTA.md](V3_PAIR_DELTA.md) | why in-band does not cross pairs |
 | [V3_POWER.md](V3_POWER.md) | MDD per n; what the run can and cannot detect |
 | [M2_V3_RESULTS.md](M2_V3_RESULTS.md) | Modality 2 (DeepFlyBrain enhancers) |
+| **[M2_WINDOW_COMPARISON.md](M2_WINDOW_COMPARISON.md)** | **the same M2 arms at both guidance windows (29 Sep). BDG's sign against plug FLIPS on `cpg`: +16.83 pp at t>=0.5, -4.88 pp at t>=0.3** |
 
 All of the above are **script-generated**. Do not hand-edit them — fix the
 script and re-run. Commands are in each file's header; §6 below collects them.
@@ -193,6 +194,15 @@ Betty (gate → 9-task array → table). Its gate pins the checkpoint md5
 ---
 
 ## 7. STILL OPEN
+
+0. ⚠️ **`tab:m2` currently mixes windows, and the data to fix it now exists.**
+   The table pairs a `gc` column at t >= 0.3 with a `cpg` column at t >= 0.5 —
+   its caption says so — and that pairing is what produces CpG's +16.83 pp for
+   BDG. Bobo's 29 Sep suite supplies `cpg` at t >= 0.3, where the same contrast
+   is **-4.88 pp**. Run at one window, BDG wins on `gc` and loses on `cpg`.
+   See [M2_WINDOW_COMPARISON.md](M2_WINDOW_COMPARISON.md); the paper has not
+   been rebuilt against these cells.
+
 
 1. **The paper's `tab:fmvd` is already filled** (`paper/main.tex:140`:
    `VP diffusion, ours & $28.8\pm1.3$ & $66.2\pm0.7$ & 99.9 & 101 & 0.048$^{*}$`),
