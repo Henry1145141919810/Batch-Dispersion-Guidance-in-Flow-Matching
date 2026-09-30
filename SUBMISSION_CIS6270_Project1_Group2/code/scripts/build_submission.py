@@ -55,6 +55,15 @@ EXCLUDE_SUFFIXES = {".pyc", ".pyo", ".aux", ".log", ".out", ".blg", ".bbl",
 EXCLUDE_FILES = {
     # names another lab project's data paths; not needed to grade or reproduce
     "docs/protocol/CLUSTER_BETTY_GUIDE.md",
+    # The aborted 489-epoch run, superseded by the 1500-epoch checkpoint beside
+    # it. Nothing in the paper or the code reads it, and shipping a dead 4 MB
+    # checkpoint in a graded folder just invites the grader to load the wrong one.
+    "proj1/m2/blade_bundle/fm_m2_dfb500.e489-aborted.pt",
+    # A third party's released weights, same rule as EDMsecond below: 13 MB we
+    # would be redistributing. proj1/m2/deepflybrain.py records the source
+    # (zenodo.org/record/5153337) and the md5, and DeepFlyBrain.json, which is
+    # the architecture rather than the weights, still ships.
+    "weights/deepflybrain/DeepFlyBrain.hdf5",
 }
 
 # A third party's released weights, fetched by our own script rather than
